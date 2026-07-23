@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=Anton&family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 90 20% 98%;
+    --foreground: 126 24% 21%;
+    --card: 0 0% 100%;
+    --card-foreground: 126 24% 21%;
+    --primary: 138 90% 28%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 126 23% 21%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 100 17% 95%;
+    --muted-foreground: 126 12% 40%;
+    --accent: 51 100% 58%;
+    --accent-foreground: 126 23% 21%;
+    --destructive: 358 85% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --info: 200 92% 42%;
+    --info-foreground: 0 0% 100%;
+    --border: 105 16% 88%;
+    --input: 105 16% 84%;
+    --ring: 138 90% 28%;
+    --radius: 0.625rem;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+}
