@@ -1,6 +1,7 @@
 import {
   Timestamp,
   collection,
+  getDoc,
   deleteField,
   getDocs,
   serverTimestamp,
@@ -56,6 +57,11 @@ export async function listExpedients(): Promise<Expedient[]> {
     .sort(
       (first, second) => second.fechaActualizacion.toMillis() - first.fechaActualizacion.toMillis(),
     )
+}
+
+export async function getExpedient(id: string): Promise<Expedient | null> {
+  const snapshot = await getDoc(doc(firestore, EXPEDIENTS_COLLECTION, id))
+  return snapshot.exists() ? (snapshot.data() as Expedient) : null
 }
 
 export async function createExpedient(
