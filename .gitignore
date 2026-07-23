@@ -5,3 +5,5 @@ dist
 .env.*.local
 !.env.example
 *.log
+service-account*.json
+firebase-service-account*.json

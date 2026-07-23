@@ -1,6 +1,6 @@
 import { getApp, getApps, initializeApp, type FirebaseOptions } from 'firebase/app'
 import { getAnalytics, isSupported, type Analytics } from 'firebase/analytics'
-import { getAuth } from 'firebase/auth'
+import { browserLocalPersistence, getAuth, setPersistence } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 import { getStorage } from 'firebase/storage'
 
@@ -16,6 +16,7 @@ const firebaseConfig: FirebaseOptions = {
 
 const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig)
 export const auth = getAuth(firebaseApp)
+export const authPersistenceReady = setPersistence(auth, browserLocalPersistence)
 export const firestore = getFirestore(firebaseApp)
 export const storage = getStorage(firebaseApp)
 
