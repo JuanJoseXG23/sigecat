@@ -10,12 +10,25 @@ service cloud.firestore {
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'Administrador';
     }
 
+    function canManageExpedients() {
+      return signedIn() &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in
+          ['Administrador', 'Coordinador', 'Funcionario'];
+    }
+
     match /usuarios/{userId} {
       allow get: if signedIn() && (request.auth.uid == userId || isAdministrator());
-      allow list, create, delete: if isAdministrator();
+      allow list: if signedIn();
+      allow create, delete: if isAdministrator();
       allow update: if isAdministrator() ||
         (request.auth.uid == userId &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoIngreso']));
+    }
+
+    match /expedientes/{expedientId} {
+      allow get, list: if signedIn();
+      allow create, update: if canManageExpedients();
+      allow delete: if false;
     }
   }
 }
