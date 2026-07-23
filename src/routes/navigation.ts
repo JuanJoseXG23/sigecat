@@ -1,0 +1,33 @@
+import {
+  BarChart3,
+  FileText,
+  FolderKanban,
+  LayoutDashboard,
+  Settings,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
+import type { UserRole } from '@/types/user'
+
+export interface AppNavigationItem {
+  label: string
+  path: string
+  icon: LucideIcon
+  roles: readonly UserRole[]
+}
+
+const allRoles: readonly UserRole[] = ['Administrador', 'Coordinador', 'Funcionario', 'Consulta']
+const operationalRoles: readonly UserRole[] = ['Administrador', 'Coordinador', 'Funcionario']
+
+export const appNavigation: readonly AppNavigationItem[] = [
+  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: allRoles },
+  { label: 'Expedientes', path: '/expedientes', icon: FolderKanban, roles: allRoles },
+  { label: 'Radicación', path: '/radicacion', icon: FileText, roles: operationalRoles },
+  { label: 'Usuarios', path: '/usuarios', icon: Users, roles: ['Administrador'] },
+  { label: 'Reportes', path: '/reportes', icon: BarChart3, roles: ['Administrador', 'Coordinador'] },
+  { label: 'Configuración', path: '/configuracion', icon: Settings, roles: ['Administrador'] },
+]
+
+export function getNavigationItem(pathname: string): AppNavigationItem | undefined {
+  return appNavigation.find((item) => item.path === pathname)
+}
