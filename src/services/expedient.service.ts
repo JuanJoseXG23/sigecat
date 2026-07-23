@@ -8,6 +8,7 @@ import {
   doc,
   updateDoc,
 } from 'firebase/firestore'
+import { calculateExpedientTimeline } from '@/lib/expedient-deadline'
 import { firestore } from '@/services/firebase'
 import type { AssignedOfficial, Expedient, ExpedientFormData } from '@/types/expedient'
 
@@ -28,6 +29,8 @@ function toExpedientData(
   values: ExpedientFormData,
   assignedOfficial?: AssignedOfficial,
 ): Record<string, unknown> {
+  const timeline = calculateExpedientTimeline(values.fechaRadicado)
+
   return removeEmptyFields({
     numeroRadicado: values.numeroRadicado.trim(),
     fechaRadicado: toTimestamp(values.fechaRadicado),
@@ -39,8 +42,8 @@ function toExpedientData(
     funcionarioAsignado: assignedOfficial,
     estado: values.estado ?? 'Recibido',
     prioridad: values.prioridad,
-    fechaLimite: toTimestamp(values.fechaLimite),
-    diasRestantes: values.diasRestantes,
+    fechaLimite: Timestamp.fromDate(timeline.fechaLimite),
+    diasRestantes: timeline.diasRestantes,
     observacionesIniciales: values.observacionesIniciales?.trim(),
   })
 }
@@ -83,8 +86,6 @@ export async function updateExpedient(
     tipoTramite: values.tipoTramite?.trim() || deleteField(),
     funcionarioAsignado: assignedOfficial ?? deleteField(),
     prioridad: values.prioridad ?? deleteField(),
-    fechaLimite: values.fechaLimite ? toTimestamp(values.fechaLimite) : deleteField(),
-    diasRestantes: values.diasRestantes ?? deleteField(),
     observacionesIniciales: values.observacionesIniciales?.trim() || deleteField(),
     fechaActualizacion: serverTimestamp(),
   })

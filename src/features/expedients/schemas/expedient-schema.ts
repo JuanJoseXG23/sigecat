@@ -31,7 +31,5 @@ export const expedientSchema = z.object({
   funcionarioAsignadoUid: optionalText,
   estado: z.enum(EXPEDIENT_STATUSES).optional(),
   prioridad: z.enum(EXPEDIENT_PRIORITIES).optional(),
-  fechaLimite: optionalText,
-  diasRestantes: z.coerce.number().int().optional(),
   observacionesIniciales: optionalText,
 })

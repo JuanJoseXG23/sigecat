@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Plus, Trash2 } from 'lucide-react'
 import { useEffect } from 'react'
-import { useFieldArray, useForm, type SubmitHandler } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch, type SubmitHandler } from 'react-hook-form'
 import type { ReactNode } from 'react'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { expedientSchema } from '@/features/expedients/schemas/expedient-schema'
+import { calculateExpedientTimeline } from '@/lib/expedient-deadline'
 import type { Expedient, ExpedientFormData } from '@/types/expedient'
 import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
 import type { UserProfile } from '@/types/user'
@@ -55,8 +56,6 @@ function getDefaultValues(expedient?: Expedient): FormValues {
     funcionarioAsignadoUid: expedient?.funcionarioAsignado?.uid ?? '',
     estado: expedient?.estado ?? 'Recibido',
     prioridad: expedient?.prioridad,
-    fechaLimite: toDateInput(expedient?.fechaLimite),
-    diasRestantes: expedient?.diasRestantes,
     observacionesIniciales: expedient?.observacionesIniciales ?? '',
   }
 }
@@ -92,6 +91,8 @@ export function ExpedientForm({
     mode: 'onSubmit',
   })
   const applicants = useFieldArray({ control: form.control, name: 'solicitantes' })
+  const filingDate = useWatch({ control: form.control, name: 'fechaRadicado' })
+  const timeline = filingDate ? calculateExpedientTimeline(filingDate) : undefined
 
   useEffect(() => {
     form.reset(getDefaultValues(expedient))
@@ -118,6 +119,11 @@ export function ExpedientForm({
             {form.formState.errors.fechaRadicado && (
               <span className="text-xs font-normal text-destructive">
                 {form.formState.errors.fechaRadicado.message}
+              </span>
+            )}
+            {timeline && (
+              <span className="block text-xs font-normal text-slate-500">
+                Fecha límite calculada: {timeline.fechaLimite.toLocaleDateString('es-CO')}
               </span>
             )}
           </Field>
@@ -235,12 +241,6 @@ export function ExpedientForm({
                 </option>
               ))}
             </Select>
-          </Field>
-          <Field label="Fecha límite">
-            <Input type="date" {...form.register('fechaLimite')} />
-          </Field>
-          <Field label="Días restantes">
-            <Input type="number" {...form.register('diasRestantes')} />
           </Field>
         </div>
         <Field label="Observaciones iniciales">

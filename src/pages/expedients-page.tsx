@@ -10,6 +10,7 @@ import { ExpedientForm } from '@/features/expedients/components/expedient-form'
 import { useAuth } from '@/hooks/use-auth'
 import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useExpedients } from '@/hooks/use-expedients'
+import { getRemainingBusinessDays } from '@/lib/expedient-deadline'
 import { archiveExpedient, createExpedient, updateExpedient } from '@/services/expedient.service'
 import type { Expedient, ExpedientFormData, ExpedientPriority } from '@/types/expedient'
 import { EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
@@ -254,7 +255,14 @@ export function ExpedientsPage() {
                       {item.prioridad || 'Sin prioridad'}
                     </Badge>
                   </td>
-                  <td className="px-5 py-4">{formatDate(item.fechaLimite)}</td>
+                  <td className="px-5 py-4">
+                    <p>{formatDate(item.fechaLimite)}</p>
+                    {item.fechaLimite && (
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {getRemainingBusinessDays(item.fechaLimite.toDate())} días hábiles
+                      </p>
+                    )}
+                  </td>
                   {canManage && (
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">

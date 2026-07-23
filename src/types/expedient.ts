@@ -78,7 +78,5 @@ export interface ExpedientFormData {
   funcionarioAsignadoUid?: string
   estado?: ExpedientStatus
   prioridad?: ExpedientPriority
-  fechaLimite?: string
-  diasRestantes?: number
   observacionesIniciales?: string
 }
