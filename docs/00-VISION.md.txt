@@ -1,0 +1,58 @@
+# SIGECAT - Visión del Proyecto
+
+## ¿Qué es SIGECAT?
+
+SIGECAT (Sistema Integral de Gestión Catastral Documental) es una aplicación web diseñada para administrar el ciclo de vida de los expedientes documentales de la Secretaría de Hacienda y Desarrollo Económico del Municipio de Girardota.
+
+El sistema busca reemplazar el control manual de expedientes por una plataforma moderna que permita registrar, asignar, hacer seguimiento y cerrar trámites de forma segura y trazable.
+
+---
+
+## Objetivos
+
+- Centralizar toda la información de los expedientes.
+- Controlar automáticamente los términos legales.
+- Facilitar la asignación de responsables.
+- Mantener historial completo de todas las actuaciones.
+- Mejorar la productividad de los funcionarios.
+- Disminuir el riesgo de pérdida de información.
+
+---
+
+## Filosofía
+
+SIGECAT debe sentirse como un software moderno.
+
+No será un sistema lleno de formularios complicados.
+
+Debe ser:
+
+- rápido
+- intuitivo
+- limpio
+- fácil de aprender
+- escalable
+
+---
+
+## Principios
+
+1. El expediente es el centro del sistema.
+2. Nunca se elimina información.
+3. Toda acción genera historial.
+4. Todo cambio es auditable.
+5. El sistema debe ayudar al funcionario.
+
+---
+
+## Tecnologías
+
+- React
+- Vite
+- TypeScript
+- Firebase Authentication
+- Firestore
+- Firebase Storage
+- Tailwind CSS
+- shadcn/ui
+- React Router

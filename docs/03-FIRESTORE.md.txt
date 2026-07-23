@@ -1,0 +1,79 @@
+# Firestore
+
+## Colecciones
+
+usuarios
+
+expedientes
+
+configuracion
+
+tiposDocumento
+
+dependencias
+
+auditoria
+
+---
+
+# usuarios
+
+- nombre
+- correo
+- rol
+- activo
+
+---
+
+# expedientes
+
+- radicadoEntrada
+- fechaRadicado
+- fechaRecibido
+- tipoDocumento
+- estado
+- responsableActual
+- fechaLimite
+- observaciones
+- creadoPor
+- creadoEn
+
+---
+
+Subcolecciones
+
+historial
+
+observaciones
+
+relaciones
+
+---
+
+# configuracion
+
+Tipos documentales
+
+Estados
+
+Roles
+
+Semáforos
+
+Días festivos
+
+---
+
+# auditoria
+
+Usuario
+
+Acción
+
+Fecha
+
+Colección
+
+Documento
+
+Detalle

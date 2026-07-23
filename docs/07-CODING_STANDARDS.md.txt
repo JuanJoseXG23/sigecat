@@ -1,0 +1,23 @@
+# Coding Standards
+
+- TypeScript estricto
+
+- Nunca usar any
+
+- Componentes pequeños
+
+- Hooks reutilizables
+
+- Código limpio
+
+- ESLint
+
+- Prettier
+
+- Variables en inglés
+
+- Interfaces tipadas
+
+- Sin lógica dentro de componentes
+
+- Firestore únicamente mediante services

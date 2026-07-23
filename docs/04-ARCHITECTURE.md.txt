@@ -1,0 +1,57 @@
+# Arquitectura
+
+## Stack
+
+React
+
+Vite
+
+TypeScript
+
+Firebase
+
+Tailwind
+
+shadcn/ui
+
+---
+
+## Carpetas
+
+src
+
+app
+
+components
+
+features
+
+hooks
+
+layouts
+
+lib
+
+pages
+
+routes
+
+services
+
+styles
+
+types
+
+utils
+
+---
+
+## Organización
+
+Cada módulo será independiente.
+
+Toda consulta a Firestore pasará por services.
+
+Los componentes serán reutilizables.
+
+La lógica de negocio nunca estará en la interfaz.

@@ -1,0 +1,91 @@
+# Product Requirements Document
+
+# Objetivo
+
+Construir una aplicación web para gestionar expedientes documentales desde su recepción hasta su cierre.
+
+---
+
+# Usuarios
+
+## Administrador
+
+Puede administrar todo el sistema.
+
+## Coordinador
+
+Puede asignar expedientes y supervisar el trabajo.
+
+## Funcionario
+
+Gestiona los expedientes asignados.
+
+## Consulta
+
+Solo puede visualizar información autorizada.
+
+---
+
+# Módulos
+
+- Login
+- Dashboard
+- Expedientes
+- Usuarios
+- Configuración
+- Reportes
+- Auditoría
+
+---
+
+# Flujo principal
+
+Archivo
+
+↓
+
+Recepción
+
+↓
+
+Asignación
+
+↓
+
+Gestión
+
+↓
+
+Respuesta
+
+↓
+
+Radicación
+
+↓
+
+Cierre
+
+---
+
+# Funcionalidades principales
+
+- Crear expediente
+- Buscar expediente
+- Editar expediente
+- Cambiar responsable
+- Registrar observaciones
+- Registrar actuaciones
+- Adjuntar documentos
+- Ver historial
+- Generar reportes
+
+---
+
+# Requisitos no funcionales
+
+- Responsive
+- Seguro
+- Escalable
+- Fácil de mantener
+- Código modular

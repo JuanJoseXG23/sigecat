@@ -1,0 +1,49 @@
+# UX
+
+Pantallas
+
+- Login
+
+- Dashboard
+
+- Centro de Trabajo
+
+- Expedientes
+
+- Detalle del Expediente
+
+- Usuarios
+
+- Configuración
+
+- Reportes
+
+---
+
+El Dashboard mostrará
+
+Mis expedientes
+
+Próximos a vencer
+
+Vencidos
+
+Actividad reciente
+
+---
+
+Todas las tablas tendrán
+
+Buscador
+
+Filtros
+
+Ordenamiento
+
+Paginación
+
+---
+
+Los formularios tendrán validación en tiempo real.
+
+El sistema deberá funcionar correctamente en escritorio y tablet.
