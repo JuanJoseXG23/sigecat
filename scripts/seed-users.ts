@@ -1,6 +1,8 @@
-import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
+import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { FieldValue, getFirestore } from 'firebase-admin/firestore'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import type { UserRole } from '../src/types/user.js'
 
 interface SeedUser {
@@ -42,16 +44,23 @@ const initialUsers: SeedUser[] = [
   },
 ]
 
-function getCredential() {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON
-  return serviceAccountJson
-    ? cert(JSON.parse(serviceAccountJson) as Record<string, string>)
-    : applicationDefault()
-}
+const serviceAccountPath = path.resolve(
+  process.cwd(),
+  'secrets',
+  'firebase-admin.json',
+)
 
-const app = getApps().length
-  ? getApps()[0]
-  : initializeApp({ credential: getCredential(), projectId: 'sigecat-7c6ec' })
+const serviceAccount = JSON.parse(
+  readFileSync(serviceAccountPath, 'utf8'),
+)
+
+const app =
+  getApps().length > 0
+    ? getApps()[0]
+    : initializeApp({
+        credential: cert(serviceAccount),
+      })
+
 const auth = getAuth(app)
 const firestore = getFirestore(app)
 
@@ -63,21 +72,25 @@ async function seedInitialUser(seedUser: SeedUser): Promise<void> {
     const existingUser = await auth.getUserByEmail(seedUser.correo)
     uid = existingUser.uid
     authStatus = 'ya existía'
-  } catch (error: unknown) {
-    if (!(error instanceof Error) || !('code' in error) || error.code !== 'auth/user-not-found')
+  } catch (error: any) {
+    if (error.code !== 'auth/user-not-found') {
       throw error
+    }
+
     const createdUser = await auth.createUser({
       email: seedUser.correo,
       password: seedUser.contrasena,
       displayName: seedUser.nombreCompleto,
       disabled: false,
     })
+
     uid = createdUser.uid
     authStatus = 'creado'
   }
 
   const userDocument = firestore.collection('usuarios').doc(uid)
   const snapshot = await userDocument.get()
+
   let profileStatus = 'ya existía'
 
   if (!snapshot.exists) {
@@ -91,21 +104,26 @@ async function seedInitialUser(seedUser: SeedUser): Promise<void> {
       fechaCreacion: FieldValue.serverTimestamp(),
       ultimoIngreso: null,
     })
+
     profileStatus = 'creado'
   }
 
   console.log(
-    `${seedUser.correo}: Authentication ${authStatus}; perfil Firestore ${profileStatus}.`,
+    `✅ ${seedUser.correo} -> Authentication: ${authStatus} | Firestore: ${profileStatus}`,
   )
 }
 
-async function main(): Promise<void> {
-  console.log('Inicializando usuarios de SIGECAT…')
-  for (const initialUser of initialUsers) await seedInitialUser(initialUser)
-  console.log('Inicialización completada.')
+async function main() {
+  console.log('🚀 Inicializando usuarios de SIGECAT...\n')
+
+  for (const user of initialUsers) {
+    await seedInitialUser(user)
+  }
+
+  console.log('\n🎉 Inicialización completada.')
 }
 
-void main().catch((error: unknown) => {
-  console.error('La inicialización falló:', error)
-  process.exitCode = 1
+main().catch((error) => {
+  console.error(error)
+  process.exit(1)
 })
