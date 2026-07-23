@@ -30,5 +30,11 @@ service cloud.firestore {
       allow create, update: if canManageExpedients();
       allow delete: if false;
     }
+
+    match /tiposTramite/{typeId} {
+      allow get, list: if signedIn();
+      allow create, update: if isAdministrator();
+      allow delete: if false;
+    }
   }
 }

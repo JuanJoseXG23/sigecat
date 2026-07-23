@@ -25,6 +25,7 @@ export const appNavigation: readonly AppNavigationItem[] = [
   { label: 'Radicación', path: '/radicacion', icon: FileText, roles: operationalRoles },
   { label: 'Usuarios', path: '/usuarios', icon: Users, roles: ['Administrador'] },
   { label: 'Reportes', path: '/reportes', icon: BarChart3, roles: ['Administrador', 'Coordinador'] },
+  { label: 'Tipos de trámite', path: '/tipos-tramite', icon: FileText, roles: ['Administrador'] },
   { label: 'Configuración', path: '/configuracion', icon: Settings, roles: ['Administrador'] },
 ]
 
