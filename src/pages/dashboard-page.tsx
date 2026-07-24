@@ -12,13 +12,14 @@ import { updateExpedientAssignee, updateExpedientPriority } from '@/services/exp
 import { EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
 
 export function DashboardPage() {
-  const { user, profile, hasRole } = useAuth()
+  const { user, profile } = useAuth()
   const client = useQueryClient()
   const { data = [], isLoading } = useWorkTray(profile?.rol, user?.uid)
   const { data: officials = [] } = useAssignableOfficials()
   const { data: procedureTypes = [] } = useProcedureTypes()
   const [status, setStatus] = useState(''); const [municipality, setMunicipality] = useState(''); const [official, setOfficial] = useState(''); const [type, setType] = useState(''); const [priority, setPriority] = useState('')
-  const manageTray = hasRole(['Administrador', 'Coordinador'])
+  // Las acciones administrativas se concentran dentro del expediente.
+  const manageTray = false
   const refresh = () => client.invalidateQueries({ queryKey: ['work-tray'] })
   const priorityMutation = useMutation({ mutationFn: ({ id, value }: { id: string; value: typeof EXPEDIENT_PRIORITIES[number] | undefined }) => updateExpedientPriority(id, value, user!.uid), onSuccess: refresh })
   const assigneeMutation = useMutation({ mutationFn: ({ id, uid }: { id: string; uid: string }) => { const value = officials.find((item) => item.uid === uid); return updateExpedientAssignee(id, value ? { uid: value.uid, nombreCompleto: value.nombreCompleto } : undefined, user!.uid) }, onSuccess: refresh })

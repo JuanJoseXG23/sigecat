@@ -2,6 +2,7 @@ import {
   BarChart3,
   FileText,
   FolderKanban,
+  History,
   LayoutDashboard,
   Settings,
   Users,
@@ -22,6 +23,7 @@ const operationalRoles: readonly UserRole[] = ['Administrador', 'Coordinador', '
 export const appNavigation: readonly AppNavigationItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: allRoles },
   { label: 'Expedientes', path: '/expedientes', icon: FolderKanban, roles: allRoles },
+  { label: 'Histórico', path: '/historico', icon: History, roles: allRoles },
   { label: 'Radicación', path: '/radicacion', icon: FileText, roles: operationalRoles },
   { label: 'Usuarios', path: '/usuarios', icon: Users, roles: ['Administrador'] },
   { label: 'Reportes', path: '/reportes', icon: BarChart3, roles: ['Administrador', 'Coordinador'] },

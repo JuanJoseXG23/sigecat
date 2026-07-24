@@ -13,6 +13,7 @@ import { calculateDeadline, getBusinessConfiguration, getDeadlineStatus, registe
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
 import type { Applicant, AssignedOfficial, Expedient, ExpedientFormData, ExpedientHistoryEntry, ExpedientObservation, ExpedientPriority, ExpedientStatus, Property } from '@/types/expedient'
+import { isFinalizedExpedient } from '@/types/expedient'
 
 const EXPEDIENTS_COLLECTION = 'expedientes'
 
@@ -63,11 +64,16 @@ export async function listExpedients(): Promise<Expedient[]> {
   const configuration = await getBusinessConfiguration()
   return snapshot.docs
     .map((item) => item.data() as Expedient)
-    .filter((item) => item.activo)
+    .filter((item) => item.activo && !isFinalizedExpedient(item))
     .map((item) => item.fechaLimite ? { ...item, ...getDeadlineStatus(item.fechaLimite, configuration.diasFestivos, configuration.umbralProximoVencer) } : item)
     .sort(
       (first, second) => second.fechaActualizacion.toMillis() - first.fechaActualizacion.toMillis(),
     )
+}
+
+export async function listHistoricalExpedients(): Promise<Expedient[]> {
+  const snapshot = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION))
+  return snapshot.docs.map((item) => item.data() as Expedient).filter(isFinalizedExpedient).sort((a, b) => b.fechaActualizacion.toMillis() - a.fechaActualizacion.toMillis())
 }
 
 export async function getExpedient(id: string): Promise<Expedient | null> {
@@ -133,10 +139,16 @@ export async function archiveExpedient(id: string, userId: string): Promise<void
   await registerExpedientHistory(id, userId, 'Archivo del expediente')
 }
 
-export async function updateExpedientStatus(id: string, status: ExpedientStatus, userId: string): Promise<void> {
+export async function updateExpedientStatus(id: string, status: ExpedientStatus, userId: string, flow?: ExpedientStatus[]): Promise<void> {
   const current = await getExpedient(id)
   if (!current || current.estado === status) return
-  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { estado: status, fechaActualizacion: serverTimestamp() })
+  if (flow) {
+    const currentIndex = flow.indexOf(current.estado)
+    const nextIndex = flow.indexOf(status)
+    if (currentIndex < 0 || Math.abs(nextIndex - currentIndex) !== 1) throw new Error('El cambio de estado no corresponde al flujo del trámite.')
+  }
+  const finalized = status === 'Archivo (Finalizado)' || status === 'Finalizado'
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { estado: status, ...(finalized ? { activo: false } : {}), fechaActualizacion: serverTimestamp() })
   await registerExpedientHistory(id, userId, 'Cambio de estado', `${current.estado} → ${status}`)
 }
 
@@ -150,6 +162,18 @@ export async function updateExpedientAssignee(id: string, assignee: AssignedOffi
   const current = await getExpedient(id)
   await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { funcionarioAsignado: assignee ?? deleteField(), fechaActualizacion: serverTimestamp() })
   await registerExpedientHistory(id, userId, 'Cambio de responsable', `${current?.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'} → ${assignee?.nombreCompleto ?? 'Sin asignar'}`)
+}
+
+export async function updateExternalAssignee(id: string, name: string, userId: string): Promise<void> {
+  const current = await getExpedient(id)
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { responsableExterno: name.trim(), funcionarioAsignado: deleteField(), fechaActualizacion: serverTimestamp() })
+  await registerExpedientHistory(id, userId, 'Cambio de responsable', `${current?.funcionarioAsignado?.nombreCompleto ?? current?.responsableExterno ?? 'Sin asignar'} → ${name.trim()}`)
+}
+
+export async function transferByCompetence(id: string, destination: string, userId: string): Promise<void> {
+  const current = await getExpedient(id)
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { trasladoPorCompetencia: true, responsableExterno: destination.trim(), estado: 'Traslado por competencia', fechaActualizacion: serverTimestamp() })
+  await registerExpedientHistory(id, userId, 'Traslado por competencia', `${current?.funcionarioAsignado?.nombreCompleto ?? current?.responsableExterno ?? 'Sin asignar'} → ${destination.trim()}`)
 }
 
 export async function updateExpedientApplicants(id: string, applicants: Applicant[], userId: string): Promise<void> {

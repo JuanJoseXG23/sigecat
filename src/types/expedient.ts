@@ -3,6 +3,13 @@ import type { Timestamp } from 'firebase/firestore'
 export const EXPEDIENT_STATUSES = [
   'Recibido',
   'Asignado',
+  'En respuesta',
+  'Radicado de salida',
+  'Traslado por competencia',
+  'Generar radicado de traslado',
+  'Generar respuesta al ciudadano',
+  'Radicar respuesta',
+  'Archivo (Finalizado)',
   'En Estudio',
   'Pendiente de Información',
   'Pendiente de Visita',
@@ -57,6 +64,8 @@ export interface Expedient {
   solicitantes: Applicant[]
   predios: Property[]
   funcionarioAsignado?: AssignedOfficial
+  responsableExterno?: string
+  trasladoPorCompetencia?: boolean
   estado: ExpedientStatus
   prioridad?: ExpedientPriority
   fechaLimite?: Timestamp
@@ -67,6 +76,13 @@ export interface Expedient {
   fechaActualizacion: Timestamp
   creadoPor: string
   activo: boolean
+}
+
+export const STANDARD_FLOW: ExpedientStatus[] = ['Recibido', 'Asignado', 'En respuesta', 'Radicado de salida', 'Archivo (Finalizado)']
+export const TRANSFER_FLOW: ExpedientStatus[] = ['Recibido', 'Asignado', 'En respuesta', 'Traslado por competencia', 'Generar radicado de traslado', 'Generar respuesta al ciudadano', 'Radicar respuesta', 'Archivo (Finalizado)']
+
+export function isFinalizedExpedient(item: Pick<Expedient, 'estado' | 'activo'>): boolean {
+  return !item.activo || item.estado === 'Archivo (Finalizado)' || item.estado === 'Finalizado' || item.estado === 'Archivado'
 }
 
 export interface ExpedientFormData {

@@ -7,6 +7,7 @@ import { AccessDeniedPage } from '@/pages/access-denied-page'
 import { DashboardPage } from '@/pages/dashboard-page'
 import { ExpedientsPage } from '@/pages/expedients-page'
 import { ExpedientDetailPage } from '@/pages/expedient-detail-page'
+import { HistoricalPage } from '@/pages/historical-page'
 import { FilingPage } from '@/pages/filing-page'
 import { LoginPage } from '@/pages/login-page'
 import { ReportsPage } from '@/pages/reports-page'
@@ -44,6 +45,7 @@ export const router = createHashRouter([
           { path: 'dashboard', element: withRole('/dashboard', <DashboardPage />) },
           { path: 'expedientes', element: withRole('/expedientes', <ExpedientsPage />) },
           { path: 'expedientes/:id', element: withRole('/expedientes', <ExpedientDetailPage />) },
+          { path: 'historico', element: withRole('/historico', <HistoricalPage />) },
           { path: 'radicacion', element: withRole('/radicacion', <FilingPage />) },
           { path: 'usuarios', element: withRole('/usuarios', <UsersPage />) },
           { path: 'reportes', element: withRole('/reportes', <ReportsPage />) },
