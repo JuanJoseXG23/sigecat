@@ -72,8 +72,8 @@ async function seedInitialUser(seedUser: SeedUser): Promise<void> {
     const existingUser = await auth.getUserByEmail(seedUser.correo)
     uid = existingUser.uid
     authStatus = 'ya existía'
-  } catch (error: any) {
-    if (error.code !== 'auth/user-not-found') {
+  } catch (error: unknown) {
+    if (!(error instanceof Error) || !('code' in error) || error.code !== 'auth/user-not-found') {
       throw error
     }
 

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowDownUp, Edit3, FilePlus2, Search, Trash2, X } from 'lucide-react'
+import { ArrowDownUp, Edit3, ExternalLink, FilePlus2, Search, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -57,7 +58,7 @@ export function ExpedientsPage() {
         ? { uid: official.uid, nombreCompleto: official.nombreCompleto }
         : undefined
       if (selectedExpedient) {
-        await updateExpedient(selectedExpedient.id, values, assignedOfficial)
+        await updateExpedient(selectedExpedient.id, values, user!.uid, assignedOfficial)
       } else if (user) {
         await createExpedient(values, user.uid, assignedOfficial)
       }
@@ -70,7 +71,7 @@ export function ExpedientsPage() {
   })
 
   const archiveMutation = useMutation({
-    mutationFn: archiveExpedient,
+    mutationFn: (id: string) => archiveExpedient(id, user!.uid),
     onSuccess: refresh,
   })
 
@@ -266,6 +267,7 @@ export function ExpedientsPage() {
                   {canManage && (
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">
+                        <Link className="inline-flex size-9 items-center justify-center rounded-md hover:bg-accent" to={`/expedientes/${item.id}`} aria-label={`Abrir ${item.numeroRadicado}`}><ExternalLink size={16} /></Link>
                         <Button
                           variant="ghost"
                           size="sm"

@@ -29,6 +29,18 @@ service cloud.firestore {
       allow get, list: if signedIn();
       allow create, update: if canManageExpedients();
       allow delete: if false;
+
+      match /historial/{historyId} {
+        allow get, list: if signedIn();
+        allow create: if canManageExpedients();
+        allow update, delete: if false;
+      }
+
+      match /observaciones/{observationId} {
+        allow get, list: if signedIn();
+        allow create: if canManageExpedients();
+        allow update, delete: if false;
+      }
     }
 
     match /tiposTramite/{typeId} {

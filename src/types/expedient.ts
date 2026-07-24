@@ -52,6 +52,7 @@ export interface Expedient {
   fechaRadicado: Timestamp
   fechaRecibido?: Timestamp
   medioIngreso?: string
+  tipoTramiteId?: string
   tipoTramite?: string
   solicitantes: Applicant[]
   predios: Property[]
@@ -60,6 +61,7 @@ export interface Expedient {
   prioridad?: ExpedientPriority
   fechaLimite?: Timestamp
   diasRestantes?: number
+  estadoTermino?: 'En plazo' | 'Próximo a vencer' | 'Vencido'
   observacionesIniciales?: string
   fechaCreacion: Timestamp
   fechaActualizacion: Timestamp
@@ -72,6 +74,7 @@ export interface ExpedientFormData {
   fechaRadicado: string
   fechaRecibido?: string
   medioIngreso?: string
+  tipoTramiteId?: string
   tipoTramite?: string
   solicitantes: Applicant[]
   predios: Property[]
@@ -79,4 +82,19 @@ export interface ExpedientFormData {
   estado?: ExpedientStatus
   prioridad?: ExpedientPriority
   observacionesIniciales?: string
+}
+
+export interface ExpedientHistoryEntry {
+  id: string
+  usuario: string
+  accion: string
+  detalle: string
+  fecha: Timestamp | null
+}
+
+export interface ExpedientObservation {
+  id: string
+  contenido: string
+  creadoPor: string
+  fechaCreacion: Timestamp | null
 }

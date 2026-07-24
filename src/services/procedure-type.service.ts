@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
 import { firestore } from '@/services/firebase'
 import type { ProcedureType, ProcedureTypeInput } from '@/types/procedure-type'
 
@@ -7,6 +7,14 @@ const COLLECTION = 'tiposTramite'
 export async function listProcedureTypes(): Promise<ProcedureType[]> {
   const result = await getDocs(collection(firestore, COLLECTION))
   return result.docs.map((item) => item.data() as ProcedureType).filter((item) => item.activo).sort((a, b) => a.nombre.localeCompare(b.nombre))
+}
+
+export async function getActiveProcedureType(id?: string): Promise<ProcedureType | null> {
+  if (!id) return null
+  const result = await getDoc(doc(firestore, COLLECTION, id))
+  if (!result.exists()) return null
+  const type = result.data() as ProcedureType
+  return type.activo ? type : null
 }
 
 export async function saveProcedureType(values: ProcedureTypeInput, id?: string): Promise<void> {

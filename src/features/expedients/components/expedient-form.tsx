@@ -11,6 +11,7 @@ import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { expedientSchema } from '@/features/expedients/schemas/expedient-schema'
 import { calculateExpedientTimeline } from '@/lib/expedient-deadline'
+import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import type { Expedient, ExpedientFormData } from '@/types/expedient'
 import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
 import type { UserProfile } from '@/types/user'
@@ -50,6 +51,7 @@ function getDefaultValues(expedient?: Expedient): FormValues {
     fechaRadicado: toDateInput(expedient?.fechaRadicado),
     fechaRecibido: toDateInput(expedient?.fechaRecibido),
     medioIngreso: expedient?.medioIngreso ?? '',
+    tipoTramiteId: expedient?.tipoTramiteId ?? '',
     tipoTramite: expedient?.tipoTramite ?? '',
     solicitantes: expedient?.solicitantes.length ? expedient.solicitantes : [emptyApplicant],
     predios: expedient?.predios.length ? expedient.predios : [emptyProperty],
@@ -92,7 +94,10 @@ export function ExpedientForm({
   })
   const applicants = useFieldArray({ control: form.control, name: 'solicitantes' })
   const filingDate = useWatch({ control: form.control, name: 'fechaRadicado' })
-  const timeline = filingDate ? calculateExpedientTimeline(filingDate) : undefined
+  const procedureTypeId = useWatch({ control: form.control, name: 'tipoTramiteId' })
+  const { data: procedureTypes = [] } = useProcedureTypes()
+  const selectedType = procedureTypes.find((item) => item.id === procedureTypeId)
+  const timeline = filingDate && selectedType ? calculateExpedientTimeline(filingDate, selectedType.diasRespuesta) : undefined
 
   useEffect(() => {
     form.reset(getDefaultValues(expedient))
@@ -211,7 +216,11 @@ export function ExpedientForm({
       <FormSection title="Gestión">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Tipo de trámite">
-            <Input {...form.register('tipoTramite')} />
+            <Select {...form.register('tipoTramiteId')}>
+              <option value="">Sin tipo configurado</option>
+              {procedureTypes.map((type) => <option key={type.id} value={type.id}>{type.nombre} · {type.diasRespuesta} días hábiles</option>)}
+            </Select>
+            {selectedType && <span className="block text-xs font-normal text-slate-500">Flujo: {selectedType.flujoEstados.join(' → ')}</span>}
           </Field>
           <Field label="Funcionario responsable">
             <Select {...form.register('funcionarioAsignadoUid')}>
@@ -225,7 +234,7 @@ export function ExpedientForm({
           </Field>
           <Field label="Estado">
             <Select {...form.register('estado')}>
-              {EXPEDIENT_STATUSES.map((status) => (
+              {(selectedType?.flujoEstados ?? EXPEDIENT_STATUSES).map((status) => (
                 <option key={status} value={status}>
                   {status}
                 </option>
