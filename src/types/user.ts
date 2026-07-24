@@ -9,6 +9,7 @@ export interface UserProfile {
   nombreCompleto: string
   correo: string
   cargo: string
+  dependencia?: string
   rol: UserRole
   activo: boolean
   fechaCreacion: Timestamp

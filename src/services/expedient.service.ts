@@ -176,6 +176,15 @@ export async function transferByCompetence(id: string, destination: string, user
   await registerExpedientHistory(id, userId, 'Traslado por competencia', `${current?.funcionarioAsignado?.nombreCompleto ?? current?.responsableExterno ?? 'Sin asignar'} → ${destination.trim()}`)
 }
 
+export async function completeRequiredActuation(id: string, userId: string, action: string, detail: string, nextStatus: ExpedientStatus, fields: Record<string, unknown> = {}): Promise<void> {
+  const current = await getExpedient(id)
+  if (!current) throw new Error('Expediente no encontrado.')
+  const finalized = nextStatus === 'Archivo (Finalizado)'
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { ...fields, estado: nextStatus, ...(finalized ? { activo: false } : {}), fechaActualizacion: serverTimestamp() })
+  await registerExpedientHistory(id, userId, action, detail)
+  if (finalized) await registerExpedientHistory(id, userId, 'Finalizó expediente', 'El expediente fue archivado y enviado al Histórico.')
+}
+
 export async function updateExpedientApplicants(id: string, applicants: Applicant[], userId: string): Promise<void> {
   await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { solicitantes: applicants.map(removeEmptyFields), fechaActualizacion: serverTimestamp() })
   await registerExpedientHistory(id, userId, 'Actualización de solicitantes', 'Se registraron altas o bajas de solicitantes.')
