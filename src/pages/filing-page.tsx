@@ -1,13 +1,8 @@
-import { FileText } from 'lucide-react'
-import { PagePlaceholder } from '@/components/page-placeholder'
+import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+import { listFilings } from '@/services/filing.service'
 
-export function FilingPage() {
-  return (
-    <PagePlaceholder
-      eyebrow="Gestión documental"
-      title="Radicación"
-      description="Aquí podrás registrar y dar trazabilidad a la radicación de documentos."
-      icon={FileText}
-    />
-  )
-}
+export function FilingPage() { const { data = [] } = useQuery({ queryKey: ['filings'], queryFn: listFilings }); const [search, setSearch] = useState(''); const [type, setType] = useState(''); const rows = useMemo(() => data.filter((item) => (!search || `${item.numero} ${item.solicitante} ${item.expedienteId} ${item.responsable}`.toLowerCase().includes(search.toLowerCase())) && (!type || item.tipo === type)), [data, search, type]); return <section className="mx-auto max-w-7xl space-y-6"><div><p className="text-sm font-medium text-primary">Gestión documental</p><h1 className="text-2xl font-semibold">Radicación</h1></div><Card className="p-4"><div className="grid gap-3 md:grid-cols-2"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Número, solicitante, expediente o responsable"/><Select value={type} onChange={(event) => setType(event.target.value)}><option value="">Todos los tipos</option>{[...new Set(data.map((item) => item.tipo))].map((value) => <option key={value}>{value}</option>)}</Select></div></Card><Card className="overflow-x-auto"><table className="w-full min-w-[900px] text-sm"><thead className="bg-slate-50 text-left"><tr><th className="p-4">Radicado</th><th>Fecha</th><th>Tipo</th><th>Expediente</th><th>Solicitante</th><th>Responsable</th><th>Estado</th></tr></thead><tbody>{rows.map((item) => <tr className="border-t" key={item.id}><td className="p-4 font-medium">{item.numero}</td><td>{item.fecha}</td><td>{item.tipo}</td><td>{item.expedienteId}</td><td>{item.solicitante}</td><td>{item.responsable}</td><td>{item.estado}</td></tr>)}</tbody></table></Card></section> }

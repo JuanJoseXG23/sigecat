@@ -1,13 +1,5 @@
-import { BarChart3 } from 'lucide-react'
-import { PagePlaceholder } from '@/components/page-placeholder'
+import { useQuery } from '@tanstack/react-query'
+import { Card } from '@/components/ui/card'
+import { listExpedients, listHistoricalExpedients } from '@/services/expedient.service'
 
-export function ReportsPage() {
-  return (
-    <PagePlaceholder
-      eyebrow="Análisis"
-      title="Reportes"
-      description="Aquí estarán disponibles los indicadores y reportes de la gestión documental."
-      icon={BarChart3}
-    />
-  )
-}
+export function ReportsPage() { const active = useQuery({ queryKey: ['expedients'], queryFn: listExpedients }); const closed = useQuery({ queryKey: ['historical-expedients'], queryFn: listHistoricalExpedients }); const items = active.data ?? []; const final = closed.data ?? []; const metrics = [['Expedientes activos', items.length], ['Finalizados', final.length], ['Vencidos', items.filter((item) => item.estadoTermino === 'Vencido').length], ['Próximos a vencer', items.filter((item) => item.estadoTermino === 'Próximo a vencer').length], ['Traslados', [...items, ...final].filter((item) => item.trasladoPorCompetencia).length]]; const groups = (key: 'tipoTramite' | 'estado') => Object.entries([...items, ...final].reduce<Record<string, number>>((result, item) => { const label = item[key] ?? 'Sin dato'; result[label] = (result[label] ?? 0) + 1; return result }, {})); return <section className="mx-auto max-w-7xl space-y-6"><div><p className="text-sm font-medium text-primary">Análisis</p><h1 className="text-2xl font-semibold">Reportes</h1></div><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">{metrics.map(([label, value]) => <Card key={label} className="p-4"><p className="text-xs text-slate-500">{label}</p><p className="mt-2 text-2xl font-semibold">{value}</p></Card>)}</div><div className="grid gap-5 lg:grid-cols-2">{(['tipoTramite', 'estado'] as const).map((key) => <Card key={key} className="p-5"><h2 className="font-semibold">Por {key === 'estado' ? 'estado' : 'tipo de trámite'}</h2><div className="mt-4 space-y-3">{groups(key).map(([label, value]) => <div key={label}><div className="flex justify-between text-sm"><span>{label}</span><b>{value}</b></div><div className="mt-1 h-2 rounded bg-slate-100"><div className="h-2 rounded bg-primary" style={{ width: `${Math.max(8, value * 100 / Math.max(1, items.length + final.length))}%` }}/></div></div>)}</div></Card>)}</div></section> }
