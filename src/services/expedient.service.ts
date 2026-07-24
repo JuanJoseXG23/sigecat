@@ -12,6 +12,7 @@ import {
 import { calculateDeadline, getBusinessConfiguration, getDeadlineStatus, registerExpedientHistory } from '@/services/business-rules.service'
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
+import { registerFiling } from '@/services/filing.service'
 import type { Applicant, AssignedOfficial, Expedient, ExpedientFormData, ExpedientHistoryEntry, ExpedientObservation, ExpedientPriority, ExpedientStatus, Property } from '@/types/expedient'
 import { isFinalizedExpedient } from '@/types/expedient'
 
@@ -183,6 +184,8 @@ export async function completeRequiredActuation(id: string, userId: string, acti
   const finalized = nextStatus === 'Archivo (Finalizado)'
   await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { ...fields, estado: nextStatus, ...(finalized ? { activo: false } : {}), fechaActualizacion: serverTimestamp() })
   await registerExpedientHistory(id, userId, action, detail)
+  const filingNumber = typeof fields.numeroRadicado === 'string' ? fields.numeroRadicado : undefined
+  if (filingNumber) await registerFiling({ numero: filingNumber, fecha: typeof fields.fechaRadicadoActuacion === 'string' ? fields.fechaRadicadoActuacion : new Date().toISOString().slice(0, 10), tipo: action.includes('traslado') ? 'Traslado' : 'Salida', expedienteId: current.id, solicitante: current.solicitantes[0]?.nombre ?? '', responsable: current.funcionarioAsignado?.nombreCompleto ?? current.responsableExterno ?? '', estado: nextStatus, municipio: current.predios[0]?.municipio ?? '', observaciones: detail })
   if (finalized) await registerExpedientHistory(id, userId, 'Finalizó expediente', 'El expediente fue archivado y enviado al Histórico.')
 }
 
