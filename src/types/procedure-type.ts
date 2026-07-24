@@ -20,5 +20,4 @@ export interface ProcedureTypeInput {
   diasRespuesta: number
   requiereVisita: boolean
   requiereRevisionJuridica: boolean
-  flujoEstados: ExpedientStatus[]
 }

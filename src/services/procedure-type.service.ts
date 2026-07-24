@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore'
 import { firestore } from '@/services/firebase'
 import type { ProcedureType, ProcedureTypeInput } from '@/types/procedure-type'
+import { STANDARD_FLOW } from '@/types/expedient'
 
 const COLLECTION = 'tiposTramite'
 
@@ -19,7 +20,7 @@ export async function getActiveProcedureType(id?: string): Promise<ProcedureType
 
 export async function saveProcedureType(values: ProcedureTypeInput, id?: string): Promise<void> {
   const reference = id ? doc(firestore, COLLECTION, id) : doc(collection(firestore, COLLECTION))
-  const data = { ...values, nombre: values.nombre.trim(), descripcion: values.descripcion?.trim() ?? '', fechaActualizacion: serverTimestamp() }
+  const data = { ...values, flujoEstados: STANDARD_FLOW, nombre: values.nombre.trim(), descripcion: values.descripcion?.trim() ?? '', fechaActualizacion: serverTimestamp() }
   if (id) await updateDoc(reference, data)
   else await setDoc(reference, { ...data, id: reference.id, activo: true, fechaCreacion: serverTimestamp() })
 }
