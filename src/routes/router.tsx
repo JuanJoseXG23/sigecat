@@ -5,6 +5,7 @@ import { AuthLayout } from '@/layouts/auth-layout'
 import { MainLayout } from '@/layouts/main-layout'
 import { AccessDeniedPage } from '@/pages/access-denied-page'
 import { DashboardPage } from '@/pages/dashboard-page'
+import { AgendaPage } from '@/pages/agenda-page'
 import { ExpedientsPage } from '@/pages/expedients-page'
 import { ExpedientDetailPage } from '@/pages/expedient-detail-page'
 import { HistoricalPage } from '@/pages/historical-page'
@@ -43,6 +44,7 @@ export const router = createHashRouter([
         children: [
           { index: true, element: <Navigate to="/dashboard" replace /> },
           { path: 'dashboard', element: withRole('/dashboard', <DashboardPage />) },
+          { path: 'agenda', element: withRole('/agenda', <AgendaPage />) },
           { path: 'expedientes', element: withRole('/expedientes', <ExpedientsPage />) },
           { path: 'expedientes/:id', element: withRole('/expedientes', <ExpedientDetailPage />) },
           { path: 'historico', element: withRole('/historico', <HistoricalPage />) },
