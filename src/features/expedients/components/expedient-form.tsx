@@ -14,13 +14,11 @@ import { calculateExpedientTimeline } from '@/lib/expedient-deadline'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import type { Expedient, ExpedientFormData } from '@/types/expedient'
 import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
-import type { UserProfile } from '@/types/user'
 
 type FormValues = z.infer<typeof expedientSchema>
 
 interface ExpedientFormProps {
   expedient?: Expedient
-  officials: UserProfile[]
   isSaving: boolean
   onCancel: () => void
   onSubmit: (values: ExpedientFormData) => Promise<void>
@@ -82,7 +80,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 export function ExpedientForm({
   expedient,
-  officials,
   isSaving,
   onCancel,
   onSubmit,
@@ -221,16 +218,6 @@ export function ExpedientForm({
               {procedureTypes.map((type) => <option key={type.id} value={type.id}>{type.nombre} · {type.diasRespuesta} días hábiles</option>)}
             </Select>
             {selectedType && <span className="block text-xs font-normal text-slate-500">Flujo: {selectedType.flujoEstados.join(' → ')}</span>}
-          </Field>
-          <Field label="Funcionario responsable">
-            <Select {...form.register('funcionarioAsignadoUid')}>
-              <option value="">Sin asignar</option>
-              {officials.map((official) => (
-                <option key={official.uid} value={official.uid}>
-                  {official.nombreCompleto} · {official.rol}
-                </option>
-              ))}
-            </Select>
           </Field>
           <Field label="Estado">
             <Select {...form.register('estado')}>

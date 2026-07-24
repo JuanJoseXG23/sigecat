@@ -16,6 +16,10 @@ service cloud.firestore {
           ['Administrador', 'Coordinador', 'Funcionario'];
     }
 
+    function canDeleteRadicationAndHistory() {
+      return signedIn() && request.auth.uid == 'AwFgpoMeCgQ0FyZ4R4gHIv2LlyC2';
+    }
+
     match /usuarios/{userId} {
       allow get: if signedIn() && (request.auth.uid == userId || isAdministrator());
       allow list: if signedIn();
@@ -33,7 +37,8 @@ service cloud.firestore {
       match /historial/{historyId} {
         allow get, list: if signedIn();
         allow create: if canManageExpedients();
-        allow update, delete: if false;
+        allow update: if false;
+        allow delete: if canDeleteRadicationAndHistory();
       }
 
       match /observaciones/{observationId} {
@@ -53,6 +58,13 @@ service cloud.firestore {
       allow get, list: if signedIn();
       allow create, update: if isAdministrator();
       allow delete: if false;
+    }
+
+    match /radicados/{filingId} {
+      allow get, list: if signedIn();
+      allow create: if canManageExpedients();
+      allow update: if false;
+      allow delete: if canDeleteRadicationAndHistory();
     }
 
     match /tareas/{taskId} {

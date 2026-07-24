@@ -56,7 +56,7 @@ export function ExpedientsPage() {
       const official = officials.find((item) => item.uid === values.funcionarioAsignadoUid)
       const assignedOfficial = official
         ? { uid: official.uid, nombreCompleto: official.nombreCompleto }
-        : undefined
+        : selectedExpedient?.funcionarioAsignado
       if (selectedExpedient) {
         await updateExpedient(selectedExpedient.id, values, user!.uid, assignedOfficial)
       } else if (user) {
@@ -354,7 +354,6 @@ export function ExpedientsPage() {
             </div>
             <ExpedientForm
               expedient={selectedExpedient}
-              officials={officials}
               isSaving={saveMutation.isPending}
               onCancel={() => setFormOpen(false)}
               onSubmit={async (values) => saveMutation.mutateAsync(values)}
