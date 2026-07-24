@@ -3,6 +3,7 @@ import {
   collection,
   getDoc,
   deleteField,
+  deleteDoc,
   getDocs,
   serverTimestamp,
   setDoc,
@@ -207,6 +208,10 @@ export async function addExpedientObservation(id: string, content: string, userI
 export async function listExpedientHistory(id: string): Promise<ExpedientHistoryEntry[]> {
   const result = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, id, 'historial'))
   return result.docs.map((item) => ({ id: item.id, ...item.data() }) as ExpedientHistoryEntry).sort((a, b) => (b.fecha?.toMillis() ?? 0) - (a.fecha?.toMillis() ?? 0))
+}
+
+export async function deleteExpedientHistoryEntry(expedientId: string, historyId: string): Promise<void> {
+  await deleteDoc(doc(firestore, EXPEDIENTS_COLLECTION, expedientId, 'historial', historyId))
 }
 
 export async function listExpedientObservations(id: string): Promise<ExpedientObservation[]> {

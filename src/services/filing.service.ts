@@ -1,4 +1,4 @@
-import { collection, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore'
+import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore'
 import { firestore } from '@/services/firebase'
 
 export interface FilingRecord { id: string; numero: string; fecha: string; tipo: string; expedienteId: string; solicitante: string; responsable: string; estado: string; municipio: string; observaciones?: string }
@@ -13,3 +13,4 @@ export async function registerFiling(data: Omit<FilingRecord, 'id'>): Promise<vo
   const reference = doc(collection(firestore, COLLECTION))
   await setDoc(reference, { ...data, id: reference.id, creadoEn: serverTimestamp() })
 }
+export async function deleteFiling(id: string): Promise<void> { await deleteDoc(doc(firestore, COLLECTION, id)) }
