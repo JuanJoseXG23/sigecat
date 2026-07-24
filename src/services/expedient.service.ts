@@ -36,7 +36,8 @@ async function toExpedientData(
     getActiveProcedureType(values.tipoTramiteId),
     getBusinessConfiguration(),
   ])
-  const responseDays = procedureType?.diasRespuesta ?? 15
+  if (!procedureType) throw new Error('Debes seleccionar un tipo de trámite activo.')
+  const responseDays = procedureType.diasRespuesta
   const fechaLimite = calculateDeadline(values.fechaRadicado, responseDays, configuration.diasFestivos)
   const timeline = getDeadlineStatus(fechaLimite, configuration.diasFestivos, configuration.umbralProximoVencer)
 

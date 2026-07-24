@@ -8,7 +8,7 @@ export const expedientSchema = z.object({
   fechaRadicado: z.string().min(1, 'Selecciona la fecha de radicado.'),
   fechaRecibido: optionalText,
   medioIngreso: optionalText,
-  tipoTramiteId: optionalText,
+  tipoTramiteId: z.string().trim().min(1, 'Selecciona un tipo de trámite.'),
   tipoTramite: optionalText,
   solicitantes: z
     .array(

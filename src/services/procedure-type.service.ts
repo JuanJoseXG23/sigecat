@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore'
 import { firestore } from '@/services/firebase'
 import type { ProcedureType, ProcedureTypeInput } from '@/types/procedure-type'
 
@@ -26,4 +26,11 @@ export async function saveProcedureType(values: ProcedureTypeInput, id?: string)
 
 export async function deactivateProcedureType(id: string): Promise<void> {
   await updateDoc(doc(firestore, COLLECTION, id), { activo: false, fechaActualizacion: serverTimestamp() })
+}
+
+export async function resetProcedureTypeCatalog(): Promise<void> {
+  const result = await getDocs(collection(firestore, COLLECTION))
+  const batch = writeBatch(firestore)
+  result.docs.forEach((item) => batch.update(item.ref, { activo: false, fechaActualizacion: serverTimestamp() }))
+  await batch.commit()
 }
