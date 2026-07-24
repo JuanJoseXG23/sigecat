@@ -1,13 +1,14 @@
-import { Settings } from 'lucide-react'
-import { PagePlaceholder } from '@/components/page-placeholder'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { CalendarPlus, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { useBusinessConfiguration } from '@/hooks/use-business-configuration'
+import { saveBusinessConfiguration, type BusinessConfiguration } from '@/services/business-rules.service'
 
-export function SettingsPage() {
-  return (
-    <PagePlaceholder
-      eyebrow="Administración"
-      title="Configuración"
-      description="Aquí podrás administrar los parámetros generales del sistema."
-      icon={Settings}
-    />
-  )
-}
+const schema = z.object({ umbralProximoVencer: z.coerce.number().int().min(1).max(30) })
+export function SettingsPage() { const client = useQueryClient(); const { data, isLoading } = useBusinessConfiguration(); const [holidays, setHolidays] = useState<string[]>([]); const [holiday, setHoliday] = useState(''); const form = useForm<Pick<Required<BusinessConfiguration>, 'umbralProximoVencer'>>({ resolver: zodResolver(schema), defaultValues: { umbralProximoVencer: 3 } }); useEffect(() => { if (data) { setHolidays(data.diasFestivos); form.reset({ umbralProximoVencer: data.umbralProximoVencer }) } }, [data, form]); const save = useMutation({ mutationFn: (values: Pick<Required<BusinessConfiguration>, 'umbralProximoVencer'>) => saveBusinessConfiguration({ ...values, diasFestivos: holidays }), onSuccess: () => client.invalidateQueries({ queryKey: ['business-configuration'] }) }); if (isLoading) return <p className="text-sm text-slate-500">Cargando configuración…</p>; return <section className="mx-auto max-w-4xl space-y-6"><div><p className="text-sm font-medium text-primary">Administración</p><h1 className="text-2xl font-semibold">Configuración</h1><p className="mt-1 text-sm text-slate-500">Parámetros institucionales utilizados por el cálculo automático de términos.</p></div><form onSubmit={form.handleSubmit((values) => save.mutate(values))} className="space-y-5"><Card className="p-5"><h2 className="font-semibold">Términos y semaforización</h2><label className="mt-4 block max-w-sm text-sm font-medium">Días hábiles para “Próximo a vencer”<Input className="mt-1" type="number" min="1" max="30" {...form.register('umbralProximoVencer')}/><small className="text-slate-500">Un expediente entra en alerta cuando le quedan estos días hábiles o menos.</small></label></Card><Card className="p-5"><h2 className="font-semibold">Días festivos</h2><p className="mt-1 text-sm text-slate-500">Estos días no se contabilizan como hábiles en ningún trámite.</p><div className="mt-4 flex gap-2"><Input type="date" value={holiday} onChange={(event) => setHoliday(event.target.value)}/><Button type="button" variant="outline" disabled={!holiday || holidays.includes(holiday)} onClick={() => { setHolidays([...holidays, holiday].sort()); setHoliday('') }}><CalendarPlus size={16}/> Agregar</Button></div><div className="mt-4 space-y-2">{holidays.length ? holidays.map((value) => <div key={value} className="flex items-center justify-between rounded-md border p-2 text-sm"><span>{new Date(`${value}T00:00:00`).toLocaleDateString('es-CO')}</span><Button type="button" variant="ghost" size="sm" onClick={() => setHolidays(holidays.filter((item) => item !== value))}><Trash2 size={15} className="text-destructive"/></Button></div>) : <p className="text-sm text-slate-500">No hay festivos configurados.</p>}</div></Card><div className="flex justify-end"><Button type="submit" disabled={save.isPending}>{save.isPending ? 'Guardando…' : 'Guardar configuración'}</Button></div></form></section> }

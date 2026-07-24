@@ -48,5 +48,15 @@ service cloud.firestore {
       allow create, update: if isAdministrator();
       allow delete: if false;
     }
+
+    match /configuracion/{configurationId} {
+      allow get, list: if signedIn();
+      allow create, update: if isAdministrator();
+      allow delete: if false;
+    }
+
+    match /tareas/{taskId} {
+      allow get, list, create, update, delete: if signedIn();
+    }
   }
 }

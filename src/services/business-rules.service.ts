@@ -1,13 +1,18 @@
-import { Timestamp, addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore'
+import { Timestamp, addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { addBusinessDays, getRemainingBusinessDays } from '@/lib/expedient-deadline'
 import { firestore } from '@/services/firebase'
 
 export const BUSINESS_RULES = { dueSoonDays: 3 } as const
 export type DeadlineStatus = 'En plazo' | 'Próximo a vencer' | 'Vencido'
 
-interface BusinessConfiguration {
+export interface BusinessConfiguration {
   diasFestivos?: string[]
   umbralProximoVencer?: number
+}
+
+export async function saveBusinessConfiguration(values: Required<BusinessConfiguration>): Promise<void> {
+  const holidays = [...new Set(values.diasFestivos)].sort()
+  await setDoc(doc(firestore, 'configuracion', 'reglasNegocio'), { diasFestivos: holidays, umbralProximoVencer: values.umbralProximoVencer, fechaActualizacion: serverTimestamp() }, { merge: true })
 }
 
 export async function getBusinessConfiguration(): Promise<Required<BusinessConfiguration>> {
