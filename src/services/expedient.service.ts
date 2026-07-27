@@ -240,7 +240,7 @@ export async function addExpedientWorkflowDocument(
         ? workflowDocument.radicadoFecha.toDate().toISOString().slice(0, 10)
         : new Date().toISOString().slice(0, 10),
       tipo: workflowDocument.tipo === 'TRASLADO' ? 'Traslado' : workflowDocument.tipo === 'RADICADO_SALIDA' ? 'Salida' : 'Entrada',
-      expedienteId,
+      expedienteId: expedientId,
       solicitante: expedient.solicitantes[0]?.nombre ?? '',
       responsable: expedient.funcionarioAsignado?.nombreCompleto ?? expedient.responsableExterno ?? '',
       estado: expedient.estado,
