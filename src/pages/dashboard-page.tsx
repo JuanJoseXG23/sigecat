@@ -12,19 +12,32 @@ import { updateExpedientAssignee, updateExpedientPriority } from '@/services/exp
 import { EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
 
 function DeadlineDisplay({ estadoTermino, diasRestantes, diasVencidos }: { estadoTermino?: string; diasRestantes?: number; diasVencidos?: number }) {
+  const variant =
+    estadoTermino === 'Vencido'
+      ? 'destructive'
+      : estadoTermino === 'Próximo a vencer'
+      ? 'warning'
+      : 'success'
+
   if (estadoTermino === 'Vencido' && diasVencidos !== undefined) {
     return (
-      <div className="text-sm">
-        <span className="font-medium text-red-600">{diasVencidos} días vencido</span>
-        <small className="block text-slate-500">{estadoTermino}</small>
+      <div className="space-y-1 text-sm">
+        <span className="font-semibold text-red-600">{diasVencidos} días vencido</span>
+        <Badge variant={variant} className="uppercase">
+          {estadoTermino}
+        </Badge>
       </div>
     )
   }
   if (diasRestantes !== undefined) {
     return (
-      <div className="text-sm">
-        <span className={diasRestantes <= 3 ? 'font-medium text-orange-600' : 'font-medium text-slate-700'}>{diasRestantes} días restantes</span>
-        <small className="block text-slate-500">{estadoTermino}</small>
+      <div className="space-y-1 text-sm">
+        <span className={diasRestantes <= 3 ? 'font-semibold text-orange-600' : 'font-semibold text-slate-700'}>
+          {diasRestantes} días restantes
+        </span>
+        <Badge variant={variant} className="uppercase">
+          {estadoTermino}
+        </Badge>
       </div>
     )
   }
@@ -195,8 +208,8 @@ export function DashboardPage() {
                     )}
                   </td>
                   <td>
-                    <div>
-                      <p className="font-medium text-slate-700">{item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? '—'}</p>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="font-semibold text-slate-700">{item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? '—'}</p>
                       <DeadlineDisplay estadoTermino={item.estadoTermino} diasRestantes={item.diasRestantes} diasVencidos={item.diasVencidos} />
                     </div>
                   </td>

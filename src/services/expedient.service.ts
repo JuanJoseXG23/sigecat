@@ -5,10 +5,12 @@ import {
   deleteField,
   deleteDoc,
   getDocs,
+  query,
   serverTimestamp,
   setDoc,
   doc,
   updateDoc,
+  where,
 } from 'firebase/firestore'
 import { calculateDeadline, getBusinessConfiguration, getDeadlineStatus, registerExpedientHistory } from '@/services/business-rules.service'
 import { firestore } from '@/services/firebase'
@@ -220,7 +222,7 @@ export async function listExpedientObservations(id: string): Promise<ExpedientOb
   return result.docs.map((item) => ({ id: item.id, ...item.data() }) as ExpedientObservation).sort((a, b) => (b.fechaCreacion?.toMillis() ?? 0) - (a.fechaCreacion?.toMillis() ?? 0))
 }
 
-export async function deleteExpedient(expedientId: string, _userId: string): Promise<void> {
+export async function deleteExpedient(expedientId: string): Promise<void> {
   const expedient = await getExpedient(expedientId)
   if (!expedient) throw new Error('Expediente no encontrado.')
   
@@ -236,8 +238,12 @@ export async function deleteExpedient(expedientId: string, _userId: string): Pro
     await deleteDoc(observationDoc.ref)
   }
   
-  // Delete all scanned documents
-  const scannedDocsDocs = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, expedientId, 'documentosEscaneados'))
+  // Delete all scanned documents stored in the global collection
+  const scannedDocsQuery = query(
+    collection(firestore, 'documentosEscaneados'),
+    where('expedientId', '==', expedientId),
+  )
+  const scannedDocsDocs = await getDocs(scannedDocsQuery)
   for (const scannedDoc of scannedDocsDocs.docs) {
     await deleteDoc(scannedDoc.ref)
   }

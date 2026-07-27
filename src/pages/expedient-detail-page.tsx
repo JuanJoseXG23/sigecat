@@ -146,7 +146,7 @@ export function ExpedientDetailPage() {
   const deleteExpedientMutation = useMutation({
     mutationFn: async () => {
       if (!item || !user) return
-      return deleteExpedient(item.id, user.uid)
+      return deleteExpedient(item.id)
     },
     onSuccess: async () => {
       setDeleteDialogOpen(false)
