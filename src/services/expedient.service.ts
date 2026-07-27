@@ -219,3 +219,29 @@ export async function listExpedientObservations(id: string): Promise<ExpedientOb
   const result = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, id, 'observaciones'))
   return result.docs.map((item) => ({ id: item.id, ...item.data() }) as ExpedientObservation).sort((a, b) => (b.fechaCreacion?.toMillis() ?? 0) - (a.fechaCreacion?.toMillis() ?? 0))
 }
+
+export async function deleteExpedient(expedientId: string, _userId: string): Promise<void> {
+  const expedient = await getExpedient(expedientId)
+  if (!expedient) throw new Error('Expediente no encontrado.')
+  
+  // Delete the main expedient document
+  await deleteDoc(doc(firestore, EXPEDIENTS_COLLECTION, expedientId))
+  
+  // Delete all history entries
+  const historyDocs = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, expedientId, 'historial'))
+  for (const historyDoc of historyDocs.docs) {
+    await deleteDoc(historyDoc.ref)
+  }
+  
+  // Delete all observations
+  const observationsDocs = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, expedientId, 'observaciones'))
+  for (const observationDoc of observationsDocs.docs) {
+    await deleteDoc(observationDoc.ref)
+  }
+  
+  // Delete all scanned documents
+  const scannedDocsDocs = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, expedientId, 'documentosEscaneados'))
+  for (const scannedDoc of scannedDocsDocs.docs) {
+    await deleteDoc(scannedDoc.ref)
+  }
+}

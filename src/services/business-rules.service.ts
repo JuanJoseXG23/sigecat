@@ -35,6 +35,21 @@ export function getDeadlineStatus(deadline: Timestamp, holidays: string[] = [], 
   return { diasRestantes, diasVencidos, estadoTermino: diasRestantes < 0 ? 'Vencido' : diasRestantes <= dueSoonDays ? 'Próximo a vencer' : 'En plazo' }
 }
 
+export function getDaysElapsedSinceFilingAndTrafficLightStatus(filingDate: Timestamp, deadline: Timestamp, holidays: string[] = []): { diasTranscurridos: number; diasRestantes: number; estado: 'vencido' | 'critico' | 'en-tiempo' } {
+  const today = new Date()
+  const diasTranscurridos = Math.floor((today.getTime() - filingDate.toDate().getTime()) / (1000 * 60 * 60 * 24))
+  const diasRestantes = getRemainingBusinessDays(deadline.toDate(), today, holidays)
+  
+  let estado: 'vencido' | 'critico' | 'en-tiempo' = 'en-tiempo'
+  if (diasRestantes < 0) {
+    estado = 'vencido'
+  } else if (diasRestantes <= 3) {
+    estado = 'critico'
+  }
+  
+  return { diasTranscurridos, diasRestantes, estado }
+}
+
 export async function registerExpedientHistory(expedientId: string, userId: string, action: string, detail?: string): Promise<void> {
   await addDoc(collection(firestore, 'expedientes', expedientId, 'historial'), { usuario: userId, accion: action, detalle: detail ?? '', fecha: serverTimestamp() })
 }

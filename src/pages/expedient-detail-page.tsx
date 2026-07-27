@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check } from 'lucide-react'
+import { Check, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -10,12 +10,14 @@ import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { ScannedDocumentsDialog } from '@/components/scanned-documents-dialog'
 import { ScannedDocumentsCard } from '@/components/scanned-documents-card'
+import { TimeElapsedButton } from '@/components/time-elapsed-button'
 import { useAuth } from '@/hooks/use-auth'
 import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
 import { useAddScannedDocument, useDeleteScannedDocument, useScannedDocuments } from '@/hooks/use-scanned-documents'
 import {
   completeRequiredActuation,
+  deleteExpedient,
   transferByCompetence,
   updateExpedientAssignee,
   updateExternalAssignee,
@@ -37,7 +39,8 @@ function requiresFiling(status: ExpedientStatus) {
 
 export function ExpedientDetailPage() {
   const { id } = useParams()
-  const { user } = useAuth()
+  const navigate = useNavigate()
+  const { user, profile } = useAuth()
   const client = useQueryClient()
   const { data: item, isLoading } = useExpedientDetail(id)
   const { data: history = [] } = useExpedientHistory(id)
@@ -48,6 +51,7 @@ export function ExpedientDetailPage() {
   const [tab, setTab] = useState<Tab>('Información')
   const [dialog, setDialog] = useState(false)
   const [documentsDialog, setDocumentsDialog] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [signed, setSigned] = useState(false)
   const [choice, setChoice] = useState<'response' | 'transfer' | 'change'>('response')
   const [responsible, setResponsible] = useState('')
@@ -139,6 +143,17 @@ export function ExpedientDetailPage() {
       await refresh()
     },
   })
+  const deleteExpedientMutation = useMutation({
+    mutationFn: async () => {
+      if (!item || !user) return
+      return deleteExpedient(item.id, user.uid)
+    },
+    onSuccess: async () => {
+      setDeleteDialogOpen(false)
+      await refresh()
+      navigate('/dashboard')
+    },
+  })
   if (isLoading) return <p className="text-sm text-slate-500">Cargando expediente…</p>
   if (!item) return <p className="text-sm text-slate-500">No se encontró el expediente.</p>
   const finalized = isFinalizedExpedient(item)
@@ -147,7 +162,7 @@ export function ExpedientDetailPage() {
   const currentStatus = flow[current]
   return (
     <section className="mx-auto max-w-7xl space-y-5">
-      <div className="flex justify-between">
+      <div className="flex justify-between items-start">
         <div>
           <Link to="/dashboard" className="text-sm text-slate-500">
             ← Volver a la bandeja
@@ -155,9 +170,23 @@ export function ExpedientDetailPage() {
           <p className="mt-3 text-sm font-medium text-primary">Expediente {item.numeroRadicado}</p>
           <h1 className="text-2xl font-semibold">Gestión del trámite</h1>
         </div>
-        <Badge variant={finalized ? 'success' : 'info'}>
-          {finalized ? 'Solo consulta' : item.estado}
-        </Badge>
+        <div className="flex gap-2 items-start">
+          <Badge variant={finalized ? 'success' : 'info'}>
+            {finalized ? 'Solo consulta' : item.estado}
+          </Badge>
+          {profile?.rol === 'Administrador' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={deleteExpedientMutation.isPending}
+              className="gap-2 text-red-600 hover:bg-red-50"
+            >
+              <Trash2 size={16} />
+              Eliminar
+            </Button>
+          )}
+        </div>
       </div>
       <Card className="overflow-x-auto p-4">
         <div className="flex min-w-[700px] gap-2">
@@ -211,14 +240,14 @@ export function ExpedientDetailPage() {
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Trámite y término</p>
                 <p className="mt-2 font-semibold">{item.tipoTramite ?? 'Sin tipo'}</p>
                 <p className="text-sm text-slate-600">Límite: {item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? 'No calculada'}</p>
-               <p className="text-sm text-slate-600">
-                 {item.estadoTermino === 'Vencido' && item.diasVencidos !== undefined
-                   ? `${item.diasVencidos} días vencido`
-                   : item.diasRestantes !== undefined
-                     ? `${item.diasRestantes} días restantes`
-                     : '—'}{' '}
-                 · {item.estadoTermino ?? 'Sin término'}
-               </p>
+                <div className="mt-3">
+                  {item.fechaRadicado && item.fechaLimite && (
+                    <TimeElapsedButton
+                      diasTranscurridos={Math.floor((new Date().getTime() - item.fechaRadicado.toDate().getTime()) / (1000 * 60 * 60 * 24))}
+                      diasRestantes={item.diasRestantes}
+                    />
+                  )}
+                </div>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Gestión</p>
@@ -244,6 +273,20 @@ export function ExpedientDetailPage() {
           ))}
         {tab === 'Documentos' && (
           <div className="space-y-4">
+            <Card className="p-4 bg-blue-50 border-blue-200">
+              <h3 className="font-semibold mb-3 text-blue-900">📁 Link a OneDrive para subir documentos</h3>
+              <p className="text-sm text-blue-800 mb-3">Haz clic en el botón de abajo para ir a la carpeta de OneDrive donde debes subir los documentos escaneados:</p>
+              <a
+                href="https://girardotaa-my.sharepoint.com/my?id=%2Fpersonal%2Fauxiliar%5Fcatastro3%5Fgirardota%5Fgov%5Fco%2FDocuments%2FSIGECAT%5FBD&viewid=faca467a%2D010d%2D4c66%2D822b%2D24e5b5fbb6c1"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block"
+              >
+                <Button variant="default" size="sm">
+                  Abrir OneDrive →
+                </Button>
+              </a>
+            </Card>
             <ScannedDocumentsCard
               documents={scannedDocuments}
               isLoading={addScannedDocMutation.isPending}
@@ -425,6 +468,33 @@ export function ExpedientDetailPage() {
           deleteScannedDocMutation.mutate(documentId)
         }}
       />
+
+      {deleteDialogOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
+          <Card className="w-full max-w-lg p-6">
+            <h2 className="text-lg font-semibold text-red-600">Eliminar expediente</h2>
+            <p className="mt-3 text-sm text-slate-600">
+              ¿Estás seguro de que deseas eliminar este expediente ({item.numeroRadicado})? Esta acción no se puede deshacer.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleteExpedientMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={() => deleteExpedientMutation.mutate()}
+                disabled={deleteExpedientMutation.isPending}
+              >
+                {deleteExpedientMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </section>
   )
 }
