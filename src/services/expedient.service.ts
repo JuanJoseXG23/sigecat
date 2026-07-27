@@ -224,10 +224,7 @@ export async function deleteExpedient(expedientId: string, _userId: string): Pro
   const expedient = await getExpedient(expedientId)
   if (!expedient) throw new Error('Expediente no encontrado.')
   
-  // Delete the main expedient document
-  await deleteDoc(doc(firestore, EXPEDIENTS_COLLECTION, expedientId))
-  
-  // Delete all history entries
+  // Delete all history entries first
   const historyDocs = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, expedientId, 'historial'))
   for (const historyDoc of historyDocs.docs) {
     await deleteDoc(historyDoc.ref)
@@ -244,4 +241,7 @@ export async function deleteExpedient(expedientId: string, _userId: string): Pro
   for (const scannedDoc of scannedDocsDocs.docs) {
     await deleteDoc(scannedDoc.ref)
   }
+  
+  // Delete the main expedient document last
+  await deleteDoc(doc(firestore, EXPEDIENTS_COLLECTION, expedientId))
 }

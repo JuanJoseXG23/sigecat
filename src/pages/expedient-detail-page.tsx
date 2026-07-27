@@ -176,11 +176,11 @@ export function ExpedientDetailPage() {
           </Badge>
           {profile?.rol === 'Administrador' && (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => setDeleteDialogOpen(true)}
               disabled={deleteExpedientMutation.isPending}
-              className="gap-2 text-red-600 hover:bg-red-50"
+              className="gap-2 text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
             >
               <Trash2 size={16} />
               Eliminar
@@ -472,24 +472,24 @@ export function ExpedientDetailPage() {
       {deleteDialogOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
           <Card className="w-full max-w-lg p-6">
-            <h2 className="text-lg font-semibold text-red-600">Eliminar expediente</h2>
+            <h2 className="text-lg font-semibold">Eliminar expediente</h2>
             <p className="mt-3 text-sm text-slate-600">
-              ¿Estás seguro de que deseas eliminar este expediente ({item.numeroRadicado})? Esta acción no se puede deshacer.
+              ¿Estás seguro de que deseas eliminar permanentemente este expediente <strong>({item.numeroRadicado})</strong>? Esta acción no se puede deshacer y se eliminarán todos los documentos, observaciones e historial asociados.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <Button
-                variant="ghost"
+                variant="outline"
                 onClick={() => setDeleteDialogOpen(false)}
                 disabled={deleteExpedientMutation.isPending}
               >
                 Cancelar
               </Button>
               <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
                 onClick={() => deleteExpedientMutation.mutate()}
                 disabled={deleteExpedientMutation.isPending}
+                className="bg-red-600 hover:bg-red-700 text-white"
               >
-                {deleteExpedientMutation.isPending ? 'Eliminando...' : 'Eliminar'}
+                {deleteExpedientMutation.isPending ? 'Eliminando...' : 'Eliminar permanentemente'}
               </Button>
             </div>
           </Card>
