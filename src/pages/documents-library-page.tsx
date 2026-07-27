@@ -1,5 +1,14 @@
 import { useState, useMemo } from 'react'
-import { Link, FileText, ExternalLink, Search, ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  Link,
+  FileText,
+  ExternalLink,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  FolderOpen,
+} from 'lucide-react'
+import { Link as RouterLink } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -19,9 +28,10 @@ export function DocumentsLibraryPage() {
         ...exp,
         documentos: exp.documentos.filter(
           (doc) =>
-            doc.radicado.toLowerCase().includes(term) ||
+            doc.radicado?.toLowerCase().includes(term) ||
             doc.tipo.toLowerCase().includes(term) ||
-            exp.numeroRadicado.toLowerCase().includes(term)
+            doc.nombre.toLowerCase().includes(term) ||
+            exp.numeroRadicado.toLowerCase().includes(term),
         ),
       }))
       .filter((exp) => exp.numeroRadicado.toLowerCase().includes(term) || exp.documentos.length > 0)
@@ -31,11 +41,11 @@ export function DocumentsLibraryPage() {
 
   const getDocumentTypeIcon = (type: string) => {
     switch (type) {
-      case 'Radicado Inicial':
+      case 'Documento recibido':
         return '📥'
-      case 'Respuesta Radicada':
+      case 'Respuesta radicada':
         return '📤'
-      case 'Traslado con Radicado':
+      case 'Documento de traslado':
         return '🔄'
       case 'Respuesta Traslado':
         return '💬'
@@ -59,7 +69,7 @@ export function DocumentsLibraryPage() {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-3 text-slate-400" size={18} />
             <Input
-              placeholder="Buscar por radicado o número de expediente..."
+              placeholder="Buscar por expediente, radicado, nombre o tipo de documento..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -67,7 +77,9 @@ export function DocumentsLibraryPage() {
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-lg">
             <FileText size={18} className="text-slate-600" />
-            <span className="text-sm font-medium text-slate-700">{filteredExpedients.length} expedientes</span>
+            <span className="text-sm font-medium text-slate-700">
+              {filteredExpedients.length} expedientes
+            </span>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-lg">
             <Link size={18} className="text-slate-600" />
@@ -84,16 +96,15 @@ export function DocumentsLibraryPage() {
         <Card className="p-8 text-center">
           <FileText className="mx-auto text-slate-400 mb-2" size={32} />
           <p className="text-slate-500">
-            {searchTerm ? 'No se encontraron documentos para tu búsqueda.' : 'No hay documentos escaneados.'}
+            {searchTerm
+              ? 'No se encontraron documentos para tu búsqueda.'
+              : 'No hay documentos escaneados.'}
           </p>
         </Card>
       ) : (
         <div className="space-y-3">
           {filteredExpedients.map((expedient) => (
-            <Card
-              key={expedient.id}
-              className="overflow-hidden transition-all hover:shadow-md"
-            >
+            <Card key={expedient.id} className="overflow-hidden transition-all hover:shadow-md">
               <button
                 onClick={() =>
                   setExpandedExpedient(expandedExpedient === expedient.id ? null : expedient.id)
@@ -119,7 +130,9 @@ export function DocumentsLibraryPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="info">{expedient.documentos.length} documentos</Badge>
-                    <Badge variant={expedient.estado === 'Archivo (Finalizado)' ? 'success' : 'info'}>
+                    <Badge
+                      variant={expedient.estado === 'Archivo (Finalizado)' ? 'success' : 'info'}
+                    >
                       {expedient.estado}
                     </Badge>
                   </div>
@@ -128,24 +141,37 @@ export function DocumentsLibraryPage() {
 
               {expandedExpedient === expedient.id && (
                 <div className="border-t bg-slate-50 p-4">
+                  <div className="mb-3 flex justify-end">
+                    <RouterLink
+                      to={`/expedientes/${expedient.id}`}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                    >
+                      <FolderOpen size={16} />
+                      Abrir expediente
+                    </RouterLink>
+                  </div>
                   <div className="space-y-2">
                     {expedient.documentos.map((doc) => (
                       <a
                         key={doc.id}
-                        href={doc.urlOneDrive}
+                        href={doc.url}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-between p-3 bg-white rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors group"
                       >
                         <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <span className="text-xl flex-shrink-0">{getDocumentTypeIcon(doc.tipo)}</span>
+                          <span className="text-xl flex-shrink-0">
+                            {getDocumentTypeIcon(doc.tipo)}
+                          </span>
                           <div className="min-w-0 flex-1">
                             <p className="font-medium text-sm text-slate-900 group-hover:text-primary transition-colors">
-                              {doc.tipo}
+                              {doc.nombre}
                             </p>
                             <p className="text-xs text-slate-500 truncate">
-                              Radicado: {doc.radicado} •{' '}
-                              {doc.fechaEscaneo.toDate().toLocaleDateString('es-CO')}
+                              {doc.tipo}
+                              {doc.radicado ? ` • Radicado: ${doc.radicado}` : ''}
+                              {' • '}
+                              {doc.fecha?.toDate().toLocaleDateString('es-CO') ?? 'Sin fecha'}
                             </p>
                           </div>
                         </div>
@@ -164,19 +190,6 @@ export function DocumentsLibraryPage() {
           ))}
         </div>
       )}
-
-      <Card className="p-4 bg-blue-50 border-blue-200">
-        <div className="flex gap-3">
-          <FileText className="text-blue-600 flex-shrink-0" size={20} />
-          <div className="text-sm">
-            <p className="font-medium text-blue-900">💡 Consejo</p>
-            <p className="text-blue-800 mt-1">
-              Usa la búsqueda para encontrar documentos rápidamente por número de radicado o expediente.
-              Haz clic en cualquier documento para abrirlo en OneDrive.
-            </p>
-          </div>
-        </div>
-      </Card>
     </section>
   )
 }
