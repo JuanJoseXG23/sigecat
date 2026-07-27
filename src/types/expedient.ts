@@ -64,6 +64,17 @@ export interface ScannedDocument {
   creadoPor: string
 }
 
+export type WorkflowDocumentType = 'RECIBIDO' | 'RADICADO_SALIDA' | 'TRASLADO'
+
+export interface WorkflowDocument {
+  id: string
+  tipo: WorkflowDocumentType
+  nombre: string
+  url: string
+  usuario: string
+  fecha: Timestamp
+}
+
 export interface Expedient {
   id: string
   numeroRadicado: string
@@ -84,7 +95,9 @@ export interface Expedient {
   diasVencidos?: number
   estadoTermino?: 'En plazo' | 'Próximo a vencer' | 'Vencido'
   observacionesIniciales?: string
+  carpetaOneDrive?: string
   documentosEscaneados?: ScannedDocument[]
+  documentosWorkflow?: WorkflowDocument[]
   fechaCreacion: Timestamp
   fechaActualizacion: Timestamp
   creadoPor: string

@@ -142,14 +142,14 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-sm font-semibold text-slate-800 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-xs font-semibold text-slate-800 shadow-sm">
                 {getInitials(responsibleName)}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-slate-900 truncate">{responsibleName}</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Responsable</p>
+                <p className="text-sm font-medium text-slate-900 truncate">{responsibleName}</p>
+                <p className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Responsable</p>
               </div>
             </div>
           </div>

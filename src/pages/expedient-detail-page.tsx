@@ -8,13 +8,12 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { ScannedDocumentsDialog } from '@/components/scanned-documents-dialog'
-import { ScannedDocumentsCard } from '@/components/scanned-documents-card'
+import { OneDriveDocumentSelector } from '@/components/one-drive-document-selector'
 import { TimeElapsedButton } from '@/components/time-elapsed-button'
 import { useAuth } from '@/hooks/use-auth'
 import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
-import { useAddScannedDocument, useDeleteScannedDocument, useScannedDocuments } from '@/hooks/use-scanned-documents'
+import { useAddExpedientWorkflowDocument } from '@/hooks/use-expedient-workflow-documents'
 import {
   completeRequiredActuation,
   deleteExpedient,
@@ -37,6 +36,34 @@ function requiresFiling(status: ExpedientStatus) {
   )
 }
 
+function getWorkflowDocumentRequirement(status: ExpedientStatus) {
+  if (status === 'Recibido') {
+    return {
+      required: true,
+      documentType: 'RECIBIDO' as const,
+      title: 'Se requiere escanear el documento recibido y asociarlo en OneDrive.',
+      description: 'Este documento será obligatorio antes de continuar con el trámite.',
+    }
+  }
+  if (status === 'Radicado de salida') {
+    return {
+      required: true,
+      documentType: 'RADICADO_SALIDA' as const,
+      title: 'Se requiere escanear la respuesta radicada en OneDrive.',
+      description: 'Antes de finalizar, asocia el documento de respuesta radicada.',
+    }
+  }
+  if (status === 'Generar radicado de traslado') {
+    return {
+      required: true,
+      documentType: 'TRASLADO' as const,
+      title: 'Se requiere escanear el documento del traslado realizado.',
+      description: 'Asocia el documento de traslado en OneDrive antes de continuar.',
+    }
+  }
+  return null
+}
+
 export function ExpedientDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -45,12 +72,10 @@ export function ExpedientDetailPage() {
   const { data: item, isLoading } = useExpedientDetail(id)
   const { data: history = [] } = useExpedientHistory(id)
   const { data: officials = [] } = useAssignableOfficials()
-  const { data: scannedDocuments = [] } = useScannedDocuments(id)
-  const addScannedDocMutation = useAddScannedDocument()
-  const deleteScannedDocMutation = useDeleteScannedDocument()
+  const workflowDocuments = item?.documentosWorkflow ?? []
+  const addWorkflowDocument = useAddExpedientWorkflowDocument()
   const [tab, setTab] = useState<Tab>('Información')
   const [dialog, setDialog] = useState(false)
-  const [documentsDialog, setDocumentsDialog] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [signed, setSigned] = useState(false)
   const [choice, setChoice] = useState<'response' | 'transfer' | 'change'>('response')
@@ -160,6 +185,9 @@ export function ExpedientDetailPage() {
   const flow = item.trasladoPorCompetencia ? TRANSFER_FLOW : STANDARD_FLOW
   const current = Math.max(0, flow.indexOf(item.estado))
   const currentStatus = flow[current]
+  const workflowRequirement = getWorkflowDocumentRequirement(currentStatus)
+  const hasRequiredWorkflowDocument =
+    !workflowRequirement || workflowDocuments.some((document) => document.tipo === workflowRequirement.documentType)
   return (
     <section className="mx-auto max-w-7xl space-y-5">
       <div className="flex justify-between items-start">
@@ -274,38 +302,57 @@ export function ExpedientDetailPage() {
         {tab === 'Documentos' && (
           <div className="space-y-4">
             <Card className="p-4 bg-blue-50 border-blue-200">
-              <h3 className="font-semibold mb-3 text-blue-900">📁 Link a OneDrive para subir documentos</h3>
-              <p className="text-sm text-blue-800 mb-3">Haz clic en el botón de abajo para ir a la carpeta de OneDrive donde debes subir los documentos escaneados:</p>
-              <a
-                href="https://girardotaa-my.sharepoint.com/my?id=%2Fpersonal%2Fauxiliar%5Fcatastro3%5Fgirardota%5Fgov%5Fco%2FDocuments%2FSIGECAT%5FBD&viewid=faca467a%2D010d%2D4c66%2D822b%2D24e5b5fbb6c1"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block"
-              >
-                <Button variant="default" size="sm">
-                  Abrir OneDrive →
-                </Button>
-              </a>
+              <h3 className="font-semibold mb-3 text-blue-900">📁 Carpeta de OneDrive del expediente</h3>
+              <p className="text-sm text-blue-800 mb-3">
+                Usa este enlace para abrir la carpeta de OneDrive donde se almacenan los documentos escaneados del expediente.
+              </p>
+              {item.carpetaOneDrive ? (
+                <a
+                  href={item.carpetaOneDrive}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block"
+                >
+                  <Button variant="default" size="sm">
+                    Abrir OneDrive →
+                  </Button>
+                </a>
+              ) : (
+                <div className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
+                  No hay carpeta documental registrada para este expediente.
+                </div>
+              )}
             </Card>
-            <ScannedDocumentsCard
-              documents={scannedDocuments}
-              isLoading={addScannedDocMutation.isPending}
-              onAddClick={() => setDocumentsDialog(true)}
-            />
             <Card className="p-4">
-              <h3 className="font-semibold mb-3">Guía de organización en OneDrive</h3>
-              <div className="text-sm space-y-2 text-slate-600">
-                <p>✓ Carpeta principal: <code className="bg-slate-100 px-2 py-1 rounded text-xs">SIGECAT</code></p>
-                <p>✓ Dentro organiza por años: <code className="bg-slate-100 px-2 py-1 rounded text-xs">2024, 2025, etc.</code></p>
-                <p>✓ Dentro de cada año, por tipos de radicados:</p>
-                <ul className="ml-6 space-y-1">
-                  <li>• Radicados Iniciales</li>
-                  <li>• Respuestas Radicadas</li>
-                  <li>• Traslados con Radicado</li>
-                  <li>• Respuestas de Traslado</li>
-                </ul>
-                <p className="text-xs text-slate-500 mt-2">Ejemplo: SIGECAT/2024/Radicados Iniciales/202400001234.pdf</p>
-              </div>
+              <h3 className="font-semibold mb-3">Documentos asociados</h3>
+              {workflowDocuments.length > 0 ? (
+                <div className="space-y-3">
+                  {workflowDocuments.map((document) => (
+                    <div key={document.id} className="rounded-xl border p-4 bg-white shadow-sm">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{document.nombre}</p>
+                          <p className="text-xs text-slate-500">{document.tipo.replace('_', ' ')}</p>
+                        </div>
+                        <a
+                          href={document.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-primary"
+                        >
+                          Ver enlace
+                        </a>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                        <span>{document.usuario}</span>
+                        <span>{document.fecha?.toDate().toLocaleString('es-CO')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600">No hay documentos de workflow asociados todavía.</p>
+              )}
             </Card>
           </div>
         )}
@@ -385,30 +432,28 @@ export function ExpedientDetailPage() {
                 )}
               </div>
             )}
-            {(currentStatus === 'Asignado' || currentStatus === 'En respuesta' || currentStatus === 'Generar respuesta al ciudadano') && (
-              <div className="mt-4 border-t pt-4">
-                <p className="text-sm font-medium mb-2">📄 Documentos Requeridos</p>
-                <p className="text-xs text-slate-600 mb-3">
-                  {currentStatus === 'Asignado' && 'Se requiere escanear el radicado inicial en OneDrive'}
-                  {currentStatus === 'En respuesta' && 'Se requiere escanear la respuesta radicada en OneDrive'}
-                  {currentStatus === 'Generar respuesta al ciudadano' && 'Se requiere escanear la respuesta de traslado en OneDrive'}
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setDialog(false)
-                    setDocumentsDialog(true)
+            {workflowRequirement?.required && currentStatus === 'Recibido' && (
+              <div className="mt-4">
+                <OneDriveDocumentSelector
+                  folderUrl={item.carpetaOneDrive}
+                  documents={workflowDocuments}
+                  description={workflowRequirement.description}
+                  requiredDocumentType={workflowRequirement.documentType}
+                  onAddDocument={(documentData) => {
+                    if (!item || !user) return
+                    addWorkflowDocument.mutate({
+                      expedientId: item.id,
+                      documentData: {
+                        ...documentData,
+                        tipo: workflowRequirement.documentType,
+                        usuario: user.displayName ?? user.email ?? 'Usuario',
+                      },
+                      userId: user.uid,
+                      userName: user.displayName ?? user.email ?? 'Usuario',
+                    })
                   }}
-                  className="w-full"
-                >
-                  + Agregar Documento en OneDrive
-                </Button>
-                {scannedDocuments.length > 0 && (
-                  <div className="mt-2 text-xs text-slate-500">
-                    ✓ Tienes {scannedDocuments.length} documento(s) registrado(s)
-                  </div>
-                )}
+                  isLoading={addWorkflowDocument.isPending}
+                />
               </div>
             )}
             {requiresFiling(currentStatus) && (
@@ -419,6 +464,30 @@ export function ExpedientDetailPage() {
                   placeholder="Número de radicado *"
                 />
                 <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+              </div>
+            )}
+            {workflowRequirement?.required && currentStatus !== 'Recibido' && (
+              <div className="mt-4">
+                <OneDriveDocumentSelector
+                  folderUrl={item.carpetaOneDrive}
+                  documents={workflowDocuments}
+                  description={workflowRequirement.description}
+                  requiredDocumentType={workflowRequirement.documentType}
+                  onAddDocument={(documentData) => {
+                    if (!item || !user) return
+                    addWorkflowDocument.mutate({
+                      expedientId: item.id,
+                      documentData: {
+                        ...documentData,
+                        tipo: workflowRequirement.documentType,
+                        usuario: user.displayName ?? user.email ?? 'Usuario',
+                      },
+                      userId: user.uid,
+                      userName: user.displayName ?? user.email ?? 'Usuario',
+                    })
+                  }}
+                  isLoading={addWorkflowDocument.isPending}
+                />
               </div>
             )}
             <Textarea
@@ -439,7 +508,8 @@ export function ExpedientDetailPage() {
                   (currentStatus === 'En respuesta' &&
                     ((choice === 'transfer' && (!destination || !reason)) ||
                       (choice === 'change' && !responsible))) ||
-                  (requiresFiling(currentStatus) && (!number || !date))
+                  (requiresFiling(currentStatus) && (!number || !date)) ||
+                  (workflowRequirement?.required && !hasRequiredWorkflowDocument)
                 }
                 onClick={() => execute.mutate()}
               >
@@ -449,25 +519,6 @@ export function ExpedientDetailPage() {
           </Card>
         </div>
       )}
-
-      <ScannedDocumentsDialog
-        open={documentsDialog}
-        onOpenChange={setDocumentsDialog}
-        onSubmit={(documentData) => {
-          if (id && user) {
-            addScannedDocMutation.mutate({
-              expedientId: id,
-              documentData,
-              userId: user.uid,
-            })
-            setDocumentsDialog(false)
-          }
-        }}
-        documents={scannedDocuments}
-        onDelete={(documentId) => {
-          deleteScannedDocMutation.mutate(documentId)
-        }}
-      />
 
       {deleteDialogOpen && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">

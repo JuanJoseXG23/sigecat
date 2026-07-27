@@ -11,12 +11,13 @@ import {
   doc,
   updateDoc,
   where,
+  arrayUnion,
 } from 'firebase/firestore'
 import { calculateDeadline, getBusinessConfiguration, getDeadlineStatus, registerExpedientHistory } from '@/services/business-rules.service'
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
 import { registerFiling } from '@/services/filing.service'
-import type { Applicant, AssignedOfficial, Expedient, ExpedientFormData, ExpedientHistoryEntry, ExpedientObservation, ExpedientPriority, ExpedientStatus, Property } from '@/types/expedient'
+import type { Applicant, AssignedOfficial, Expedient, ExpedientFormData, ExpedientHistoryEntry, ExpedientObservation, ExpedientPriority, ExpedientStatus, Property, WorkflowDocument } from '@/types/expedient'
 import { isFinalizedExpedient } from '@/types/expedient'
 
 const EXPEDIENTS_COLLECTION = 'expedientes'
@@ -186,6 +187,36 @@ export async function updateExternalAssignee(id: string, name: string, userId: s
   const current = await getExpedient(id)
   await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { responsableExterno: name.trim(), funcionarioAsignado: deleteField(), fechaActualizacion: serverTimestamp() })
   await registerExpedientHistory(id, userId, 'Cambio de responsable', `${current?.funcionarioAsignado?.nombreCompleto ?? current?.responsableExterno ?? 'Sin asignar'} → ${name.trim()}`)
+}
+
+export async function addExpedientWorkflowDocument(
+  expedientId: string,
+  document: Omit<WorkflowDocument, 'id' | 'fecha'>,
+  userId: string,
+  userName: string,
+): Promise<void> {
+  const documentId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `doc_${Math.random().toString(36).slice(2, 10)}`
+
+  const workflowDocument: WorkflowDocument = {
+    id: documentId,
+    ...document,
+    usuario: userName,
+    fecha: Timestamp.fromDate(new Date()),
+  }
+
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, expedientId), {
+    documentosWorkflow: arrayUnion(workflowDocument),
+    fechaActualizacion: serverTimestamp(),
+  })
+
+  await registerExpedientHistory(
+    expedientId,
+    userId,
+    'Documento asociado',
+    `${userName} asoció el documento "${workflowDocument.nombre}".`,
+  )
 }
 
 export async function transferByCompetence(id: string, destination: string, userId: string): Promise<void> {
