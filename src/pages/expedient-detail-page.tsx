@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Check, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -21,6 +21,7 @@ import {
   updateExpedientAssignee,
   updateExternalAssignee,
 } from '@/services/expedient.service'
+import { listFilings } from '@/services/filing.service'
 import {
   isFinalizedExpedient,
   STANDARD_FLOW,
@@ -34,14 +35,6 @@ function requiresFiling(status: ExpedientStatus) {
   return ['Radicado de salida', 'Generar radicado de traslado', 'Radicar respuesta'].includes(
     status,
   )
-}
-
-function formatWorkflowDocumentDate(date?: string | { toDate: () => Date }) {
-  if (!date) return undefined
-  if (typeof date === 'string') {
-    return new Date(date).toLocaleDateString('es-CO')
-  }
-  return date.toDate().toLocaleDateString('es-CO')
 }
 
 function getWorkflowDocumentRequirement(status: ExpedientStatus) {
@@ -59,6 +52,14 @@ function getWorkflowDocumentRequirement(status: ExpedientStatus) {
       documentType: 'RADICADO_SALIDA' as const,
       title: 'Se requiere escanear la respuesta radicada en OneDrive.',
       description: 'Antes de finalizar, asocia el documento de respuesta radicada.',
+    }
+  }
+  if (status === 'Radicar respuesta') {
+    return {
+      required: true,
+      documentType: 'RADICADO_SALIDA' as const,
+      title: 'Se requiere escanear la respuesta radicada en OneDrive.',
+      description: 'Asocia la respuesta radicada antes de finalizar el expediente.',
     }
   }
   if (status === 'Generar radicado de traslado') {
@@ -80,10 +81,17 @@ export function ExpedientDetailPage() {
   const { data: item, isLoading } = useExpedientDetail(id)
   const { data: history = [] } = useExpedientHistory(id)
   const { data: officials = [] } = useAssignableOfficials()
+  const { data: filings = [] } = useQuery({ queryKey: ['filings'], queryFn: listFilings })
   const workflowDocuments = item?.documentosWorkflow ?? []
-  const associatedRadicados = workflowDocuments.filter(
-    (document) => document.radicadoNumero || document.radicadoFecha,
-  )
+  const associatedRadicados = item
+    ? Array.from(
+        new Map(
+          filings
+            .filter((filing) => filing.expedienteId === item.id)
+            .map((filing) => [`${filing.numero}-${filing.fecha}`, filing]),
+        ).values(),
+      )
+    : []
   const addWorkflowDocument = useAddExpedientWorkflowDocument()
   const [tab, setTab] = useState<Tab>('Información')
   const [dialog, setDialog] = useState(false)
@@ -162,10 +170,16 @@ export function ExpedientDetailPage() {
         )
       }
       if (!next) return
+      const filingAction =
+        item.estado === 'Generar radicado de traslado'
+          ? 'Registró radicado de traslado'
+          : item.estado === 'Radicar respuesta'
+            ? 'Radicó respuesta al ciudadano'
+            : 'Registró radicado de salida'
       return completeRequiredActuation(
         item.id,
         user.uid,
-        requiresFiling(item.estado) ? 'Registró radicado' : 'Generó actuación del trámite',
+        requiresFiling(item.estado) ? filingAction : 'Generó actuación del trámite',
         number ? `Radicado ${number}. ${notes}` : notes || 'Actuación completada.',
         next,
         number ? { numeroRadicado: number, fechaRadicadoActuacion: date } : {},
@@ -198,7 +212,8 @@ export function ExpedientDetailPage() {
   const currentStatus = flow[current]
   const workflowRequirement = getWorkflowDocumentRequirement(currentStatus)
   const hasRequiredWorkflowDocument =
-    !workflowRequirement || workflowDocuments.some((document) => document.tipo === workflowRequirement.documentType)
+    !workflowRequirement ||
+    workflowDocuments.some((document) => document.tipo === workflowRequirement.documentType)
   return (
     <section className="mx-auto max-w-7xl space-y-5">
       <div className="flex justify-between items-start">
@@ -270,75 +285,127 @@ export function ExpedientDetailPage() {
           <div className="space-y-6">
             <div className="grid gap-5 md:grid-cols-3">
               <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Radicación</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Radicación
+                </p>
                 <p className="mt-2 font-semibold">{item.numeroRadicado}</p>
-                <p className="mt-1 text-sm text-slate-600">{item.fechaRadicado.toDate().toLocaleDateString('es-CO')}</p>
-                <p className="text-sm text-slate-600">Recibido: {item.fechaRecibido?.toDate().toLocaleDateString('es-CO') ?? 'No registrado'}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {item.fechaRadicado.toDate().toLocaleDateString('es-CO')}
+                </p>
+                <p className="text-sm text-slate-600">
+                  Recibido:{' '}
+                  {item.fechaRecibido?.toDate().toLocaleDateString('es-CO') ?? 'No registrado'}
+                </p>
                 <div className="mt-4 rounded-2xl bg-white p-3 text-sm text-slate-700 shadow-sm">
-                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Radicados asociados</p>
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Radicados asociados
+                  </p>
                   {associatedRadicados.length > 0 ? (
                     <div className="mt-2 space-y-2">
-                      {associatedRadicados.map((document) => (
-                        <div key={document.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                          {document.radicadoNumero && (
-                            <p className="font-semibold text-slate-900">{document.radicadoNumero}</p>
-                          )}
-                          {document.radicadoFecha && (
-                            <p className="text-sm text-slate-500">
-                              {formatWorkflowDocumentDate(document.radicadoFecha)}
-                            </p>
-                          )}
-                          {document.nombre && (
-                            <p className="text-xs text-slate-500">{document.nombre}</p>
-                          )}
+                      {associatedRadicados.map((filing) => (
+                        <div
+                          key={filing.id}
+                          className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                        >
+                          <p className="font-semibold text-slate-900">{filing.numero}</p>
+                          <p className="text-sm text-slate-500">
+                            {new Date(`${filing.fecha}T00:00:00`).toLocaleDateString('es-CO')}
+                          </p>
+                          <p className="text-xs text-slate-500">{filing.tipo}</p>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="mt-2 text-sm text-slate-500">No hay radicados asociados todavía.</p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      No hay radicados asociados todavía.
+                    </p>
                   )}
                 </div>
-                {workflowDocuments.some((d) => d.radicadoNumero) && (
-                  <div className="mt-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Radicados asociados</p>
-                    <div className="mt-2 space-y-1">
-                      {workflowDocuments
-                        .filter((d) => d.radicadoNumero)
-                        .map((d) => (
-                          <div key={d.id} className="text-sm text-slate-700">
-                            <b>{d.radicadoNumero}</b>
-                            {d.radicadoFecha && <span className="text-sm text-slate-500"> • {d.radicadoFecha.toDate().toLocaleDateString('es-CO')}</span>}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Trámite y término</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Trámite y término
+                </p>
                 <p className="mt-2 font-semibold">{item.tipoTramite ?? 'Sin tipo'}</p>
-                <p className="text-sm text-slate-600">Límite: {item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? 'No calculada'}</p>
+                <p className="text-sm text-slate-600">
+                  Límite: {item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? 'No calculada'}
+                </p>
                 <div className="mt-3">
                   {item.fechaRadicado && item.fechaLimite && (
                     <TimeElapsedButton
-                      diasTranscurridos={Math.floor((new Date().getTime() - item.fechaRadicado.toDate().getTime()) / (1000 * 60 * 60 * 24))}
+                      diasTranscurridos={Math.floor(
+                        (new Date().getTime() - item.fechaRadicado.toDate().getTime()) /
+                          (1000 * 60 * 60 * 24),
+                      )}
                       diasRestantes={item.diasRestantes}
                     />
                   )}
                 </div>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Gestión</p>
-                <p className="mt-2 font-semibold">{item.funcionarioAsignado?.nombreCompleto ?? item.responsableExterno ?? 'Sin asignar'}</p>
-                <p className="text-sm text-slate-600">Prioridad: {item.prioridad ?? 'Sin prioridad'}</p>
-                <p className="text-sm text-slate-600">Ingreso: {item.medioIngreso ?? 'No registrado'}</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Gestión
+                </p>
+                <p className="mt-2 font-semibold">
+                  {item.funcionarioAsignado?.nombreCompleto ??
+                    item.responsableExterno ??
+                    'Sin asignar'}
+                </p>
+                <p className="text-sm text-slate-600">
+                  Prioridad: {item.prioridad ?? 'Sin prioridad'}
+                </p>
+                <p className="text-sm text-slate-600">
+                  Ingreso: {item.medioIngreso ?? 'No registrado'}
+                </p>
               </div>
             </div>
             <div className="grid gap-5 md:grid-cols-2">
-              <div><h2 className="font-semibold">Solicitantes</h2><div className="mt-3 space-y-2">{item.solicitantes.map((applicant, index) => <div key={`${applicant.documento}-${index}`} className="rounded-md border p-3 text-sm"><b>{applicant.nombre ?? 'Sin nombre'}</b><p>{applicant.documento ?? 'Sin documento'} · {applicant.telefono ?? 'Sin teléfono'}</p><p className="text-slate-500">{applicant.correo ?? 'Sin correo'} · {applicant.tipoSolicitante ?? 'Sin tipo'}</p></div>)}</div></div>
-              <div><h2 className="font-semibold">Predios</h2><div className="mt-3 space-y-2">{item.predios.map((property, index) => <div key={`${property.numeroPredial}-${index}`} className="rounded-md border p-3 text-sm"><b>{property.municipio ?? 'Sin municipio'}</b><p>{property.direccion ?? 'Sin dirección'}</p><p className="text-slate-500">Predial: {property.numeroPredial ?? '—'} · Matrícula: {property.matriculaInmobiliaria ?? '—'}</p></div>)}</div></div>
+              <div>
+                <h2 className="font-semibold">Solicitantes</h2>
+                <div className="mt-3 space-y-2">
+                  {item.solicitantes.map((applicant, index) => (
+                    <div
+                      key={`${applicant.documento}-${index}`}
+                      className="rounded-md border p-3 text-sm"
+                    >
+                      <b>{applicant.nombre ?? 'Sin nombre'}</b>
+                      <p>
+                        {applicant.documento ?? 'Sin documento'} ·{' '}
+                        {applicant.telefono ?? 'Sin teléfono'}
+                      </p>
+                      <p className="text-slate-500">
+                        {applicant.correo ?? 'Sin correo'} ·{' '}
+                        {applicant.tipoSolicitante ?? 'Sin tipo'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h2 className="font-semibold">Predios</h2>
+                <div className="mt-3 space-y-2">
+                  {item.predios.map((property, index) => (
+                    <div
+                      key={`${property.numeroPredial}-${index}`}
+                      className="rounded-md border p-3 text-sm"
+                    >
+                      <b>{property.municipio ?? 'Sin municipio'}</b>
+                      <p>{property.direccion ?? 'Sin dirección'}</p>
+                      <p className="text-slate-500">
+                        Predial: {property.numeroPredial ?? '—'} · Matrícula:{' '}
+                        {property.matriculaInmobiliaria ?? '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div><h2 className="font-semibold">Observaciones iniciales</h2><p className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-sm text-slate-700">{item.observacionesIniciales ?? 'Sin observaciones iniciales.'}</p></div>
+            <div>
+              <h2 className="font-semibold">Observaciones iniciales</h2>
+              <p className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
+                {item.observacionesIniciales ?? 'Sin observaciones iniciales.'}
+              </p>
+            </div>
           </div>
         )}
         {tab === 'Historial' &&
@@ -352,9 +419,12 @@ export function ExpedientDetailPage() {
         {tab === 'Documentos' && (
           <div className="space-y-4">
             <Card className="p-4 bg-blue-50 border-blue-200">
-              <h3 className="font-semibold mb-3 text-blue-900">📁 Carpeta de OneDrive del expediente</h3>
+              <h3 className="font-semibold mb-3 text-blue-900">
+                📁 Carpeta de OneDrive del expediente
+              </h3>
               <p className="text-sm text-blue-800 mb-3">
-                Usa este enlace para abrir la carpeta de OneDrive donde se almacenan los documentos escaneados del expediente.
+                Usa este enlace para abrir la carpeta de OneDrive donde se almacenan los documentos
+                escaneados del expediente.
               </p>
               {item.carpetaOneDrive ? (
                 <a
@@ -382,9 +452,16 @@ export function ExpedientDetailPage() {
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-sm font-semibold">{document.nombre}</p>
-                          <p className="text-xs text-slate-500">{document.tipo.replace('_', ' ')}</p>
+                          <p className="text-xs text-slate-500">
+                            {document.tipo.replace('_', ' ')}
+                          </p>
                           {document.radicadoNumero && (
-                            <p className="text-xs text-slate-500 mt-1">Radicado: {document.radicadoNumero}{document.radicadoFecha ? ` • ${document.radicadoFecha.toDate().toLocaleDateString('es-CO')}` : ''}</p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Radicado: {document.radicadoNumero}
+                              {document.radicadoFecha
+                                ? ` • ${document.radicadoFecha.toDate().toLocaleDateString('es-CO')}`
+                                : ''}
+                            </p>
                           )}
                         </div>
                         <a
@@ -404,7 +481,9 @@ export function ExpedientDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-slate-600">No hay documentos de workflow asociados todavía.</p>
+                <p className="text-sm text-slate-600">
+                  No hay documentos de workflow asociados todavía.
+                </p>
               )}
             </Card>
           </div>
@@ -485,7 +564,7 @@ export function ExpedientDetailPage() {
                 )}
               </div>
             )}
-            {workflowRequirement?.required && currentStatus === 'Recibido' && (
+            {workflowRequirement?.required && (
               <div className="mt-4">
                 <OneDriveDocumentSelector
                   folderUrl={item.carpetaOneDrive}
@@ -517,30 +596,6 @@ export function ExpedientDetailPage() {
                   placeholder="Número de radicado *"
                 />
                 <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-              </div>
-            )}
-            {workflowRequirement?.required && currentStatus !== 'Recibido' && (
-              <div className="mt-4">
-                <OneDriveDocumentSelector
-                  folderUrl={item.carpetaOneDrive}
-                  documents={workflowDocuments}
-                  description={workflowRequirement.description}
-                  requiredDocumentType={workflowRequirement.documentType}
-                  onAddDocument={(documentData) => {
-                    if (!item || !user) return
-                    addWorkflowDocument.mutate({
-                      expedientId: item.id,
-                      documentData: {
-                        ...documentData,
-                        tipo: workflowRequirement.documentType,
-                        usuario: user.displayName ?? user.email ?? 'Usuario',
-                      },
-                      userId: user.uid,
-                      userName: user.displayName ?? user.email ?? 'Usuario',
-                    })
-                  }}
-                  isLoading={addWorkflowDocument.isPending}
-                />
               </div>
             )}
             <Textarea
@@ -578,7 +633,9 @@ export function ExpedientDetailPage() {
           <Card className="w-full max-w-lg p-6">
             <h2 className="text-lg font-semibold">Eliminar expediente</h2>
             <p className="mt-3 text-sm text-slate-600">
-              ¿Estás seguro de que deseas eliminar permanentemente este expediente <strong>({item.numeroRadicado})</strong>? Esta acción no se puede deshacer y se eliminarán todos los documentos, observaciones e historial asociados.
+              ¿Estás seguro de que deseas eliminar permanentemente este expediente{' '}
+              <strong>({item.numeroRadicado})</strong>? Esta acción no se puede deshacer y se
+              eliminarán todos los documentos, observaciones e historial asociados.
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <Button

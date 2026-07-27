@@ -30,11 +30,18 @@ export const appNavigation: readonly AppNavigationItem[] = [
   { label: 'Histórico', path: '/historico', icon: History, roles: allRoles },
   { label: 'Radicación', path: '/radicacion', icon: FileText, roles: operationalRoles },
   { label: 'Usuarios', path: '/usuarios', icon: Users, roles: ['Administrador'] },
-  { label: 'Reportes', path: '/reportes', icon: BarChart3, roles: ['Administrador', 'Coordinador'] },
+  {
+    label: 'Reportes',
+    path: '/reportes',
+    icon: BarChart3,
+    roles: ['Administrador', 'Coordinador'],
+  },
   { label: 'Tipos de trámite', path: '/tipos-tramite', icon: FileText, roles: ['Administrador'] },
   { label: 'Configuración', path: '/configuracion', icon: Settings, roles: allRoles },
 ]
 
 export function getNavigationItem(pathname: string): AppNavigationItem | undefined {
-  return appNavigation.find((item) => item.path === pathname)
+  return appNavigation.find(
+    (item) => pathname === item.path || pathname.startsWith(`${item.path}/`),
+  )
 }

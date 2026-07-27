@@ -13,11 +13,28 @@ import {
   where,
   arrayUnion,
 } from 'firebase/firestore'
-import { calculateDeadline, getBusinessConfiguration, getDeadlineStatus, registerExpedientHistory } from '@/services/business-rules.service'
+import {
+  calculateDeadline,
+  getBusinessConfiguration,
+  getDeadlineStatus,
+  registerExpedientHistory,
+} from '@/services/business-rules.service'
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
 import { registerFiling } from '@/services/filing.service'
-import type { Applicant, AssignedOfficial, Expedient, ExpedientFormData, ExpedientHistoryEntry, ExpedientObservation, ExpedientPriority, ExpedientStatus, Property, WorkflowDocument, WorkflowDocumentPayload } from '@/types/expedient'
+import type {
+  Applicant,
+  AssignedOfficial,
+  Expedient,
+  ExpedientFormData,
+  ExpedientHistoryEntry,
+  ExpedientObservation,
+  ExpedientPriority,
+  ExpedientStatus,
+  Property,
+  WorkflowDocument,
+  WorkflowDocumentPayload,
+} from '@/types/expedient'
 import { isFinalizedExpedient } from '@/types/expedient'
 
 const EXPEDIENTS_COLLECTION = 'expedientes'
@@ -43,8 +60,16 @@ async function toExpedientData(
   ])
   if (!procedureType) throw new Error('Debes seleccionar un tipo de trámite activo.')
   const responseDays = procedureType.diasRespuesta
-  const fechaLimite = calculateDeadline(values.fechaRadicado, responseDays, configuration.diasFestivos)
-  const timeline = getDeadlineStatus(fechaLimite, configuration.diasFestivos, configuration.umbralProximoVencer)
+  const fechaLimite = calculateDeadline(
+    values.fechaRadicado,
+    responseDays,
+    configuration.diasFestivos,
+  )
+  const timeline = getDeadlineStatus(
+    fechaLimite,
+    configuration.diasFestivos,
+    configuration.umbralProximoVencer,
+  )
 
   return removeEmptyFields({
     numeroRadicado: values.numeroRadicado.trim(),
@@ -77,10 +102,19 @@ export async function listExpedients(): Promise<Expedient[]> {
     .filter((item) => item.activo && !isFinalizedExpedient(item))
     .map((item) =>
       item.fechaLimite
-        ? { ...item, ...getDeadlineStatus(item.fechaLimite, configuration.diasFestivos, configuration.umbralProximoVencer) }
+        ? {
+            ...item,
+            ...getDeadlineStatus(
+              item.fechaLimite,
+              configuration.diasFestivos,
+              configuration.umbralProximoVencer,
+            ),
+          }
         : item,
     )
-    .sort((first, second) => second.fechaActualizacion.toMillis() - first.fechaActualizacion.toMillis())
+    .sort(
+      (first, second) => second.fechaActualizacion.toMillis() - first.fechaActualizacion.toMillis(),
+    )
 }
 
 export async function listHistoricalExpedients(): Promise<Expedient[]> {
@@ -101,7 +135,14 @@ export async function getExpedient(id: string): Promise<Expedient | null> {
   const data = { ...item, id: snapshot.id }
   if (!item.fechaLimite) return data
   const configuration = await getBusinessConfiguration()
-  return { ...data, ...getDeadlineStatus(item.fechaLimite, configuration.diasFestivos, configuration.umbralProximoVencer) }
+  return {
+    ...data,
+    ...getDeadlineStatus(
+      item.fechaLimite,
+      configuration.diasFestivos,
+      configuration.umbralProximoVencer,
+    ),
+  }
 }
 
 export async function createExpedient(
@@ -142,10 +183,17 @@ export async function updateExpedient(
   if (current) {
     const changes = [
       current.estado !== data.estado && `Estado: ${current.estado} → ${data.estado}`,
-      current.funcionarioAsignado?.uid !== assignedOfficial?.uid && `Responsable: ${current.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'} → ${assignedOfficial?.nombreCompleto ?? 'Sin asignar'}`,
-      current.prioridad !== data.prioridad && `Prioridad: ${current.prioridad ?? 'Sin prioridad'} → ${data.prioridad ?? 'Sin prioridad'}`,
+      current.funcionarioAsignado?.uid !== assignedOfficial?.uid &&
+        `Responsable: ${current.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'} → ${assignedOfficial?.nombreCompleto ?? 'Sin asignar'}`,
+      current.prioridad !== data.prioridad &&
+        `Prioridad: ${current.prioridad ?? 'Sin prioridad'} → ${data.prioridad ?? 'Sin prioridad'}`,
     ].filter(Boolean)
-    await registerExpedientHistory(id, userId, changes.length ? 'Edición del expediente' : 'Actualización del expediente', changes.join('. '))
+    await registerExpedientHistory(
+      id,
+      userId,
+      changes.length ? 'Edición del expediente' : 'Actualización del expediente',
+      changes.join('. '),
+    )
   }
 }
 
@@ -158,35 +206,82 @@ export async function archiveExpedient(id: string, userId: string): Promise<void
   await registerExpedientHistory(id, userId, 'Archivo del expediente')
 }
 
-export async function updateExpedientStatus(id: string, status: ExpedientStatus, userId: string, flow?: ExpedientStatus[]): Promise<void> {
+export async function updateExpedientStatus(
+  id: string,
+  status: ExpedientStatus,
+  userId: string,
+  flow?: ExpedientStatus[],
+): Promise<void> {
   const current = await getExpedient(id)
   if (!current || current.estado === status) return
   if (flow) {
     const currentIndex = flow.indexOf(current.estado)
     const nextIndex = flow.indexOf(status)
-    if (currentIndex < 0 || Math.abs(nextIndex - currentIndex) !== 1) throw new Error('El cambio de estado no corresponde al flujo del trámite.')
+    if (currentIndex < 0 || Math.abs(nextIndex - currentIndex) !== 1)
+      throw new Error('El cambio de estado no corresponde al flujo del trámite.')
   }
   const finalized = status === 'Archivo (Finalizado)' || status === 'Finalizado'
-  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { estado: status, ...(finalized ? { activo: false } : {}), fechaActualizacion: serverTimestamp() })
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), {
+    estado: status,
+    ...(finalized ? { activo: false } : {}),
+    fechaActualizacion: serverTimestamp(),
+  })
   await registerExpedientHistory(id, userId, 'Cambio de estado', `${current.estado} → ${status}`)
 }
 
-export async function updateExpedientPriority(id: string, priority: ExpedientPriority | undefined, userId: string): Promise<void> {
+export async function updateExpedientPriority(
+  id: string,
+  priority: ExpedientPriority | undefined,
+  userId: string,
+): Promise<void> {
   const current = await getExpedient(id)
-  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { prioridad: priority ?? deleteField(), fechaActualizacion: serverTimestamp() })
-  await registerExpedientHistory(id, userId, 'Cambio de prioridad', `${current?.prioridad ?? 'Sin prioridad'} → ${priority ?? 'Sin prioridad'}`)
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), {
+    prioridad: priority ?? deleteField(),
+    fechaActualizacion: serverTimestamp(),
+  })
+  await registerExpedientHistory(
+    id,
+    userId,
+    'Cambio de prioridad',
+    `${current?.prioridad ?? 'Sin prioridad'} → ${priority ?? 'Sin prioridad'}`,
+  )
 }
 
-export async function updateExpedientAssignee(id: string, assignee: AssignedOfficial | undefined, userId: string): Promise<void> {
+export async function updateExpedientAssignee(
+  id: string,
+  assignee: AssignedOfficial | undefined,
+  userId: string,
+): Promise<void> {
   const current = await getExpedient(id)
-  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { funcionarioAsignado: assignee ?? deleteField(), fechaActualizacion: serverTimestamp() })
-  await registerExpedientHistory(id, userId, 'Cambio de responsable', `${current?.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'} → ${assignee?.nombreCompleto ?? 'Sin asignar'}`)
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), {
+    funcionarioAsignado: assignee ?? deleteField(),
+    fechaActualizacion: serverTimestamp(),
+  })
+  await registerExpedientHistory(
+    id,
+    userId,
+    'Cambio de responsable',
+    `${current?.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'} → ${assignee?.nombreCompleto ?? 'Sin asignar'}`,
+  )
 }
 
-export async function updateExternalAssignee(id: string, name: string, userId: string): Promise<void> {
+export async function updateExternalAssignee(
+  id: string,
+  name: string,
+  userId: string,
+): Promise<void> {
   const current = await getExpedient(id)
-  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { responsableExterno: name.trim(), funcionarioAsignado: deleteField(), fechaActualizacion: serverTimestamp() })
-  await registerExpedientHistory(id, userId, 'Cambio de responsable', `${current?.funcionarioAsignado?.nombreCompleto ?? current?.responsableExterno ?? 'Sin asignar'} → ${name.trim()}`)
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), {
+    responsableExterno: name.trim(),
+    funcionarioAsignado: deleteField(),
+    fechaActualizacion: serverTimestamp(),
+  })
+  await registerExpedientHistory(
+    id,
+    userId,
+    'Cambio de responsable',
+    `${current?.funcionarioAsignado?.nombreCompleto ?? current?.responsableExterno ?? 'Sin asignar'} → ${name.trim()}`,
+  )
 }
 
 export async function addExpedientWorkflowDocument(
@@ -197,9 +292,10 @@ export async function addExpedientWorkflowDocument(
 ): Promise<void> {
   const expedient = await getExpedient(expedientId)
   if (!expedient) throw new Error('No se encontró el expediente relacionado.')
-  const documentId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `doc_${Math.random().toString(36).slice(2, 10)}`
+  const documentId =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : `doc_${Math.random().toString(36).slice(2, 10)}`
 
   const radicadoFechaTimestamp = document.radicadoFecha
     ? toTimestamp(document.radicadoFecha)
@@ -212,8 +308,8 @@ export async function addExpedientWorkflowDocument(
     url: document.url,
     usuario: userName,
     fecha: Timestamp.fromDate(new Date()),
-    radicadoNumero: document.radicadoNumero,
-    radicadoFecha: radicadoFechaTimestamp,
+    ...(document.radicadoNumero ? { radicadoNumero: document.radicadoNumero } : {}),
+    ...(radicadoFechaTimestamp ? { radicadoFecha: radicadoFechaTimestamp } : {}),
   }
 
   await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, expedientId), {
@@ -221,79 +317,140 @@ export async function addExpedientWorkflowDocument(
     fechaActualizacion: serverTimestamp(),
   })
 
-  // Include radicado info in history detail if present
-  const historyDetail = workflowDocument.radicadoNumero
-    ? `${userName} asoció el documento "${workflowDocument.nombre}" (Radicado: ${workflowDocument.radicadoNumero}${workflowDocument.radicadoFecha ? ` • ${workflowDocument.radicadoFecha.toDate().toLocaleDateString('es-CO')}` : ''}).`
-    : `${userName} asoció el documento "${workflowDocument.nombre}".`
+  const historyDetail = `${userName} asoció el documento "${workflowDocument.nombre}".`
 
-  await registerExpedientHistory(
-    expedientId,
-    userId,
-    'Documento asociado',
-    historyDetail,
-  )
-
-  if (workflowDocument.radicadoNumero) {
-    await registerFiling({
-      numero: workflowDocument.radicadoNumero,
-      fecha: workflowDocument.radicadoFecha
-        ? workflowDocument.radicadoFecha.toDate().toISOString().slice(0, 10)
-        : new Date().toISOString().slice(0, 10),
-      tipo: workflowDocument.tipo === 'TRASLADO' ? 'Traslado' : workflowDocument.tipo === 'RADICADO_SALIDA' ? 'Salida' : 'Entrada',
-      expedienteId: expedientId,
-      solicitante: expedient.solicitantes[0]?.nombre ?? '',
-      responsable: expedient.funcionarioAsignado?.nombreCompleto ?? expedient.responsableExterno ?? '',
-      estado: expedient.estado,
-      municipio: expedient.predios[0]?.municipio ?? '',
-      observaciones: `Documento asociado: ${workflowDocument.nombre}`,
-    })
-  }
+  await registerExpedientHistory(expedientId, userId, 'Documento asociado', historyDetail)
 }
 
-export async function transferByCompetence(id: string, destination: string, userId: string): Promise<void> {
+export async function transferByCompetence(
+  id: string,
+  destination: string,
+  userId: string,
+): Promise<void> {
   const current = await getExpedient(id)
-  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { trasladoPorCompetencia: true, responsableExterno: destination.trim(), estado: 'Traslado por competencia', fechaActualizacion: serverTimestamp() })
-  await registerExpedientHistory(id, userId, 'Traslado por competencia', `${current?.funcionarioAsignado?.nombreCompleto ?? current?.responsableExterno ?? 'Sin asignar'} → ${destination.trim()}`)
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), {
+    trasladoPorCompetencia: true,
+    responsableExterno: destination.trim(),
+    estado: 'Traslado por competencia',
+    fechaActualizacion: serverTimestamp(),
+  })
+  await registerExpedientHistory(
+    id,
+    userId,
+    'Traslado por competencia',
+    `${current?.funcionarioAsignado?.nombreCompleto ?? current?.responsableExterno ?? 'Sin asignar'} → ${destination.trim()}`,
+  )
 }
 
-export async function completeRequiredActuation(id: string, userId: string, action: string, detail: string, nextStatus: ExpedientStatus, fields: Record<string, unknown> = {}): Promise<void> {
+export async function completeRequiredActuation(
+  id: string,
+  userId: string,
+  action: string,
+  detail: string,
+  nextStatus: ExpedientStatus,
+  fields: Record<string, unknown> = {},
+): Promise<void> {
   const current = await getExpedient(id)
   if (!current) throw new Error('Expediente no encontrado.')
   const finalized = nextStatus === 'Archivo (Finalizado)'
-  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { ...fields, estado: nextStatus, ...(finalized ? { activo: false } : {}), fechaActualizacion: serverTimestamp() })
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), {
+    ...fields,
+    estado: nextStatus,
+    ...(finalized ? { activo: false } : {}),
+    fechaActualizacion: serverTimestamp(),
+  })
   await registerExpedientHistory(id, userId, action, detail)
   const filingNumber = typeof fields.numeroRadicado === 'string' ? fields.numeroRadicado : undefined
-  if (filingNumber) await registerFiling({ numero: filingNumber, fecha: typeof fields.fechaRadicadoActuacion === 'string' ? fields.fechaRadicadoActuacion : new Date().toISOString().slice(0, 10), tipo: action.includes('traslado') ? 'Traslado' : 'Salida', expedienteId: current.id, solicitante: current.solicitantes[0]?.nombre ?? '', responsable: current.funcionarioAsignado?.nombreCompleto ?? current.responsableExterno ?? '', estado: nextStatus, municipio: current.predios[0]?.municipio ?? '', observaciones: detail })
-  if (finalized) await registerExpedientHistory(id, userId, 'Finalizó expediente', 'El expediente fue archivado y enviado al Histórico.')
+  if (filingNumber)
+    await registerFiling({
+      numero: filingNumber,
+      fecha:
+        typeof fields.fechaRadicadoActuacion === 'string'
+          ? fields.fechaRadicadoActuacion
+          : new Date().toISOString().slice(0, 10),
+      tipo: action.includes('traslado') ? 'Traslado' : 'Salida',
+      expedienteId: current.id,
+      solicitante: current.solicitantes[0]?.nombre ?? '',
+      responsable: current.funcionarioAsignado?.nombreCompleto ?? current.responsableExterno ?? '',
+      estado: nextStatus,
+      municipio: current.predios[0]?.municipio ?? '',
+      observaciones: detail,
+    })
+  if (finalized)
+    await registerExpedientHistory(
+      id,
+      userId,
+      'Finalizó expediente',
+      'El expediente fue archivado y enviado al Histórico.',
+    )
 }
 
-export async function updateExpedientApplicants(id: string, applicants: Applicant[], userId: string): Promise<void> {
-  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { solicitantes: applicants.map(removeEmptyFields), fechaActualizacion: serverTimestamp() })
-  await registerExpedientHistory(id, userId, 'Actualización de solicitantes', 'Se registraron altas o bajas de solicitantes.')
+export async function updateExpedientApplicants(
+  id: string,
+  applicants: Applicant[],
+  userId: string,
+): Promise<void> {
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), {
+    solicitantes: applicants.map(removeEmptyFields),
+    fechaActualizacion: serverTimestamp(),
+  })
+  await registerExpedientHistory(
+    id,
+    userId,
+    'Actualización de solicitantes',
+    'Se registraron altas o bajas de solicitantes.',
+  )
 }
 
-export async function updateExpedientProperties(id: string, properties: Property[], userId: string): Promise<void> {
-  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), { predios: properties.map(removeEmptyFields), fechaActualizacion: serverTimestamp() })
-  await registerExpedientHistory(id, userId, 'Actualización de predios', 'Se registraron altas o bajas de predios.')
+export async function updateExpedientProperties(
+  id: string,
+  properties: Property[],
+  userId: string,
+): Promise<void> {
+  await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), {
+    predios: properties.map(removeEmptyFields),
+    fechaActualizacion: serverTimestamp(),
+  })
+  await registerExpedientHistory(
+    id,
+    userId,
+    'Actualización de predios',
+    'Se registraron altas o bajas de predios.',
+  )
 }
 
-export async function addExpedientObservation(id: string, content: string, userId: string): Promise<void> {
-  await setDoc(doc(collection(firestore, EXPEDIENTS_COLLECTION, id, 'observaciones')), { contenido: content.trim(), creadoPor: userId, fechaCreacion: serverTimestamp() })
+export async function addExpedientObservation(
+  id: string,
+  content: string,
+  userId: string,
+): Promise<void> {
+  await setDoc(doc(collection(firestore, EXPEDIENTS_COLLECTION, id, 'observaciones')), {
+    contenido: content.trim(),
+    creadoPor: userId,
+    fechaCreacion: serverTimestamp(),
+  })
   await registerExpedientHistory(id, userId, 'Nueva observación')
 }
 
 export async function listExpedientHistory(id: string): Promise<ExpedientHistoryEntry[]> {
   const result = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, id, 'historial'))
-  return result.docs.map((item) => ({ id: item.id, ...item.data() }) as ExpedientHistoryEntry).sort((a, b) => (b.fecha?.toMillis() ?? 0) - (a.fecha?.toMillis() ?? 0))
+  return result.docs
+    .map((item) => ({ id: item.id, ...item.data() }) as ExpedientHistoryEntry)
+    .sort((a, b) => (b.fecha?.toMillis() ?? 0) - (a.fecha?.toMillis() ?? 0))
 }
 
-export async function deleteExpedientHistoryEntry(expedientId: string, historyId: string): Promise<void> {
+export async function deleteExpedientHistoryEntry(
+  expedientId: string,
+  historyId: string,
+): Promise<void> {
   await deleteDoc(doc(firestore, EXPEDIENTS_COLLECTION, expedientId, 'historial', historyId))
 }
 
 export async function listExpedientObservations(id: string): Promise<ExpedientObservation[]> {
   const result = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, id, 'observaciones'))
-  return result.docs.map((item) => ({ id: item.id, ...item.data() }) as ExpedientObservation).sort((a, b) => (b.fechaCreacion?.toMillis() ?? 0) - (a.fechaCreacion?.toMillis() ?? 0))
+  return result.docs
+    .map((item) => ({ id: item.id, ...item.data() }) as ExpedientObservation)
+    .sort((a, b) => (b.fechaCreacion?.toMillis() ?? 0) - (a.fechaCreacion?.toMillis() ?? 0))
 }
 
 export async function deleteExpedient(expedientId: string): Promise<void> {
@@ -302,7 +459,9 @@ export async function deleteExpedient(expedientId: string): Promise<void> {
   if (!expedientSnapshot.exists()) throw new Error('Expediente no encontrado.')
 
   async function deleteCollectionDocuments(collectionPath: string): Promise<void> {
-    const snapshot = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, expedientId, collectionPath))
+    const snapshot = await getDocs(
+      collection(firestore, EXPEDIENTS_COLLECTION, expedientId, collectionPath),
+    )
     for (const document of snapshot.docs) {
       await deleteDoc(document.ref)
     }
@@ -315,7 +474,9 @@ export async function deleteExpedient(expedientId: string): Promise<void> {
   deleteTasks.push(
     getDocs(
       query(collection(firestore, 'documentosEscaneados'), where('expedientId', '==', expedientId)),
-    ).then((snapshot) => Promise.all(snapshot.docs.map((docItem) => deleteDoc(docItem.ref)))).then(() => undefined),
+    )
+      .then((snapshot) => Promise.all(snapshot.docs.map((docItem) => deleteDoc(docItem.ref))))
+      .then(() => undefined),
   )
 
   try {
