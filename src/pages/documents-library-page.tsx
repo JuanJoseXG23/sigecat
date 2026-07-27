@@ -12,10 +12,11 @@ import { Link as RouterLink } from 'react-router-dom'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { useDocumentsLibrary } from '@/hooks/use-documents-library'
 
 export function DocumentsLibraryPage() {
-  const { data: expedients = [], isLoading } = useDocumentsLibrary()
+  const { data: expedients = [], isLoading, isError, refetch } = useDocumentsLibrary()
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedExpedient, setExpandedExpedient] = useState<string | null>(null)
 
@@ -91,6 +92,14 @@ export function DocumentsLibraryPage() {
       {isLoading ? (
         <Card className="p-8 text-center">
           <p className="text-slate-500">Cargando documentos...</p>
+        </Card>
+      ) : isError ? (
+        <Card className="p-8 text-center">
+          <FileText className="mx-auto mb-2 text-red-400" size={32} />
+          <p className="text-slate-700">No fue posible cargar los documentos.</p>
+          <Button className="mt-4" variant="outline" onClick={() => refetch()}>
+            Reintentar
+          </Button>
         </Card>
       ) : filteredExpedients.length === 0 ? (
         <Card className="p-8 text-center">

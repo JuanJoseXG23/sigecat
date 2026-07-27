@@ -361,7 +361,13 @@ export async function completeRequiredActuation(
   })
   await registerExpedientHistory(id, userId, action, detail)
   const filingNumber = typeof fields.numeroRadicado === 'string' ? fields.numeroRadicado : undefined
-  if (filingNumber)
+  if (filingNumber) {
+    const documentType: WorkflowDocument['tipo'] =
+      current.estado === 'Generar radicado de traslado' ? 'TRASLADO' : 'RADICADO_SALIDA'
+    const supportingDocument = [...(current.documentosWorkflow ?? [])]
+      .filter((document) => document.tipo === documentType)
+      .sort((first, second) => second.fecha.toMillis() - first.fecha.toMillis())[0]
+
     await registerFiling({
       numero: filingNumber,
       fecha:
@@ -375,7 +381,11 @@ export async function completeRequiredActuation(
       estado: nextStatus,
       municipio: current.predios[0]?.municipio ?? '',
       observaciones: detail,
+      ...(supportingDocument
+        ? { documentoUrl: supportingDocument.url, documentoNombre: supportingDocument.nombre }
+        : {}),
     })
+  }
   if (finalized)
     await registerExpedientHistory(
       id,

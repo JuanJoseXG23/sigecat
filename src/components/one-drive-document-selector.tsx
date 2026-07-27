@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { AlertCircle, ExternalLink, FileText, Plus } from 'lucide-react'
+import { CheckCircle2, Cloud, ExternalLink, FileText, Plus, CircleAlert } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -61,80 +61,92 @@ export function OneDriveDocumentSelector({
 
   return (
     <>
-      <Card className="p-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-5">
+        <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="grid size-12 place-items-center rounded-full bg-sky-50 text-sky-600">
+              <Cloud size={24} />
+            </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-                Carpeta de OneDrive
-              </p>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="text-lg font-bold text-slate-900">Carpeta de OneDrive</p>
+              <p className="mt-1 text-sm text-slate-500">
                 {targetFolder
                   ? 'Abre la carpeta documental asociada al expediente.'
                   : 'Aún no existe carpeta documental.'}
               </p>
             </div>
-            <a
-              href={targetFolder}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-10 items-center justify-center rounded-full border-2 border-emerald-600 bg-emerald-600 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
-            >
-              Abrir OneDrive →
-            </a>
           </div>
+          <a
+            href={targetFolder}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-11 items-center justify-center rounded-lg border-2 border-emerald-600 bg-emerald-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+          >
+            <ExternalLink size={18} className="mr-2" />
+            Abrir OneDrive
+          </a>
+        </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-slate-900">
-                <FileText size={18} />
+        <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-lg font-bold text-slate-900">Documentos requeridos</p>
+              <p className="mt-1 max-w-xl text-sm text-slate-600 break-words">{description}</p>
+            </div>
+            <Button
+              variant="outline"
+              className="inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-emerald-600 px-4 text-emerald-700 hover:bg-emerald-50"
+              onClick={() => setIsDialogOpen(true)}
+              disabled={isLoading}
+            >
+              <Plus size={18} />
+              <span>{addButtonLabel}</span>
+            </Button>
+          </div>
+          {requiredDocumentType && (
+            <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`grid size-11 place-items-center rounded-full ${hasRequiredDocument ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-600'}`}
+                >
+                  <FileText size={21} />
+                </div>
                 <div>
-                  <p className="font-semibold">Documentos requeridos</p>
-                  <p className="text-sm text-slate-600 break-words">{description}</p>
+                  <p className="font-semibold text-slate-900">
+                    {requiredDocumentType.replace('_', ' ')}
+                  </p>
+                  <p className="text-sm text-slate-500">Documento obligatorio</p>
                 </div>
               </div>
-              <div className="flex-shrink-0">
-                <Button
-                  variant="outline"
-                  className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 text-sm rounded-full border-emerald-500 text-emerald-700 bg-white hover:bg-emerald-50"
-                  onClick={() => setIsDialogOpen(true)}
-                  disabled={isLoading}
-                >
-                  <Plus size={16} />
-                  <span>{addButtonLabel}</span>
-                </Button>
-              </div>
+              <span
+                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${hasRequiredDocument ? 'bg-emerald-100 text-emerald-700' : 'bg-red-50 text-red-700'}`}
+              >
+                {hasRequiredDocument ? <CheckCircle2 size={17} /> : <CircleAlert size={17} />}
+                {hasRequiredDocument ? 'Documento asociado' : 'Falta documento'}
+              </span>
             </div>
-            {requiredDocumentType && !hasRequiredDocument && (
-              <div className="mt-4 flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">
-                <AlertCircle size={16} />
-                <span className="truncate">
-                  Falta documento requerido: {requiredDocumentType.replace('_', ' ')}
-                </span>
-              </div>
-            )}
-            {documents.length > 0 && (
-              <div className="mt-4 space-y-2">
-                {documents.map((document) => (
-                  <a
-                    key={document.id}
-                    href={document.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700 hover:bg-slate-50"
-                  >
-                    <div>
-                      <p className="font-semibold">{document.nombre}</p>
-                      <p className="text-xs text-slate-500">{document.tipo.replace('_', ' ')}</p>
-                    </div>
-                    <ExternalLink size={16} className="text-slate-500" />
-                  </a>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
+          {documents.length > 0 && (
+            <div className="mt-4 space-y-2">
+              {documents.map((document) => (
+                <a
+                  key={document.id}
+                  href={document.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3 text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  <div>
+                    <p className="font-semibold">{document.nombre}</p>
+                    <p className="text-xs text-slate-500">{document.tipo.replace('_', ' ')}</p>
+                  </div>
+                  <ExternalLink size={16} className="text-slate-500" />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
-      </Card>
+      </div>
 
       <div
         className={`${isDialogOpen ? '' : 'hidden'} fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4`}

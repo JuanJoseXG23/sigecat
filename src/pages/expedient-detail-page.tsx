@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Trash2 } from 'lucide-react'
+import { ArrowRight, Check, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
@@ -417,32 +417,7 @@ export function ExpedientDetailPage() {
             </article>
           ))}
         {tab === 'Documentos' && (
-          <div className="space-y-4">
-            <Card className="p-4 bg-blue-50 border-blue-200">
-              <h3 className="font-semibold mb-3 text-blue-900">
-                📁 Carpeta de OneDrive del expediente
-              </h3>
-              <p className="text-sm text-blue-800 mb-3">
-                Usa este enlace para abrir la carpeta de OneDrive donde se almacenan los documentos
-                escaneados del expediente.
-              </p>
-              {item.carpetaOneDrive ? (
-                <a
-                  href={item.carpetaOneDrive}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block"
-                >
-                  <Button variant="default" size="sm">
-                    Abrir OneDrive →
-                  </Button>
-                </a>
-              ) : (
-                <div className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-sm text-slate-600">
-                  No hay carpeta documental registrada para este expediente.
-                </div>
-              )}
-            </Card>
+          <div>
             <Card className="p-4">
               <h3 className="font-semibold mb-3">Documentos asociados</h3>
               {workflowDocuments.length > 0 ? (
@@ -490,121 +465,158 @@ export function ExpedientDetailPage() {
         )}
       </Card>
       {dialog && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
-          <Card className="w-full max-w-lg p-6">
-            <h2 className="text-lg font-semibold">
-              {currentStatus === 'Recibido'
-                ? 'Confirmación de recepción'
-                : currentStatus === 'Asignado'
-                  ? 'Asignar expediente'
-                  : currentStatus === 'En respuesta'
-                    ? 'Definir actuación'
-                    : 'Completar actuación'}
-            </h2>
-            {currentStatus === 'Recibido' && (
-              <label className="mt-4 flex gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={signed}
-                  onChange={(event) => setSigned(event.target.checked)}
-                />{' '}
-                Confirmo que el formato físico fue firmado.
-              </label>
-            )}
-            {currentStatus === 'Asignado' && (
-              <Select
-                className="mt-4"
-                value={responsible}
-                onChange={(event) => setResponsible(event.target.value)}
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-4xl overflow-hidden border-slate-200 bg-white shadow-2xl">
+            <header className="flex items-center justify-between border-b border-slate-100 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-sm font-medium text-primary">{currentStatus}</p>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+                  {currentStatus === 'Recibido'
+                    ? 'Confirmación de recepción'
+                    : currentStatus === 'Asignado'
+                      ? 'Asignar expediente'
+                      : currentStatus === 'En respuesta'
+                        ? 'Definir actuación'
+                        : 'Completar actuación'}
+                </h2>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="size-10 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                onClick={() => setDialog(false)}
+                aria-label="Cerrar ventana"
               >
-                <option value="">Selecciona responsable de Catastro</option>
-                {officials.map((entry) => (
-                  <option key={entry.uid} value={entry.uid}>
-                    {entry.nombreCompleto}
-                  </option>
-                ))}
-              </Select>
-            )}
-            {currentStatus === 'En respuesta' && (
-              <div className="mt-4 space-y-2">
-                <Select
-                  value={choice}
-                  onChange={(event) => setChoice(event.target.value as typeof choice)}
-                >
-                  <option value="response">Respuesta a usuario</option>
-                  <option value="transfer">Traslado por competencia</option>
-                  <option value="change">Cambio de responsable</option>
-                </Select>
-                {choice === 'transfer' && (
-                  <>
-                    <Input
-                      value={destination}
-                      onChange={(event) => setDestination(event.target.value)}
-                      placeholder="Dependencia destino *"
-                    />
-                    <Textarea
-                      value={reason}
-                      onChange={(event) => setReason(event.target.value)}
-                      placeholder="Motivo del traslado *"
-                    />
-                  </>
-                )}
-                {choice === 'change' && (
+                <X size={22} />
+              </Button>
+            </header>
+            <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-6 sm:px-8">
+              {currentStatus === 'Recibido' && (
+                <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={signed}
+                    onChange={(event) => setSigned(event.target.checked)}
+                    className="size-5 rounded border-slate-300 text-primary focus:ring-primary"
+                  />{' '}
+                  Confirmo que el formato físico fue firmado.
+                </label>
+              )}
+              {currentStatus === 'Asignado' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Responsable *</label>
                   <Select
                     value={responsible}
                     onChange={(event) => setResponsible(event.target.value)}
                   >
-                    <option value="">Selecciona responsable</option>
+                    <option value="">Selecciona responsable de Catastro</option>
                     {officials.map((entry) => (
                       <option key={entry.uid} value={entry.uid}>
                         {entry.nombreCompleto}
                       </option>
                     ))}
                   </Select>
-                )}
-              </div>
-            )}
-            {workflowRequirement?.required && (
-              <div className="mt-4">
-                <OneDriveDocumentSelector
-                  folderUrl={item.carpetaOneDrive}
-                  documents={workflowDocuments}
-                  description={workflowRequirement.description}
-                  requiredDocumentType={workflowRequirement.documentType}
-                  onAddDocument={(documentData) => {
-                    if (!item || !user) return
-                    addWorkflowDocument.mutate({
-                      expedientId: item.id,
-                      documentData: {
-                        ...documentData,
-                        tipo: workflowRequirement.documentType,
-                        usuario: user.displayName ?? user.email ?? 'Usuario',
-                      },
-                      userId: user.uid,
-                      userName: user.displayName ?? user.email ?? 'Usuario',
-                    })
-                  }}
-                  isLoading={addWorkflowDocument.isPending}
+                </div>
+              )}
+              {currentStatus === 'En respuesta' && (
+                <div className="mt-4 space-y-2">
+                  <Select
+                    value={choice}
+                    onChange={(event) => setChoice(event.target.value as typeof choice)}
+                  >
+                    <option value="response">Respuesta a usuario</option>
+                    <option value="transfer">Traslado por competencia</option>
+                    <option value="change">Cambio de responsable</option>
+                  </Select>
+                  {choice === 'transfer' && (
+                    <>
+                      <Input
+                        value={destination}
+                        onChange={(event) => setDestination(event.target.value)}
+                        placeholder="Dependencia destino *"
+                      />
+                      <Textarea
+                        value={reason}
+                        onChange={(event) => setReason(event.target.value)}
+                        placeholder="Motivo del traslado *"
+                      />
+                    </>
+                  )}
+                  {choice === 'change' && (
+                    <Select
+                      value={responsible}
+                      onChange={(event) => setResponsible(event.target.value)}
+                    >
+                      <option value="">Selecciona responsable</option>
+                      {officials.map((entry) => (
+                        <option key={entry.uid} value={entry.uid}>
+                          {entry.nombreCompleto}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </div>
+              )}
+              {workflowRequirement?.required && (
+                <div className="mt-4">
+                  <OneDriveDocumentSelector
+                    folderUrl={item.carpetaOneDrive}
+                    documents={workflowDocuments}
+                    description={workflowRequirement.description}
+                    requiredDocumentType={workflowRequirement.documentType}
+                    onAddDocument={(documentData) => {
+                      if (!item || !user) return
+                      addWorkflowDocument.mutate({
+                        expedientId: item.id,
+                        documentData: {
+                          ...documentData,
+                          tipo: workflowRequirement.documentType,
+                          usuario: user.displayName ?? user.email ?? 'Usuario',
+                        },
+                        userId: user.uid,
+                        userName: user.displayName ?? user.email ?? 'Usuario',
+                      })
+                    }}
+                    isLoading={addWorkflowDocument.isPending}
+                  />
+                </div>
+              )}
+              {requiresFiling(currentStatus) && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">
+                      Número de radicado *
+                    </label>
+                    <Input
+                      value={number}
+                      onChange={(event) => setNumber(event.target.value)}
+                      placeholder="Ingresa el número de radicado"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">
+                      Fecha de radicado *
+                    </label>
+                    <Input
+                      type="date"
+                      value={date}
+                      onChange={(event) => setDate(event.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Observaciones</label>
+                <Textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Escribe observaciones adicionales (opcional)"
+                  className="min-h-28 resize-y"
                 />
               </div>
-            )}
-            {requiresFiling(currentStatus) && (
-              <div className="mt-4 grid gap-3">
-                <Input
-                  value={number}
-                  onChange={(event) => setNumber(event.target.value)}
-                  placeholder="Número de radicado *"
-                />
-                <Input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
-              </div>
-            )}
-            <Textarea
-              className="mt-4"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="Observaciones"
-            />
-            <div className="mt-5 flex justify-end gap-2">
+            </div>
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
               <Button variant="outline" onClick={() => setDialog(false)}>
                 Cancelar
               </Button>
@@ -620,10 +632,12 @@ export function ExpedientDetailPage() {
                   (workflowRequirement?.required && !hasRequiredWorkflowDocument)
                 }
                 onClick={() => execute.mutate()}
+                className="gap-2 bg-emerald-600 px-6 text-white hover:bg-emerald-700"
               >
                 Guardar y continuar
+                <ArrowRight size={18} />
               </Button>
-            </div>
+            </footer>
           </Card>
         </div>
       )}
