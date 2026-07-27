@@ -223,20 +223,25 @@ export async function listExpedientObservations(id: string): Promise<ExpedientOb
 }
 
 export async function deleteExpedient(expedientId: string): Promise<void> {
-  const expedient = await getExpedient(expedientId)
-  if (!expedient) throw new Error('Expediente no encontrado.')
-  
-  // Delete all history entries first
-  const historyDocs = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, expedientId, 'historial'))
-  for (const historyDoc of historyDocs.docs) {
-    await deleteDoc(historyDoc.ref)
+  const expedientRef = doc(firestore, EXPEDIENTS_COLLECTION, expedientId)
+  const expedientSnapshot = await getDoc(expedientRef)
+  if (!expedientSnapshot.exists()) throw new Error('Expediente no encontrado.')
+
+  async function deleteCollectionDocuments(collectionPath: string): Promise<void> {
+    const snapshot = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, expedientId, collectionPath))
+    for (const document of snapshot.docs) {
+      await deleteDoc(document.ref)
+    }
   }
+
+  // Delete all history entries first
+  await deleteCollectionDocuments('historial')
   
   // Delete all observations
-  const observationsDocs = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, expedientId, 'observaciones'))
-  for (const observationDoc of observationsDocs.docs) {
-    await deleteDoc(observationDoc.ref)
-  }
+  await deleteCollectionDocuments('observaciones')
+
+  // Delete any scanned documents stored in a subcollection under the expedient
+  await deleteCollectionDocuments('documentosEscaneados')
   
   // Delete all scanned documents stored in the global collection
   const scannedDocsQuery = query(
@@ -249,5 +254,5 @@ export async function deleteExpedient(expedientId: string): Promise<void> {
   }
   
   // Delete the main expedient document last
-  await deleteDoc(doc(firestore, EXPEDIENTS_COLLECTION, expedientId))
+  await deleteDoc(expedientRef)
 }

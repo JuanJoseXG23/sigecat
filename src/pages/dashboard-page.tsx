@@ -165,7 +165,7 @@ export function DashboardPage() {
               <th>Trámite</th>
               <th>Estado</th>
               <th>Prioridad</th>
-              <th>Plazo</th>
+              <th className="w-72">Plazo</th>
               <th>Responsable</th>
               <th />
             </tr>
@@ -207,10 +207,21 @@ export function DashboardPage() {
                       item.prioridad ?? '—'
                     )}
                   </td>
-                  <td>
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                      <p className="font-semibold text-slate-700">{item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? '—'}</p>
-                      <DeadlineDisplay estadoTermino={item.estadoTermino} diasRestantes={item.diasRestantes} diasVencidos={item.diasVencidos} />
+                  <td className="w-72">
+                    <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Fecha límite
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-slate-700">
+                        {item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? '—'}
+                      </p>
+                      <div className="mt-3">
+                        <DeadlineDisplay
+                          estadoTermino={item.estadoTermino}
+                          diasRestantes={item.diasRestantes}
+                          diasVencidos={item.diasVencidos}
+                        />
+                      </div>
                     </div>
                   </td>
                   <td>
