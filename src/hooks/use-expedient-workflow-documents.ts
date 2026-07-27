@@ -24,6 +24,7 @@ export function useAddExpedientWorkflowDocument() {
       client.invalidateQueries({ queryKey: ['expedients'] })
       client.invalidateQueries({ queryKey: ['work-tray'] })
       client.invalidateQueries({ queryKey: ['historical-expedients'] })
+      client.invalidateQueries({ queryKey: ['filings'] })
     },
   })
 }

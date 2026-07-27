@@ -195,6 +195,8 @@ export async function addExpedientWorkflowDocument(
   userId: string,
   userName: string,
 ): Promise<void> {
+  const expedient = await getExpedient(expedientId)
+  if (!expedient) throw new Error('No se encontró el expediente relacionado.')
   const documentId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `doc_${Math.random().toString(36).slice(2, 10)}`
@@ -230,6 +232,22 @@ export async function addExpedientWorkflowDocument(
     'Documento asociado',
     historyDetail,
   )
+
+  if (workflowDocument.radicadoNumero) {
+    await registerFiling({
+      numero: workflowDocument.radicadoNumero,
+      fecha: workflowDocument.radicadoFecha
+        ? workflowDocument.radicadoFecha.toDate().toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10),
+      tipo: workflowDocument.tipo === 'TRASLADO' ? 'Traslado' : workflowDocument.tipo === 'RADICADO_SALIDA' ? 'Salida' : 'Entrada',
+      expedienteId,
+      solicitante: expedient.solicitantes[0]?.nombre ?? '',
+      responsable: expedient.funcionarioAsignado?.nombreCompleto ?? expedient.responsableExterno ?? '',
+      estado: expedient.estado,
+      municipio: expedient.predios[0]?.municipio ?? '',
+      observaciones: `Documento asociado: ${workflowDocument.nombre}`,
+    })
+  }
 }
 
 export async function transferByCompetence(id: string, destination: string, userId: string): Promise<void> {
