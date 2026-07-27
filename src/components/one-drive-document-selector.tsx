@@ -5,6 +5,9 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import type { WorkflowDocument, WorkflowDocumentType } from '@/types/expedient'
 
+// Carpeta global fallback
+const DEFAULT_ONEDRIVE_FOLDER = 'https://girardotaa-my.sharepoint.com/my?id=%2Fpersonal%2Fauxiliar%5Fcatastro3%5Fgirardota%5Fgov%5Fco%2FDocuments%2FSIGECAT%5FBD&viewid=faca467a%2D010d%2D4c66%2D822b%2D24e5b5fbb6c1'
+
 interface OneDriveDocumentSelectorProps {
   folderUrl?: string
   documents: WorkflowDocument[]
@@ -34,9 +37,11 @@ export function OneDriveDocumentSelector({
     [documents, requiredDocumentType],
   )
 
+  const targetFolder = (folderUrl && folderUrl.trim()) || DEFAULT_ONEDRIVE_FOLDER
   const handleOpenFolder = () => {
-    if (!folderUrl) return
-    window.open(folderUrl, '_blank', 'noopener,noreferrer')
+    // Prefer rendering an anchor link, but keep function for backwards compatibility
+    if (!targetFolder) return
+    window.open(targetFolder, '_blank', 'noopener,noreferrer')
   }
 
   const handleSubmit = () => {
@@ -88,23 +93,25 @@ export function OneDriveDocumentSelector({
                 <FileText size={18} />
                 <div>
                   <p className="font-semibold">Documentos requeridos</p>
-                  <p className="text-sm text-slate-600">{description}</p>
+                  <p className="text-sm text-slate-600 break-words">{description}</p>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                className="rounded-full border-emerald-500 text-emerald-700 hover:bg-emerald-50"
-                onClick={() => setIsDialogOpen(true)}
-                disabled={isLoading}
-              >
-                <Plus size={16} />
-                {addButtonLabel}
-              </Button>
+              <div className="flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsDialogOpen(true)}
+                  disabled={isLoading}
+                  className="inline-flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm rounded-full border border-emerald-500 text-emerald-700 bg-white hover:bg-emerald-50 overflow-hidden max-w-xs"
+                >
+                  <Plus size={16} />
+                  <span className="truncate">{addButtonLabel}</span>
+                </button>
+              </div>
             </div>
             {requiredDocumentType && !hasRequiredDocument && (
               <div className="mt-4 flex items-center gap-2 rounded-2xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-700">
                 <AlertCircle size={16} />
-                <span>Falta documento requerido: {requiredDocumentType.replace('_', ' ')}</span>
+                <span className="truncate">Falta documento requerido: {requiredDocumentType.replace('_', ' ')}</span>
               </div>
             )}
             {documents.length > 0 && (
@@ -126,6 +133,18 @@ export function OneDriveDocumentSelector({
                 ))}
               </div>
             )}
+
+            {/* Folder link area: render explicit anchor for folder to allow ctrl/cmd+click */}
+            <div className="mt-3">
+             <a
+               href={targetFolder}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+             >
+               Abrir OneDrive →
+             </a>
+            </div>
           </div>
         </div>
       </Card>

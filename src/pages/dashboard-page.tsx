@@ -74,7 +74,7 @@ export function DashboardPage() {
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-slate-50 p-2">
                 <File className="h-5 w-5 text-slate-600" />
@@ -89,9 +89,9 @@ export function DashboardPage() {
               <p className="text-sm font-medium text-slate-500">{item.tipoTramite ?? 'Trámite no definido'}</p>
               <div className="mt-3 flex items-center gap-2 text-sm text-slate-500">
                 <User2 className="h-4 w-4 text-slate-400" />
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs uppercase tracking-[0.12em] text-slate-500">Solicitante</p>
-                  <p className="text-sm font-semibold text-slate-800">{item.solicitantes[0]?.nombre ?? '—'}</p>
+                  <p className="text-sm font-semibold text-slate-800 truncate">{item.solicitantes[0]?.nombre ?? '—'}</p>
                 </div>
               </div>
             </div>
