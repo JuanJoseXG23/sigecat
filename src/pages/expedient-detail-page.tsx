@@ -263,6 +263,21 @@ export function ExpedientDetailPage() {
                 <p className="mt-2 font-semibold">{item.numeroRadicado}</p>
                 <p className="mt-1 text-sm text-slate-600">{item.fechaRadicado.toDate().toLocaleDateString('es-CO')}</p>
                 <p className="text-sm text-slate-600">Recibido: {item.fechaRecibido?.toDate().toLocaleDateString('es-CO') ?? 'No registrado'}</p>
+                {workflowDocuments.some((d) => d.radicadoNumero) && (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Radicados asociados</p>
+                    <div className="mt-2 space-y-1">
+                      {workflowDocuments
+                        .filter((d) => d.radicadoNumero)
+                        .map((d) => (
+                          <div key={d.id} className="text-sm text-slate-700">
+                            <b>{d.radicadoNumero}</b>
+                            {d.radicadoFecha && <span className="text-sm text-slate-500"> • {d.radicadoFecha.toDate().toLocaleDateString('es-CO')}</span>}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Trámite y término</p>
@@ -333,6 +348,9 @@ export function ExpedientDetailPage() {
                         <div>
                           <p className="text-sm font-semibold">{document.nombre}</p>
                           <p className="text-xs text-slate-500">{document.tipo.replace('_', ' ')}</p>
+                          {document.radicadoNumero && (
+                            <p className="text-xs text-slate-500 mt-1">Radicado: {document.radicadoNumero}{document.radicadoFecha ? ` • ${document.radicadoFecha.toDate().toLocaleDateString('es-CO')}` : ''}</p>
+                          )}
                         </div>
                         <a
                           href={document.url}

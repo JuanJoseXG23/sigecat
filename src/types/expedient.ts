@@ -73,6 +73,9 @@ export interface WorkflowDocument {
   url: string
   usuario: string
   fecha: Timestamp
+  // Opcional: información de radicado asociada a este documento
+  radicadoNumero?: string
+  radicadoFecha?: Timestamp
 }
 
 export interface Expedient {

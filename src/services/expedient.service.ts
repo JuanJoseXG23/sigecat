@@ -191,7 +191,7 @@ export async function updateExternalAssignee(id: string, name: string, userId: s
 
 export async function addExpedientWorkflowDocument(
   expedientId: string,
-  document: Omit<WorkflowDocument, 'id' | 'fecha'>,
+  document: Omit<WorkflowDocument, 'id' | 'fecha'> | (Omit<WorkflowDocument, 'id' | 'fecha'> & { radicadoFecha?: string }),
   userId: string,
   userName: string,
 ): Promise<void> {
@@ -199,11 +199,20 @@ export async function addExpedientWorkflowDocument(
     ? crypto.randomUUID()
     : `doc_${Math.random().toString(36).slice(2, 10)}`
 
+  // Convert optional radicadoFecha string to Timestamp if needed
+  const radicadoFechaTimestamp = typeof (document as any).radicadoFecha === 'string'
+    ? toTimestamp((document as any).radicadoFecha)
+    : (document as any).radicadoFecha
+
   const workflowDocument: WorkflowDocument = {
     id: documentId,
-    ...document,
+    nombre: document.nombre,
+    tipo: document.tipo,
+    url: document.url,
     usuario: userName,
     fecha: Timestamp.fromDate(new Date()),
+    radicadoNumero: (document as any).radicadoNumero,
+    radicadoFecha: radicadoFechaTimestamp,
   }
 
   await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, expedientId), {
@@ -211,11 +220,16 @@ export async function addExpedientWorkflowDocument(
     fechaActualizacion: serverTimestamp(),
   })
 
+  // Include radicado info in history detail if present
+  const historyDetail = workflowDocument.radicadoNumero
+    ? `${userName} asoció el documento "${workflowDocument.nombre}" (Radicado: ${workflowDocument.radicadoNumero}${workflowDocument.radicadoFecha ? ` • ${workflowDocument.radicadoFecha.toDate().toLocaleDateString('es-CO')}` : ''}).`
+    : `${userName} asoció el documento "${workflowDocument.nombre}".`
+
   await registerExpedientHistory(
     expedientId,
     userId,
     'Documento asociado',
-    `${userName} asoció el documento "${workflowDocument.nombre}".`,
+    historyDetail,
   )
 }
 
