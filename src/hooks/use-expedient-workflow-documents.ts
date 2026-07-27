@@ -13,8 +13,8 @@ export function useAddExpedientWorkflowDocument() {
       userName,
     }: {
       expedientId: string
-      // Accept either the WorkflowDocument shape (without id/fecha) or a looser object that may include radicadoFecha as string
-      documentData: Omit<WorkflowDocument, 'id' | 'fecha'> | Record<string, any>
+      // Workflow document payload without id/fecha; may include radicadoFecha as string
+      documentData: Omit<WorkflowDocument, 'id' | 'fecha'> & Partial<{ radicadoFecha?: string }>
       userId: string
       userName: string
     }) => addExpedientWorkflowDocument(expedientId, documentData, userId, userName),
