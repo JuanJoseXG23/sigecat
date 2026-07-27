@@ -8,7 +8,7 @@ import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import { useWorkTray } from '@/hooks/use-work-tray'
 import { EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
-import { CalendarDays, MoreHorizontal, User2 } from 'lucide-react'
+import { CalendarDays, User2 } from 'lucide-react'
 
 function getStatusVariant(estado: string) {
   if (estado === 'Vencido' || estado.includes('Vencido')) return 'destructive'
@@ -78,7 +78,7 @@ export function DashboardPage() {
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Radicado</p>
               <p className="text-2xl font-semibold tracking-tight text-slate-900">{item.numeroRadicado}</p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-3">
               <p className="text-sm font-medium text-slate-500">{item.tipoTramite ?? 'Trámite no definido'}</p>
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <User2 className="h-4 w-4 text-slate-400" />
@@ -90,20 +90,13 @@ export function DashboardPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start">
+          <div className="flex items-center justify-end">
             <Link
               to={`/expedientes/${item.id}`}
-              className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+              className="inline-flex items-center justify-center rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
             >
               Abrir expediente
             </Link>
-            <button
-              type="button"
-              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/40"
-              aria-label="Más acciones"
-            >
-              <MoreHorizontal className="h-5 w-5" />
-            </button>
           </div>
         </div>
 
@@ -150,12 +143,12 @@ export function DashboardPage() {
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-800">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-sm font-semibold text-slate-800 shadow-sm">
                 {getInitials(responsibleName)}
               </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{responsibleName}</p>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-900 truncate">{responsibleName}</p>
                 <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Responsable</p>
               </div>
             </div>
