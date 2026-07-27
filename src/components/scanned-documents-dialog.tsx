@@ -63,7 +63,7 @@ export function ScannedDocumentsDialog({
   }
 
   // Sugerencia y autocompletado de URL basada en carpeta + número de radicado y tipo
-  const makeSlug = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_\-]/g, '')
+  const makeSlug = (s: string) => s.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_-]/g, '')
   const suggestedFilename = `${radicado.trim() ? radicado.trim() : 'documento'}_${makeSlug(documentType)}`.replace(/_+/g, '_')
   const suggestedUrl = `${DEFAULT_ONEDRIVE_FOLDER.replace(/\/$/, '')}/${suggestedFilename}.pdf`
 

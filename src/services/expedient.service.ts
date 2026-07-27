@@ -199,10 +199,9 @@ export async function addExpedientWorkflowDocument(
     ? crypto.randomUUID()
     : `doc_${Math.random().toString(36).slice(2, 10)}`
 
-  // Convert optional radicadoFecha string to Timestamp if needed
-  const radicadoFechaTimestamp = typeof (document as any).radicadoFecha === 'string'
-    ? toTimestamp((document as any).radicadoFecha)
-    : (document as any).radicadoFecha
+  const radicadoFechaTimestamp = document.radicadoFecha
+    ? toTimestamp(document.radicadoFecha)
+    : undefined
 
   const workflowDocument: WorkflowDocument = {
     id: documentId,
@@ -211,7 +210,7 @@ export async function addExpedientWorkflowDocument(
     url: document.url,
     usuario: userName,
     fecha: Timestamp.fromDate(new Date()),
-    radicadoNumero: (document as any).radicadoNumero,
+    radicadoNumero: document.radicadoNumero,
     radicadoFecha: radicadoFechaTimestamp,
   }
 
