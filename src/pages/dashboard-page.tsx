@@ -1,4 +1,3 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { useMemo, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
@@ -8,45 +7,31 @@ import { useAuth } from '@/hooks/use-auth'
 import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import { useWorkTray } from '@/hooks/use-work-tray'
-import { updateExpedientAssignee, updateExpedientPriority } from '@/services/expedient.service'
 import { EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
+import { CalendarDays, MoreHorizontal, User2 } from 'lucide-react'
 
-function DeadlineDisplay({ estadoTermino, diasRestantes, diasVencidos }: { estadoTermino?: string; diasRestantes?: number; diasVencidos?: number }) {
-  const variant =
-    estadoTermino === 'Vencido'
-      ? 'destructive'
-      : estadoTermino === 'Próximo a vencer'
-      ? 'warning'
-      : 'success'
+function getStatusVariant(estado: string) {
+  if (estado === 'Vencido' || estado.includes('Vencido')) return 'destructive'
+  if (estado.includes('Pendiente') || estado.includes('En respuesta') || estado.includes('Traslado')) return 'warning'
+  return 'info'
+}
 
-  if (estadoTermino === 'Vencido' && diasVencidos !== undefined) {
-    return (
-      <div className="space-y-1 text-sm">
-        <span className="font-semibold text-red-600">{diasVencidos} días vencido</span>
-        <Badge variant={variant} className="uppercase">
-          {estadoTermino}
-        </Badge>
-      </div>
-    )
-  }
-  if (diasRestantes !== undefined) {
-    return (
-      <div className="space-y-1 text-sm">
-        <span className={diasRestantes <= 3 ? 'font-semibold text-orange-600' : 'font-semibold text-slate-700'}>
-          {diasRestantes} días restantes
-        </span>
-        <Badge variant={variant} className="uppercase">
-          {estadoTermino}
-        </Badge>
-      </div>
-    )
-  }
-  return <span className="text-slate-500">—</span>
+function getPriorityVariant(priority?: string) {
+  if (priority === 'Alta') return 'destructive'
+  if (priority === 'Media') return 'warning'
+  return 'success'
+}
+
+function getInitials(name?: string) {
+  if (!name) return 'NA'
+  const parts = name.trim().split(' ').filter(Boolean)
+  if (parts.length === 0) return 'NA'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase()
 }
 
 export function DashboardPage() {
   const { user, profile } = useAuth()
-  const client = useQueryClient()
   const { data = [], isLoading } = useWorkTray(profile?.rol, user?.uid)
   const { data: officials = [] } = useAssignableOfficials()
   const { data: procedureTypes = [] } = useProcedureTypes()
@@ -56,24 +41,6 @@ export function DashboardPage() {
   const [type, setType] = useState('')
   const [priority, setPriority] = useState('')
 
-  const manageTray = false
-  const refresh = () => client.invalidateQueries({ queryKey: ['work-tray'] })
-  const priorityMutation = useMutation({
-    mutationFn: ({ id, value }: { id: string; value: typeof EXPEDIENT_PRIORITIES[number] | undefined }) =>
-      updateExpedientPriority(id, value, user!.uid),
-    onSuccess: refresh,
-  })
-  const assigneeMutation = useMutation({
-    mutationFn: ({ id, uid }: { id: string; uid: string }) => {
-      const value = officials.find((item) => item.uid === uid)
-      return updateExpedientAssignee(
-        id,
-        value ? { uid: value.uid, nombreCompleto: value.nombreCompleto } : undefined,
-        user!.uid
-      )
-    },
-    onSuccess: refresh,
-  })
 
   const municipalities = [...new Set(data.map((item) => item.predios[0]?.municipio).filter(Boolean))]
   const rows = useMemo(
@@ -95,6 +62,108 @@ export function DashboardPage() {
     ['Pendientes de visita', rows.filter((item) => item.estado === 'Pendiente de Visita')],
     ['Pendientes de respuesta', rows.filter((item) => item.estado === 'Pendiente de Información')],
   ] as const
+
+  const rowCards = rows.map((item) => {
+    const responsibleName = item.funcionarioAsignado?.nombreCompleto ?? item.responsableExterno ?? 'Sin asignar'
+    const priorityLabel = item.prioridad ? `Prioridad ${item.prioridad}` : 'Sin prioridad'
+
+    return (
+      <Card
+        key={item.id}
+        className="group overflow-hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition duration-200 hover:-translate-y-1 hover:shadow-lg"
+      >
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0 space-y-4">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Radicado</p>
+              <p className="text-2xl font-semibold tracking-tight text-slate-900">{item.numeroRadicado}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-slate-500">{item.tipoTramite ?? 'Trámite no definido'}</p>
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <User2 className="h-4 w-4 text-slate-400" />
+                <div>
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Solicitante</p>
+                  <p className="text-sm font-semibold text-slate-800">{item.solicitantes[0]?.nombre ?? '—'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start">
+            <Link
+              to={`/expedientes/${item.id}`}
+              className="inline-flex items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90"
+            >
+              Abrir expediente
+            </Link>
+            <button
+              type="button"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label="Más acciones"
+            >
+              <MoreHorizontal className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-2">
+              <Badge variant={getStatusVariant(item.estado)} className="uppercase">
+                {item.estado}
+              </Badge>
+              <Badge variant={getPriorityVariant(item.prioridad)} className="uppercase">
+                {priorityLabel}
+              </Badge>
+            </div>
+            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <CalendarDays className="h-4 w-4 text-slate-500" />
+                <span>Fecha límite</span>
+              </div>
+              <p className="mt-3 text-lg font-semibold text-slate-900">
+                {item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? '—'}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                {item.estadoTermino === 'Vencido'
+                  ? `${item.diasVencidos ?? 0} días vencido`
+                  : item.estadoTermino
+                  ? `${item.diasRestantes ?? 0} días restantes`
+                  : 'Sin fecha límite'}
+              </p>
+              <div className="mt-4 inline-flex">
+                <Badge
+                  variant={
+                    item.estadoTermino === 'Vencido'
+                      ? 'destructive'
+                      : item.estadoTermino === 'Próximo a vencer'
+                      ? 'warning'
+                      : 'success'
+                  }
+                  className="uppercase rounded-full px-3 py-1 text-[10px] font-semibold"
+                >
+                  {item.estadoTermino ?? 'Sin plazo'}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold text-slate-800">
+                {getInitials(responsibleName)}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{responsibleName}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-slate-500">Responsable</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Card>
+    )
+  })
 
   return (
     <section className="mx-auto max-w-7xl space-y-6">
@@ -156,106 +225,15 @@ export function DashboardPage() {
         ))}
       </div>
 
-      <Card className="overflow-x-auto">
-        <table className="w-full min-w-[1100px] text-sm">
-          <thead className="bg-slate-50 text-left">
-            <tr>
-              <th className="p-4">Radicado</th>
-              <th>Solicitante</th>
-              <th>Trámite</th>
-              <th>Estado</th>
-              <th>Prioridad</th>
-              <th className="w-72">Plazo</th>
-              <th>Responsable</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={8} className="p-8">
-                  Cargando…
-                </td>
-              </tr>
-            ) : (
-              rows.map((item) => (
-                <tr key={item.id} className="border-t">
-                  <td className="p-4 font-medium">{item.numeroRadicado}</td>
-                  <td>{item.solicitantes[0]?.nombre ?? '—'}</td>
-                  <td>{item.tipoTramite ?? '—'}</td>
-                  <td>
-                    <Badge variant={item.estadoTermino === 'Vencido' ? 'destructive' : 'info'}>{item.estado}</Badge>
-                  </td>
-                  <td>
-                    {manageTray ? (
-                      <Select
-                        className="h-8"
-                        value={item.prioridad ?? ''}
-                        onChange={(event) =>
-                          priorityMutation.mutate({
-                            id: item.id,
-                            value: (event.target.value as typeof EXPEDIENT_PRIORITIES[number]) || undefined,
-                          })
-                        }
-                      >
-                        <option value="">Sin prioridad</option>
-                        {EXPEDIENT_PRIORITIES.map((value) => (
-                          <option key={value}>{value}</option>
-                        ))}
-                      </Select>
-                    ) : (
-                      item.prioridad ?? '—'
-                    )}
-                  </td>
-                  <td className="w-72">
-                    <div className="rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 shadow-sm">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Fecha límite
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-700">
-                        {item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? '—'}
-                      </p>
-                      <div className="mt-3">
-                        <DeadlineDisplay
-                          estadoTermino={item.estadoTermino}
-                          diasRestantes={item.diasRestantes}
-                          diasVencidos={item.diasVencidos}
-                        />
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    {manageTray ? (
-                      <Select
-                        className="h-8"
-                        value={item.funcionarioAsignado?.uid ?? ''}
-                        onChange={(event) => assigneeMutation.mutate({ id: item.id, uid: event.target.value })}
-                      >
-                        <option value="">Sin asignar</option>
-                        {officials.map((value) => (
-                          <option key={value.uid} value={value.uid}>
-                            {value.nombreCompleto}
-                          </option>
-                        ))}
-                      </Select>
-                    ) : (
-                      item.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'
-                    )}
-                  </td>
-                  <td>
-                    <Link
-                      className="inline-flex h-9 items-center rounded-md border border-input bg-background px-3 text-sm font-medium hover:bg-accent"
-                      to={`/expedientes/${item.id}`}
-                    >
-                      Abrir
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </Card>
+      <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+        {isLoading ? (
+          <div className="col-span-full rounded-3xl border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm">
+            Cargando…
+          </div>
+        ) : (
+          rowCards
+        )}
+      </div>
     </section>
   )
 }
