@@ -7,6 +7,7 @@ import {
   ListTodo,
   Settings,
   Users,
+  Library,
   type LucideIcon,
 } from 'lucide-react'
 import type { UserRole } from '@/types/user'
@@ -25,6 +26,7 @@ export const appNavigation: readonly AppNavigationItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, roles: allRoles },
   { label: 'Mi Agenda', path: '/agenda', icon: ListTodo, roles: operationalRoles },
   { label: 'Expedientes', path: '/expedientes', icon: FolderKanban, roles: allRoles },
+  { label: 'Biblioteca de Documentos', path: '/documentos', icon: Library, roles: allRoles },
   { label: 'Histórico', path: '/historico', icon: History, roles: allRoles },
   { label: 'Radicación', path: '/radicacion', icon: FileText, roles: operationalRoles },
   { label: 'Usuarios', path: '/usuarios', icon: Users, roles: ['Administrador'] },

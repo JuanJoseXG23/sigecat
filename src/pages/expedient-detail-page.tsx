@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check, FileText } from 'lucide-react'
+import { Check } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
@@ -8,9 +8,12 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { ScannedDocumentsDialog } from '@/components/scanned-documents-dialog'
+import { ScannedDocumentsCard } from '@/components/scanned-documents-card'
 import { useAuth } from '@/hooks/use-auth'
 import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
+import { useAddScannedDocument, useDeleteScannedDocument, useScannedDocuments } from '@/hooks/use-scanned-documents'
 import {
   completeRequiredActuation,
   transferByCompetence,
@@ -39,8 +42,12 @@ export function ExpedientDetailPage() {
   const { data: item, isLoading } = useExpedientDetail(id)
   const { data: history = [] } = useExpedientHistory(id)
   const { data: officials = [] } = useAssignableOfficials()
+  const { data: scannedDocuments = [] } = useScannedDocuments(id)
+  const addScannedDocMutation = useAddScannedDocument()
+  const deleteScannedDocMutation = useDeleteScannedDocument()
   const [tab, setTab] = useState<Tab>('Información')
   const [dialog, setDialog] = useState(false)
+  const [documentsDialog, setDocumentsDialog] = useState(false)
   const [signed, setSigned] = useState(false)
   const [choice, setChoice] = useState<'response' | 'transfer' | 'change'>('response')
   const [responsible, setResponsible] = useState('')
@@ -204,7 +211,14 @@ export function ExpedientDetailPage() {
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Trámite y término</p>
                 <p className="mt-2 font-semibold">{item.tipoTramite ?? 'Sin tipo'}</p>
                 <p className="text-sm text-slate-600">Límite: {item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? 'No calculada'}</p>
-                <p className="text-sm text-slate-600">{item.diasRestantes ?? '—'} días hábiles · {item.estadoTermino ?? 'Sin término'}</p>
+               <p className="text-sm text-slate-600">
+                 {item.estadoTermino === 'Vencido' && item.diasVencidos !== undefined
+                   ? `${item.diasVencidos} días vencido`
+                   : item.diasRestantes !== undefined
+                     ? `${item.diasRestantes} días restantes`
+                     : '—'}{' '}
+                 · {item.estadoTermino ?? 'Sin término'}
+               </p>
               </div>
               <div className="rounded-lg bg-slate-50 p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Gestión</p>
@@ -229,11 +243,27 @@ export function ExpedientDetailPage() {
             </article>
           ))}
         {tab === 'Documentos' && (
-          <div className="py-6 text-center">
-            <FileText className="mx-auto text-slate-400" />
-            <p className="mt-2 text-sm text-slate-500">
-              Documentos disponibles cuando se habilite Storage.
-            </p>
+          <div className="space-y-4">
+            <ScannedDocumentsCard
+              documents={scannedDocuments}
+              isLoading={addScannedDocMutation.isPending}
+              onAddClick={() => setDocumentsDialog(true)}
+            />
+            <Card className="p-4">
+              <h3 className="font-semibold mb-3">Guía de organización en OneDrive</h3>
+              <div className="text-sm space-y-2 text-slate-600">
+                <p>✓ Carpeta principal: <code className="bg-slate-100 px-2 py-1 rounded text-xs">SIGECAT</code></p>
+                <p>✓ Dentro organiza por años: <code className="bg-slate-100 px-2 py-1 rounded text-xs">2024, 2025, etc.</code></p>
+                <p>✓ Dentro de cada año, por tipos de radicados:</p>
+                <ul className="ml-6 space-y-1">
+                  <li>• Radicados Iniciales</li>
+                  <li>• Respuestas Radicadas</li>
+                  <li>• Traslados con Radicado</li>
+                  <li>• Respuestas de Traslado</li>
+                </ul>
+                <p className="text-xs text-slate-500 mt-2">Ejemplo: SIGECAT/2024/Radicados Iniciales/202400001234.pdf</p>
+              </div>
+            </Card>
           </div>
         )}
       </Card>
@@ -312,6 +342,32 @@ export function ExpedientDetailPage() {
                 )}
               </div>
             )}
+            {(currentStatus === 'Asignado' || currentStatus === 'En respuesta' || currentStatus === 'Generar respuesta al ciudadano') && (
+              <div className="mt-4 border-t pt-4">
+                <p className="text-sm font-medium mb-2">📄 Documentos Requeridos</p>
+                <p className="text-xs text-slate-600 mb-3">
+                  {currentStatus === 'Asignado' && 'Se requiere escanear el radicado inicial en OneDrive'}
+                  {currentStatus === 'En respuesta' && 'Se requiere escanear la respuesta radicada en OneDrive'}
+                  {currentStatus === 'Generar respuesta al ciudadano' && 'Se requiere escanear la respuesta de traslado en OneDrive'}
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setDialog(false)
+                    setDocumentsDialog(true)
+                  }}
+                  className="w-full"
+                >
+                  + Agregar Documento en OneDrive
+                </Button>
+                {scannedDocuments.length > 0 && (
+                  <div className="mt-2 text-xs text-slate-500">
+                    ✓ Tienes {scannedDocuments.length} documento(s) registrado(s)
+                  </div>
+                )}
+              </div>
+            )}
             {requiresFiling(currentStatus) && (
               <div className="mt-4 grid gap-3">
                 <Input
@@ -350,6 +406,25 @@ export function ExpedientDetailPage() {
           </Card>
         </div>
       )}
+
+      <ScannedDocumentsDialog
+        open={documentsDialog}
+        onOpenChange={setDocumentsDialog}
+        onSubmit={(documentData) => {
+          if (id && user) {
+            addScannedDocMutation.mutate({
+              expedientId: id,
+              documentData,
+              userId: user.uid,
+            })
+            setDocumentsDialog(false)
+          }
+        }}
+        documents={scannedDocuments}
+        onDelete={(documentId) => {
+          deleteScannedDocMutation.mutate(documentId)
+        }}
+      />
     </section>
   )
 }

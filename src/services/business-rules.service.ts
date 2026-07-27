@@ -29,9 +29,10 @@ export function calculateDeadline(filingDate: string, responseDays: number, holi
   return Timestamp.fromDate(addBusinessDays(new Date(year, month - 1, day), responseDays, holidays))
 }
 
-export function getDeadlineStatus(deadline: Timestamp, holidays: string[] = [], dueSoonDays: number = BUSINESS_RULES.dueSoonDays): { diasRestantes: number; estadoTermino: DeadlineStatus } {
+export function getDeadlineStatus(deadline: Timestamp, holidays: string[] = [], dueSoonDays: number = BUSINESS_RULES.dueSoonDays): { diasRestantes: number; diasVencidos: number; estadoTermino: DeadlineStatus } {
   const diasRestantes = getRemainingBusinessDays(deadline.toDate(), new Date(), holidays)
-  return { diasRestantes, estadoTermino: diasRestantes < 0 ? 'Vencido' : diasRestantes <= dueSoonDays ? 'Próximo a vencer' : 'En plazo' }
+  const diasVencidos = diasRestantes < 0 ? Math.abs(diasRestantes) : 0
+  return { diasRestantes, diasVencidos, estadoTermino: diasRestantes < 0 ? 'Vencido' : diasRestantes <= dueSoonDays ? 'Próximo a vencer' : 'En plazo' }
 }
 
 export async function registerExpedientHistory(expedientId: string, userId: string, action: string, detail?: string): Promise<void> {

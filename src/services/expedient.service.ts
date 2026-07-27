@@ -57,6 +57,7 @@ async function toExpedientData(
     prioridad: values.prioridad,
     fechaLimite,
     diasRestantes: timeline.diasRestantes,
+    diasVencidos: timeline.diasVencidos,
     estadoTermino: timeline.estadoTermino,
     observacionesIniciales: values.observacionesIniciales?.trim(),
   })

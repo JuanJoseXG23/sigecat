@@ -15,6 +15,7 @@ import { ReportsPage } from '@/pages/reports-page'
 import { ProcedureTypesPage } from '@/pages/procedure-types-page'
 import { SettingsPage } from '@/pages/settings-page'
 import { UsersPage } from '@/pages/users-page'
+import { DocumentsLibraryPage } from '@/pages/documents-library-page'
 import { appNavigation } from '@/routes/navigation'
 
 const navigationByPath = Object.fromEntries(appNavigation.map((item) => [item.path, item]))
@@ -47,6 +48,7 @@ export const router = createHashRouter([
           { path: 'agenda', element: withRole('/agenda', <AgendaPage />) },
           { path: 'expedientes', element: withRole('/expedientes', <ExpedientsPage />) },
           { path: 'expedientes/:id', element: withRole('/expedientes', <ExpedientDetailPage />) },
+          { path: 'documentos', element: withRole('/documentos', <DocumentsLibraryPage />) },
           { path: 'historico', element: withRole('/historico', <HistoricalPage />) },
           { path: 'radicacion', element: withRole('/radicacion', <FilingPage />) },
           { path: 'usuarios', element: withRole('/usuarios', <UsersPage />) },

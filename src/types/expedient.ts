@@ -53,6 +53,17 @@ export interface AssignedOfficial {
   nombreCompleto: string
 }
 
+export type DocumentType = 'Radicado Inicial' | 'Respuesta Radicada' | 'Traslado con Radicado' | 'Respuesta Traslado'
+
+export interface ScannedDocument {
+  id: string
+  tipo: DocumentType
+  radicado: string
+  urlOneDrive: string
+  fechaEscaneo: Timestamp
+  creadoPor: string
+}
+
 export interface Expedient {
   id: string
   numeroRadicado: string
@@ -70,8 +81,10 @@ export interface Expedient {
   prioridad?: ExpedientPriority
   fechaLimite?: Timestamp
   diasRestantes?: number
+  diasVencidos?: number
   estadoTermino?: 'En plazo' | 'Próximo a vencer' | 'Vencido'
   observacionesIniciales?: string
+  documentosEscaneados?: ScannedDocument[]
   fechaCreacion: Timestamp
   fechaActualizacion: Timestamp
   creadoPor: string
