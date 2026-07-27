@@ -15,7 +15,7 @@ interface OneDriveDocumentSelectorProps {
   requiredDocumentType?: WorkflowDocumentType
   addButtonLabel?: string
   isLoading?: boolean
-  onAddDocument: (document: { nombre: string; url: string }) => void
+  onAddDocument: (document: { nombre: string; url: string; radicadoNumero?: string; radicadoFecha?: string }) => void
 }
 
 export function OneDriveDocumentSelector({
@@ -23,13 +23,15 @@ export function OneDriveDocumentSelector({
   documents,
   description,
   requiredDocumentType,
-  addButtonLabel = '+ Agregar documento en OneDrive',
+  addButtonLabel = 'Agregar documento en OneDrive',
   isLoading = false,
   onAddDocument,
 }: OneDriveDocumentSelectorProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [nombre, setNombre] = useState('')
   const [url, setUrl] = useState('')
+  const [radicadoNumero, setRadicadoNumero] = useState('')
+  const [radicadoFecha, setRadicadoFecha] = useState('')
   const [error, setError] = useState('')
 
   const hasRequiredDocument = useMemo(
@@ -49,7 +51,7 @@ export function OneDriveDocumentSelector({
     const documentUrl = url.trim()
 
     if (!documentName || !documentUrl) {
-      setError('Por favor completa todos los campos.')
+      setError('Por favor completa todos los campos obligatorios (nombre y URL).')
       return
     }
     if (!documentUrl.startsWith('https://')) {
@@ -57,9 +59,12 @@ export function OneDriveDocumentSelector({
       return
     }
 
-    onAddDocument({ nombre: documentName, url: documentUrl })
+    // Pass radicado info if provided
+    onAddDocument({ nombre: documentName, url: documentUrl, radicadoNumero: radicadoNumero.trim() || undefined, radicadoFecha: radicadoFecha || undefined })
     setNombre('')
     setUrl('')
+    setRadicadoNumero('')
+    setRadicadoFecha('')
     setError('')
     setIsDialogOpen(false)
   }
@@ -97,15 +102,15 @@ export function OneDriveDocumentSelector({
                 </div>
               </div>
               <div className="flex-shrink-0">
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  className="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 text-sm rounded-full border-emerald-500 text-emerald-700 bg-white hover:bg-emerald-50"
                   onClick={() => setIsDialogOpen(true)}
                   disabled={isLoading}
-                  className="inline-flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm rounded-full border border-emerald-500 text-emerald-700 bg-white hover:bg-emerald-50 overflow-hidden max-w-xs"
                 >
                   <Plus size={16} />
-                  <span className="truncate">{addButtonLabel}</span>
-                </button>
+                  <span>{addButtonLabel}</span>
+                </Button>
               </div>
             </div>
             {requiredDocumentType && !hasRequiredDocument && (
@@ -174,6 +179,26 @@ export function OneDriveDocumentSelector({
                   placeholder="https://"
                 />
               </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Número de radicado</label>
+                  <Input
+                    value={radicadoNumero}
+                    onChange={(e) => setRadicadoNumero(e.target.value)}
+                    placeholder="Ej: 2026I005144"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700">Fecha de radicado</label>
+                  <Input
+                    type="date"
+                    value={radicadoFecha}
+                    onChange={(e) => setRadicadoFecha(e.target.value)}
+                  />
+                </div>
+              </div>
+
               {error && <p className="text-sm text-red-600">{error}</p>}
             </div>
             <div className="flex justify-end gap-2">
