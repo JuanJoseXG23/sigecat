@@ -69,26 +69,38 @@ export async function listExpedients(): Promise<Expedient[]> {
   const snapshot = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION))
   const configuration = await getBusinessConfiguration()
   return snapshot.docs
-    .map((item) => item.data() as Expedient)
+    .map((item) => {
+      const data = item.data() as Expedient
+      return { ...data, id: item.id }
+    })
     .filter((item) => item.activo && !isFinalizedExpedient(item))
-    .map((item) => item.fechaLimite ? { ...item, ...getDeadlineStatus(item.fechaLimite, configuration.diasFestivos, configuration.umbralProximoVencer) } : item)
-    .sort(
-      (first, second) => second.fechaActualizacion.toMillis() - first.fechaActualizacion.toMillis(),
+    .map((item) =>
+      item.fechaLimite
+        ? { ...item, ...getDeadlineStatus(item.fechaLimite, configuration.diasFestivos, configuration.umbralProximoVencer) }
+        : item,
     )
+    .sort((first, second) => second.fechaActualizacion.toMillis() - first.fechaActualizacion.toMillis())
 }
 
 export async function listHistoricalExpedients(): Promise<Expedient[]> {
   const snapshot = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION))
-  return snapshot.docs.map((item) => item.data() as Expedient).filter(isFinalizedExpedient).sort((a, b) => b.fechaActualizacion.toMillis() - a.fechaActualizacion.toMillis())
+  return snapshot.docs
+    .map((item) => {
+      const data = item.data() as Expedient
+      return { ...data, id: item.id }
+    })
+    .filter(isFinalizedExpedient)
+    .sort((a, b) => b.fechaActualizacion.toMillis() - a.fechaActualizacion.toMillis())
 }
 
 export async function getExpedient(id: string): Promise<Expedient | null> {
   const snapshot = await getDoc(doc(firestore, EXPEDIENTS_COLLECTION, id))
   if (!snapshot.exists()) return null
   const item = snapshot.data() as Expedient
-  if (!item.fechaLimite) return item
+  const data = { ...item, id: snapshot.id }
+  if (!item.fechaLimite) return data
   const configuration = await getBusinessConfiguration()
-  return { ...item, ...getDeadlineStatus(item.fechaLimite, configuration.diasFestivos, configuration.umbralProximoVencer) }
+  return { ...data, ...getDeadlineStatus(item.fechaLimite, configuration.diasFestivos, configuration.umbralProximoVencer) }
 }
 
 export async function createExpedient(
@@ -234,25 +246,21 @@ export async function deleteExpedient(expedientId: string): Promise<void> {
     }
   }
 
-  // Delete all history entries first
-  await deleteCollectionDocuments('historial')
-  
-  // Delete all observations
-  await deleteCollectionDocuments('observaciones')
-
-  // Delete any scanned documents stored in a subcollection under the expedient
-  await deleteCollectionDocuments('documentosEscaneados')
-  
-  // Delete all scanned documents stored in the global collection
-  const scannedDocsQuery = query(
-    collection(firestore, 'documentosEscaneados'),
-    where('expedientId', '==', expedientId),
+  const deleteTasks: Array<Promise<void>> = []
+  deleteTasks.push(deleteCollectionDocuments('historial'))
+  deleteTasks.push(deleteCollectionDocuments('observaciones'))
+  deleteTasks.push(deleteCollectionDocuments('documentosEscaneados'))
+  deleteTasks.push(
+    getDocs(
+      query(collection(firestore, 'documentosEscaneados'), where('expedientId', '==', expedientId)),
+    ).then((snapshot) => Promise.all(snapshot.docs.map((docItem) => deleteDoc(docItem.ref)))).then(() => undefined),
   )
-  const scannedDocsDocs = await getDocs(scannedDocsQuery)
-  for (const scannedDoc of scannedDocsDocs.docs) {
-    await deleteDoc(scannedDoc.ref)
+
+  try {
+    await Promise.all(deleteTasks)
+  } catch (error) {
+    console.error('Error deleting related expedient documents:', error)
   }
-  
-  // Delete the main expedient document last
+
   await deleteDoc(expedientRef)
 }
