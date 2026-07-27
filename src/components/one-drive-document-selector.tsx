@@ -72,16 +72,16 @@ export function OneDriveDocumentSelector({
             <div>
               <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">Carpeta de OneDrive</p>
               <p className="mt-2 text-sm text-slate-600">
-                {folderUrl
+                {targetFolder
                   ? 'Abre la carpeta documental asociada al expediente.'
                   : 'Aún no existe carpeta documental.'}
               </p>
             </div>
             <Button
               variant="default"
-              className="rounded-full bg-emerald-600 text-white hover:bg-emerald-700"
+              className="rounded-full bg-emerald-600 text-white hover:bg-emerald-700 whitespace-nowrap px-4 py-2"
               onClick={handleOpenFolder}
-              disabled={!folderUrl}
+              disabled={!targetFolder}
             >
               <span>Abrir OneDrive →</span>
             </Button>
@@ -150,7 +150,7 @@ export function OneDriveDocumentSelector({
       </Card>
 
       <div className={`${isDialogOpen ? '' : 'hidden'} fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4`}>
-        <Card className="w-full max-w-lg p-6">
+            <Card className="w-full max-w-2xl p-6">
           <div className="space-y-4">
             <div>
               <h2 className="text-lg font-semibold">Agregar documento de OneDrive</h2>
