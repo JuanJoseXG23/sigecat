@@ -17,7 +17,7 @@ import { calculateDeadline, getBusinessConfiguration, getDeadlineStatus, registe
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
 import { registerFiling } from '@/services/filing.service'
-import type { Applicant, AssignedOfficial, Expedient, ExpedientFormData, ExpedientHistoryEntry, ExpedientObservation, ExpedientPriority, ExpedientStatus, Property, WorkflowDocument } from '@/types/expedient'
+import type { Applicant, AssignedOfficial, Expedient, ExpedientFormData, ExpedientHistoryEntry, ExpedientObservation, ExpedientPriority, ExpedientStatus, Property, WorkflowDocument, WorkflowDocumentPayload } from '@/types/expedient'
 import { isFinalizedExpedient } from '@/types/expedient'
 
 const EXPEDIENTS_COLLECTION = 'expedientes'
@@ -191,7 +191,7 @@ export async function updateExternalAssignee(id: string, name: string, userId: s
 
 export async function addExpedientWorkflowDocument(
   expedientId: string,
-  document: Omit<WorkflowDocument, 'id' | 'fecha'> | (Omit<WorkflowDocument, 'id' | 'fecha'> & { radicadoFecha?: string }),
+  document: WorkflowDocumentPayload,
   userId: string,
   userName: string,
 ): Promise<void> {

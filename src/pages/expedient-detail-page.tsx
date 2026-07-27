@@ -36,6 +36,14 @@ function requiresFiling(status: ExpedientStatus) {
   )
 }
 
+function formatWorkflowDocumentDate(date?: string | { toDate: () => Date }) {
+  if (!date) return undefined
+  if (typeof date === 'string') {
+    return new Date(date).toLocaleDateString('es-CO')
+  }
+  return date.toDate().toLocaleDateString('es-CO')
+}
+
 function getWorkflowDocumentRequirement(status: ExpedientStatus) {
   if (status === 'Recibido') {
     return {
@@ -73,6 +81,9 @@ export function ExpedientDetailPage() {
   const { data: history = [] } = useExpedientHistory(id)
   const { data: officials = [] } = useAssignableOfficials()
   const workflowDocuments = item?.documentosWorkflow ?? []
+  const associatedRadicados = workflowDocuments.filter(
+    (document) => document.radicadoNumero || document.radicadoFecha,
+  )
   const addWorkflowDocument = useAddExpedientWorkflowDocument()
   const [tab, setTab] = useState<Tab>('Información')
   const [dialog, setDialog] = useState(false)
@@ -263,6 +274,30 @@ export function ExpedientDetailPage() {
                 <p className="mt-2 font-semibold">{item.numeroRadicado}</p>
                 <p className="mt-1 text-sm text-slate-600">{item.fechaRadicado.toDate().toLocaleDateString('es-CO')}</p>
                 <p className="text-sm text-slate-600">Recibido: {item.fechaRecibido?.toDate().toLocaleDateString('es-CO') ?? 'No registrado'}</p>
+                <div className="mt-4 rounded-2xl bg-white p-3 text-sm text-slate-700 shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Radicados asociados</p>
+                  {associatedRadicados.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {associatedRadicados.map((document) => (
+                        <div key={document.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                          {document.radicadoNumero && (
+                            <p className="font-semibold text-slate-900">{document.radicadoNumero}</p>
+                          )}
+                          {document.radicadoFecha && (
+                            <p className="text-sm text-slate-500">
+                              {formatWorkflowDocumentDate(document.radicadoFecha)}
+                            </p>
+                          )}
+                          {document.nombre && (
+                            <p className="text-xs text-slate-500">{document.nombre}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-500">No hay radicados asociados todavía.</p>
+                  )}
+                </div>
                 {workflowDocuments.some((d) => d.radicadoNumero) && (
                   <div className="mt-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Radicados asociados</p>

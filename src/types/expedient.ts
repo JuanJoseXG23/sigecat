@@ -78,6 +78,10 @@ export interface WorkflowDocument {
   radicadoFecha?: Timestamp
 }
 
+export type WorkflowDocumentPayload = Omit<WorkflowDocument, 'id' | 'fecha' | 'radicadoFecha'> & {
+  radicadoFecha?: string
+}
+
 export interface Expedient {
   id: string
   numeroRadicado: string

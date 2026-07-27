@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { addExpedientWorkflowDocument } from '@/services/expedient.service'
-import type { WorkflowDocument } from '@/types/expedient'
+import type { WorkflowDocumentPayload } from '@/types/expedient'
 
 export function useAddExpedientWorkflowDocument() {
   const client = useQueryClient()
@@ -14,7 +14,7 @@ export function useAddExpedientWorkflowDocument() {
     }: {
       expedientId: string
       // Workflow document payload without id/fecha; may include radicadoFecha as string
-      documentData: Omit<WorkflowDocument, 'id' | 'fecha'> & Partial<{ radicadoFecha?: string }>
+      documentData: WorkflowDocumentPayload
       userId: string
       userName: string
     }) => addExpedientWorkflowDocument(expedientId, documentData, userId, userName),
