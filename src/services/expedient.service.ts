@@ -325,12 +325,18 @@ export async function addExpedientWorkflowDocument(
 export async function transferByCompetence(
   id: string,
   destination: string,
+  reason: string,
   userId: string,
 ): Promise<void> {
+  const normalizedDestination = destination.trim()
+  const normalizedReason = reason.trim()
+  if (!normalizedDestination || !normalizedReason) {
+    throw new Error('El destino y el motivo del traslado son obligatorios.')
+  }
   const current = await getExpedient(id)
   await updateDoc(doc(firestore, EXPEDIENTS_COLLECTION, id), {
     trasladoPorCompetencia: true,
-    responsableExterno: destination.trim(),
+    responsableExterno: normalizedDestination,
     estado: 'Traslado por competencia',
     fechaActualizacion: serverTimestamp(),
   })
@@ -340,6 +346,7 @@ export async function transferByCompetence(
     'Traslado por competencia',
     `${current?.funcionarioAsignado?.nombreCompleto ?? current?.responsableExterno ?? 'Sin asignar'} → ${destination.trim()}`,
   )
+  await registerExpedientHistory(id, userId, 'Motivo del traslado', normalizedReason)
 }
 
 export async function completeRequiredActuation(

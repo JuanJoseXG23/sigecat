@@ -17,6 +17,19 @@ const DOCUMENT_TYPES: { label: string; value: DocumentType }[] = [
 const DEFAULT_ONEDRIVE_FOLDER =
   'https://girardotaa-my.sharepoint.com/my?id=%2Fpersonal%2Fauxiliar%5Fcatastro3%5Fgirardota%5Fgov%5Fco%2FDocuments%2FSIGECAT%5FBD&viewid=faca467a%2D010d%2D4c66%2D822b%2D24e5b5fbb6c1'
 
+function isInstitutionalDocumentUrl(value: string): boolean {
+  try {
+    const url = new URL(value)
+    const host = url.hostname.toLowerCase()
+    return (
+      url.protocol === 'https:' &&
+      (host.endsWith('.sharepoint.com') || host.endsWith('.onedrive.com') || host === '1drv.ms')
+    )
+  } catch {
+    return false
+  }
+}
+
 interface ScannedDocumentsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -46,8 +59,8 @@ export function ScannedDocumentsDialog({
       return
     }
 
-    if (!urlOneDrive.trim().startsWith('https://')) {
-      alert('La URL debe iniciar con https://')
+    if (!isInstitutionalDocumentUrl(urlOneDrive.trim())) {
+      alert('Usa un enlace HTTPS válido de OneDrive o SharePoint institucional.')
       return
     }
 

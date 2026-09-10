@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowRight, Check, Trash2, X } from 'lucide-react'
+import { ArrowRight, Check, X } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -16,7 +16,6 @@ import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-d
 import { useAddExpedientWorkflowDocument } from '@/hooks/use-expedient-workflow-documents'
 import {
   completeRequiredActuation,
-  deleteExpedient,
   transferByCompetence,
   updateExpedientAssignee,
   updateExternalAssignee,
@@ -75,8 +74,7 @@ function getWorkflowDocumentRequirement(status: ExpedientStatus) {
 
 export function ExpedientDetailPage() {
   const { id } = useParams()
-  const navigate = useNavigate()
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
   const client = useQueryClient()
   const { data: item, isLoading } = useExpedientDetail(id)
   const { data: history = [] } = useExpedientHistory(id)
@@ -95,7 +93,6 @@ export function ExpedientDetailPage() {
   const addWorkflowDocument = useAddExpedientWorkflowDocument()
   const [tab, setTab] = useState<Tab>('Información')
   const [dialog, setDialog] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [signed, setSigned] = useState(false)
   const [choice, setChoice] = useState<'response' | 'transfer' | 'change'>('response')
   const [responsible, setResponsible] = useState('')
@@ -105,6 +102,7 @@ export function ExpedientDetailPage() {
   const [number, setNumber] = useState('')
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
+  const [actionError, setActionError] = useState('')
   void setOther
   const refresh = () =>
     Promise.all(
@@ -119,6 +117,7 @@ export function ExpedientDetailPage() {
     )
   const execute = useMutation({
     mutationFn: async () => {
+      setActionError('')
       if (!item || !user) return
       const flow = item.trasladoPorCompetencia ? TRANSFER_FLOW : STANDARD_FLOW
       const index = flow.indexOf(item.estado)
@@ -160,7 +159,7 @@ export function ExpedientDetailPage() {
             )
           return updateExternalAssignee(item.id, other, user.uid)
         }
-        if (choice === 'transfer') return transferByCompetence(item.id, destination, user.uid)
+        if (choice === 'transfer') return transferByCompetence(item.id, destination, reason, user.uid)
         return completeRequiredActuation(
           item.id,
           user.uid,
@@ -192,16 +191,8 @@ export function ExpedientDetailPage() {
       setNotes('')
       await refresh()
     },
-  })
-  const deleteExpedientMutation = useMutation({
-    mutationFn: async () => {
-      if (!item || !user) return
-      return deleteExpedient(item.id)
-    },
-    onSuccess: async () => {
-      setDeleteDialogOpen(false)
-      await refresh()
-      navigate('/dashboard')
+    onError: (error) => {
+      setActionError(error instanceof Error ? error.message : 'No fue posible guardar la actuación.')
     },
   })
   if (isLoading) return <p className="text-sm text-slate-500">Cargando expediente…</p>
@@ -228,18 +219,6 @@ export function ExpedientDetailPage() {
           <Badge variant={finalized ? 'success' : 'info'}>
             {finalized ? 'Solo consulta' : item.estado}
           </Badge>
-          {profile?.rol === 'Administrador' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDeleteDialogOpen(true)}
-              disabled={deleteExpedientMutation.isPending}
-              className="gap-2 text-red-600 border-red-300 hover:bg-red-50 hover:text-red-700"
-            >
-              <Trash2 size={16} />
-              Eliminar
-            </Button>
-          )}
         </div>
       </div>
       <Card className="overflow-x-auto p-4">
@@ -492,6 +471,11 @@ export function ExpedientDetailPage() {
               </Button>
             </header>
             <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-6 sm:px-8">
+              {actionError && (
+                <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {actionError}
+                </p>
+              )}
               {currentStatus === 'Recibido' && (
                 <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
                   <input
@@ -642,7 +626,7 @@ export function ExpedientDetailPage() {
         </div>
       )}
 
-      {deleteDialogOpen && (
+      {/*
         <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
           <Card className="w-full max-w-lg p-6">
             <h2 className="text-lg font-semibold">Eliminar expediente</h2>
@@ -669,7 +653,7 @@ export function ExpedientDetailPage() {
             </div>
           </Card>
         </div>
-      )}
+      */}
     </section>
   )
 }
