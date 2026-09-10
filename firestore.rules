@@ -76,6 +76,12 @@ service cloud.firestore {
       allow delete: if isAdministrator();
     }
 
+    match /solicitudesPruebaCorreo/{requestId} {
+      allow get, list: if isAdministrator();
+      allow create: if isAdministrator();
+      allow update, delete: if false;
+    }
+
     match /tareas/{taskId} {
       allow get: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;
       allow list: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;

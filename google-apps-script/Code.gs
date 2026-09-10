@@ -1,120 +1,185 @@
-/*
- * SIGECAT - alertas diarias de vencimiento
- *
- * Este archivo se ejecuta desde un proyecto independiente de Google Apps Script.
- * No guarda claves: usa el token OAuth de la cuenta institucional que crea el trigger.
- */
-const TIME_ZONE = 'America/Bogota';
+/* SIGECAT - alertas diarias de vencimiento. Compatible con Apps Script clásico. */
+var TIME_ZONE = 'America/Bogota';
 
 function setupDailyDeadlineAlerts() {
-  const projectId = PropertiesService.getScriptProperties().getProperty('FIREBASE_PROJECT_ID');
-  if (!projectId) throw new Error('Configura la propiedad FIREBASE_PROJECT_ID antes de activar el envío.');
-
-  ScriptApp.getProjectTriggers()
-    .filter((trigger) => trigger.getHandlerFunction() === 'sendDeadlineAlerts')
-    .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
-
+  var projectId = PropertiesService.getScriptProperties().getProperty('FIREBASE_PROJECT_ID');
+  if (!projectId) throw new Error('Configura FIREBASE_PROJECT_ID antes de activar el envio.');
+  deleteDeadlineAlertTriggers_();
   ScriptApp.newTrigger('sendDeadlineAlerts').timeBased().everyDays(1).atHour(8).create();
-  console.log('Alerta diaria creada. Google la ejecutará aproximadamente entre las 08:00 y 09:00 de Colombia.');
+  ScriptApp.newTrigger('processEmailTestRequests').timeBased().everyMinutes(5).create();
+  Logger.log('Alerta diaria creada correctamente.');
 }
 
 function disableDailyDeadlineAlerts() {
-  ScriptApp.getProjectTriggers()
-    .filter((trigger) => trigger.getHandlerFunction() === 'sendDeadlineAlerts')
-    .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
+  deleteDeadlineAlertTriggers_();
+}
+
+/* Ejecuta esta función manualmente desde Apps Script para comprobar la configuración. */
+function sendTestDeadlineAlert() {
+  var recipient = Session.getEffectiveUser().getEmail();
+  if (!recipient) {
+    throw new Error('No se pudo identificar el correo de la cuenta que ejecuta el script.');
+  }
+
+  var configuration = getDocument_('configuracion/reglasNegocio') || {};
+  MailApp.sendEmail({
+    to: recipient,
+    subject: 'SIGECAT: prueba de alertas por correo',
+    body: 'La prueba fue exitosa. El proceso de alertas de SIGECAT puede consultar Firestore y enviar correos desde esta cuenta institucional. Alertas habilitadas: ' + (configuration.alertasCorreoHabilitadas === true ? 'si' : 'no') + '.'
+  });
+  Logger.log('Correo de prueba enviado a ' + recipient + '.');
+}
+
+function deleteDeadlineAlertTriggers_() {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i = i + 1) {
+    if (triggers[i].getHandlerFunction() === 'sendDeadlineAlerts' || triggers[i].getHandlerFunction() === 'processEmailTestRequests') {
+      ScriptApp.deleteTrigger(triggers[i]);
+    }
+  }
+}
+
+function processEmailTestRequests() {
+  var requests = queryPendingEmailTests_();
+  for (var i = 0; i < requests.length; i = i + 1) {
+    var request = requests[i];
+    try {
+      MailApp.sendEmail({
+        to: request.data.destinatarioCorreo,
+        subject: 'SIGECAT: prueba de alertas por correo',
+        body: 'Hola ' + (request.data.destinatarioNombre || '') + '.\n\nEsta es una prueba solicitada desde la configuración de SIGECAT. Si recibes este mensaje, las alertas por correo están funcionando correctamente.'
+      });
+      patchFields_('solicitudesPruebaCorreo/' + request.id, { estado: 'Enviado', fechaProcesamiento: new Date() });
+    } catch (error) {
+      patchFields_('solicitudesPruebaCorreo/' + request.id, { estado: 'Error', detalleError: String(error), fechaProcesamiento: new Date() });
+    }
+  }
 }
 
 function sendDeadlineAlerts() {
-  const configuration = getDocument_('configuracion/reglasNegocio') || {};
+  var configuration = getDocument_('configuracion/reglasNegocio') || {};
   if (configuration.alertasCorreoHabilitadas !== true) {
-    console.log('Las alertas por correo están desactivadas desde SIGECAT.');
+    Logger.log('Las alertas por correo estan desactivadas desde SIGECAT.');
     return;
   }
 
-  const threshold = Number(configuration.umbralProximoVencer || 3);
-  const holidays = new Set(configuration.diasFestivos || []);
-  const users = {};
+  var threshold = Number(configuration.umbralProximoVencer || 3);
+  var holidayMap = {};
+  var holidayList = configuration.diasFestivos || [];
+  for (var h = 0; h < holidayList.length; h = h + 1) holidayMap[holidayList[h]] = true;
 
-  queryActiveExpedients_().forEach((expedient) => {
-    const data = expedient.data;
-    const official = data.funcionarioAsignado;
-    if (!data.fechaLimite || !official || !official.uid) return;
+  var users = {};
+  var expedients = queryActiveExpedients_();
+  for (var i = 0; i < expedients.length; i = i + 1) {
+    sendDeadlineAlertForExpedient_(expedients[i], threshold, holidayMap, users);
+  }
+}
 
-    const remaining = remainingBusinessDays_(data.fechaLimite, new Date(), holidays);
-    if (remaining < 0 || remaining > threshold) return;
+function sendDeadlineAlertForExpedient_(expedient, threshold, holidayMap, users) {
+  var data = expedient.data;
+  var official = data.funcionarioAsignado;
+  if (!data.fechaLimite || !official || !official.uid) return;
 
-    const deadlineKey = dateKey_(new Date(data.fechaLimite));
-    const alertKey = `${official.uid}|${deadlineKey}`;
-    if (data.ultimaAlertaVencimiento && data.ultimaAlertaVencimiento.clave === alertKey) return;
+  var remaining = remainingBusinessDays_(data.fechaLimite, new Date(), holidayMap);
+  if (remaining < 0 || remaining > threshold) return;
 
-    if (!(official.uid in users)) users[official.uid] = getDocument_(`usuarios/${official.uid}`);
-    const recipient = users[official.uid];
-    if (!recipient || recipient.activo !== true || recipient.recibeAlertasVencimiento !== true || !recipient.correo) return;
+  var deadlineKey = dateKey_(new Date(data.fechaLimite));
+  var alertKey = official.uid + '|' + deadlineKey;
+  if (data.ultimaAlertaVencimiento && data.ultimaAlertaVencimiento.clave === alertKey) return;
 
-    const filing = data.numeroRadicado || expedient.id;
-    const deadline = new Date(data.fechaLimite).toLocaleDateString('es-CO', { timeZone: TIME_ZONE });
-    const label = remaining === 0
-      ? 'vence hoy'
-      : `vence en ${remaining} día${remaining === 1 ? '' : 's'} hábil${remaining === 1 ? '' : 'es'}`;
-    const subject = `SIGECAT: el radicado ${filing} ${label}`;
-    const body = `Hola ${official.nombreCompleto || ''},\n\nEl expediente ${filing}${data.tipoTramite ? ` (${data.tipoTramite})` : ''} ${label}.\nLa fecha límite de respuesta es ${deadline}.\n\nIngresa a SIGECAT para gestionar la respuesta.`;
+  if (!users.hasOwnProperty(official.uid)) users[official.uid] = getDocument_('usuarios/' + official.uid);
+  var recipient = users[official.uid];
+  if (!recipient || recipient.activo !== true || recipient.recibeAlertasVencimiento !== true || !recipient.correo) return;
 
-    try {
-      MailApp.sendEmail({ to: recipient.correo, subject, body, htmlBody: body.replace(/\n/g, '<br>') });
-      patchDocument_(expedient.id, {
-        ultimaAlertaVencimiento: { clave: alertKey, fecha: new Date() },
-      });
-      console.log(`Alerta enviada para ${filing} a ${recipient.correo}.`);
-    } catch (error) {
-      console.error(`No fue posible enviar la alerta del expediente ${expedient.id}: ${error}`);
-    }
-  });
+  var filing = data.numeroRadicado || expedient.id;
+  var deadline = Utilities.formatDate(new Date(data.fechaLimite), TIME_ZONE, 'dd/MM/yyyy');
+  var label = remaining === 0 ? 'vence hoy' : 'vence en ' + remaining + ' dia' + (remaining === 1 ? '' : 's') + ' habil' + (remaining === 1 ? '' : 'es');
+  var subject = 'SIGECAT: el radicado ' + filing + ' ' + label;
+  var body = 'Hola ' + (official.nombreCompleto || '') + ',\n\nEl expediente ' + filing + (data.tipoTramite ? ' (' + data.tipoTramite + ')' : '') + ' ' + label + '.\nLa fecha limite de respuesta es ' + deadline + '.\n\nIngresa a SIGECAT para gestionar la respuesta.';
+
+  try {
+    MailApp.sendEmail({ to: recipient.correo, subject: subject, body: body, htmlBody: body.replace(/\n/g, '<br>') });
+    patchDocument_(expedient.id, { ultimaAlertaVencimiento: { clave: alertKey, fecha: new Date() } });
+    Logger.log('Alerta enviada para ' + filing + ' a ' + recipient.correo + '.');
+  } catch (error) {
+    Logger.log('No fue posible enviar la alerta del expediente ' + expedient.id + ': ' + error);
+  }
 }
 
 function queryActiveExpedients_() {
-  const response = firestoreRequest_(':runQuery', 'post', {
+  var response = firestoreRequest_(':runQuery', 'post', {
     structuredQuery: {
       from: [{ collectionId: 'expedientes' }],
-      where: { fieldFilter: { field: { fieldPath: 'activo' }, op: 'EQUAL', value: { booleanValue: true } } },
-    },
+      where: { fieldFilter: { field: { fieldPath: 'activo' }, op: 'EQUAL', value: { booleanValue: true } } }
+    }
   });
-  return response.filter((item) => item.document).map((item) => ({
-    id: item.document.name.split('/').pop(),
-    data: decodeFields_(item.document.fields || {}),
-  }));
+  var results = [];
+  for (var i = 0; i < response.length; i = i + 1) {
+    if (response[i].document) {
+      var document = response[i].document;
+      results.push({ id: document.name.split('/').pop(), data: decodeFields_(document.fields || {}) });
+    }
+  }
+  return results;
+}
+
+function queryPendingEmailTests_() {
+  var response = firestoreRequest_(':runQuery', 'post', {
+    structuredQuery: {
+      from: [{ collectionId: 'solicitudesPruebaCorreo' }],
+      where: { fieldFilter: { field: { fieldPath: 'estado' }, op: 'EQUAL', value: { stringValue: 'Pendiente' } } }
+    }
+  });
+  var results = [];
+  for (var i = 0; i < response.length; i = i + 1) {
+    if (response[i].document) {
+      var document = response[i].document;
+      results.push({ id: document.name.split('/').pop(), data: decodeFields_(document.fields || {}) });
+    }
+  }
+  return results;
 }
 
 function getDocument_(path) {
-  const response = firestoreRequest_(`/documents/${path}`, 'get');
+  var response = firestoreRequest_('/documents/' + path, 'get');
   return response ? decodeFields_(response.fields || {}) : null;
 }
 
 function patchDocument_(id, values) {
-  const fields = {};
-  Object.keys(values).forEach((key) => { fields[key] = encodeValue_(values[key]); });
-  firestoreRequest_(`/documents/expedientes/${id}?updateMask.fieldPaths=ultimaAlertaVencimiento`, 'patch', { fields });
+  var fields = {};
+  var keys = Object.keys(values);
+  for (var i = 0; i < keys.length; i = i + 1) fields[keys[i]] = encodeValue_(values[keys[i]]);
+  firestoreRequest_('/documents/expedientes/' + id + '?updateMask.fieldPaths=ultimaAlertaVencimiento', 'patch', { fields: fields });
+}
+
+function patchFields_(path, values) {
+  var fields = {};
+  var keys = Object.keys(values);
+  var masks = [];
+  for (var i = 0; i < keys.length; i = i + 1) {
+    fields[keys[i]] = encodeValue_(values[keys[i]]);
+    masks.push('updateMask.fieldPaths=' + keys[i]);
+  }
+  firestoreRequest_('/documents/' + path + '?' + masks.join('&'), 'patch', { fields: fields });
 }
 
 function firestoreRequest_(path, method, payload) {
-  const projectId = PropertiesService.getScriptProperties().getProperty('FIREBASE_PROJECT_ID');
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)${path}`;
-  const response = UrlFetchApp.fetch(url, {
-    method,
-    contentType: 'application/json',
-    headers: { Authorization: `Bearer ${ScriptApp.getOAuthToken()}` },
-    payload: payload ? JSON.stringify(payload) : undefined,
-    muteHttpExceptions: true,
-  });
-  const status = response.getResponseCode();
+  var projectId = PropertiesService.getScriptProperties().getProperty('FIREBASE_PROJECT_ID');
+  var url = 'https://firestore.googleapis.com/v1/projects/' + projectId + '/databases/(default)' + path;
+  var options = { method: method, contentType: 'application/json', headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() }, muteHttpExceptions: true };
+  if (payload) options.payload = JSON.stringify(payload);
+  var response = UrlFetchApp.fetch(url, options);
+  var status = response.getResponseCode();
   if (status === 404 && method === 'get') return null;
-  if (status < 200 || status >= 300) throw new Error(`Firestore ${status}: ${response.getContentText()}`);
-  const text = response.getContentText();
+  if (status < 200 || status >= 300) throw new Error('Firestore ' + status + ': ' + response.getContentText());
+  var text = response.getContentText();
   return text ? JSON.parse(text) : null;
 }
 
 function decodeFields_(fields) {
-  const result = {};
-  Object.keys(fields).forEach((key) => { result[key] = decodeValue_(fields[key]); });
+  var result = {};
+  var keys = Object.keys(fields);
+  for (var i = 0; i < keys.length; i = i + 1) result[keys[i]] = decodeValue_(fields[keys[i]]);
   return result;
 }
 
@@ -125,17 +190,27 @@ function decodeValue_(value) {
   if ('booleanValue' in value) return value.booleanValue;
   if ('timestampValue' in value) return value.timestampValue;
   if ('mapValue' in value) return decodeFields_(value.mapValue.fields || {});
-  if ('arrayValue' in value) return (value.arrayValue.values || []).map(decodeValue_);
+  if ('arrayValue' in value) {
+    var values = value.arrayValue.values || [];
+    var result = [];
+    for (var i = 0; i < values.length; i = i + 1) result.push(decodeValue_(values[i]));
+    return result;
+  }
   return null;
 }
 
 function encodeValue_(value) {
   if (value instanceof Date) return { timestampValue: value.toISOString() };
-  if (Array.isArray(value)) return { arrayValue: { values: value.map(encodeValue_) } };
+  if (Object.prototype.toString.call(value) === '[object Array]') {
+    var encoded = [];
+    for (var i = 0; i < value.length; i = i + 1) encoded.push(encodeValue_(value[i]));
+    return { arrayValue: { values: encoded } };
+  }
   if (value && typeof value === 'object') {
-    const fields = {};
-    Object.keys(value).forEach((key) => { fields[key] = encodeValue_(value[key]); });
-    return { mapValue: { fields } };
+    var fields = {};
+    var keys = Object.keys(value);
+    for (var j = 0; j < keys.length; j = j + 1) fields[keys[j]] = encodeValue_(value[keys[j]]);
+    return { mapValue: { fields: fields } };
   }
   if (typeof value === 'boolean') return { booleanValue: value };
   if (typeof value === 'number') return { doubleValue: value };
@@ -147,18 +222,18 @@ function dateKey_(date) {
 }
 
 function dateAtStart_(date) {
-  return new Date(`${dateKey_(date)}T00:00:00-05:00`);
+  return new Date(dateKey_(date) + 'T00:00:00-05:00');
 }
 
-function remainingBusinessDays_(deadline, today, holidays) {
-  const target = dateAtStart_(deadline);
-  const cursor = dateAtStart_(today);
-  const direction = target.getTime() >= cursor.getTime() ? 1 : -1;
-  let days = 0;
+function remainingBusinessDays_(deadline, today, holidayMap) {
+  var target = dateAtStart_(deadline);
+  var cursor = dateAtStart_(today);
+  var direction = target.getTime() >= cursor.getTime() ? 1 : -1;
+  var days = 0;
   while (cursor.getTime() !== target.getTime()) {
     cursor.setDate(cursor.getDate() + direction);
-    const weekday = cursor.getDay();
-    if (weekday !== 0 && weekday !== 6 && !holidays.has(dateKey_(cursor))) days += direction;
+    var weekday = cursor.getDay();
+    if (weekday !== 0 && weekday !== 6 && !holidayMap[dateKey_(cursor)]) days += direction;
   }
   return days;
 }

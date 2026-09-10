@@ -71,5 +71,9 @@ el administrador haya habilitado en **Configuración → Alertas por correo**.
    recibirlas. El proceso respeta el umbral de días hábiles y evita repetir una alerta para el
    mismo responsable y fecha límite.
 
+Para comprobar la conexión antes de habilitar destinatarios, ejecute manualmente
+`sendTestDeadlineAlert` desde Apps Script. El correo de prueba se envía a la cuenta institucional
+que ejecuta el script y confirma también que puede consultar Firestore.
+
 Para detener el proceso por completo, ejecute `disableDailyDeadlineAlerts` en Apps Script. Para
 pausarlo sin eliminar el disparador, desactive **Alertas por correo** en SIGECAT.
