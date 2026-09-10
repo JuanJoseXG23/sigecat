@@ -44,11 +44,15 @@ function processEmailTestRequests() {
   for (var i = 0; i < requests.length; i = i + 1) {
     var request = requests[i];
     try {
-      MailApp.sendEmail({
+      var emailOptions = {
         to: request.data.destinatarioCorreo,
         subject: 'SIGECAT: prueba de alertas por correo',
         body: 'Hola ' + (request.data.destinatarioNombre || '') + '.\n\nEsta es una prueba solicitada desde la configuración de SIGECAT. Si recibes este mensaje, las alertas por correo están funcionando correctamente.'
-      });
+      };
+      if (request.data.solicitadoPorCorreo && request.data.solicitadoPorCorreo !== request.data.destinatarioCorreo) {
+        emailOptions.cc = request.data.solicitadoPorCorreo;
+      }
+      MailApp.sendEmail(emailOptions);
       patchFields_('solicitudesPruebaCorreo/' + request.id, { estado: 'Enviado', fechaProcesamiento: new Date() });
     } catch (error) {
       patchFields_('solicitudesPruebaCorreo/' + request.id, { estado: 'Error', detalleError: String(error), fechaProcesamiento: new Date() });
@@ -107,7 +111,7 @@ function sendDeadlineAlertForExpedient_(expedient, threshold, holidayMap, users)
 }
 
 function queryActiveExpedients_() {
-  var response = firestoreRequest_(':runQuery', 'post', {
+  var response = firestoreRequest_('/documents:runQuery', 'post', {
     structuredQuery: {
       from: [{ collectionId: 'expedientes' }],
       where: { fieldFilter: { field: { fieldPath: 'activo' }, op: 'EQUAL', value: { booleanValue: true } } }
@@ -124,7 +128,7 @@ function queryActiveExpedients_() {
 }
 
 function queryPendingEmailTests_() {
-  var response = firestoreRequest_(':runQuery', 'post', {
+  var response = firestoreRequest_('/documents:runQuery', 'post', {
     structuredQuery: {
       from: [{ collectionId: 'solicitudesPruebaCorreo' }],
       where: { fieldFilter: { field: { fieldPath: 'estado' }, op: 'EQUAL', value: { stringValue: 'Pendiente' } } }
