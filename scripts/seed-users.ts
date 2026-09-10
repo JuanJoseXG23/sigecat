@@ -8,7 +8,7 @@ import type { UserRole } from '../src/types/user.js'
 interface SeedUser {
   nombreCompleto: string
   correo: string
-  contrasena: string
+  passwordEnvironment: string
   cargo: string
   rol: UserRole
 }
@@ -17,28 +17,28 @@ const initialUsers: SeedUser[] = [
   {
     nombreCompleto: 'Juan Jose Gomez Roldan',
     correo: 'auxiliar.catastro3@girardota.gov.co',
-    contrasena: 'Juanjo2016*',
+    passwordEnvironment: 'SIGECAT_SEED_ADMIN_PASSWORD',
     cargo: 'Auxiliar Administrativo',
     rol: 'Administrador',
   },
   {
     nombreCompleto: 'John Fredy Mejia Martinez',
     correo: 'hacienda.catastro@girardota.gov.co',
-    contrasena: 'hacienda2026*',
+    passwordEnvironment: 'SIGECAT_SEED_COORDINATOR_PASSWORD',
     cargo: 'Profesional Universitario',
     rol: 'Coordinador',
   },
   {
     nombreCompleto: 'Doricela Bustamante Hoyos',
     correo: 'tecnico.catastro@girardota.gov.co',
-    contrasena: 'tecnico2026*',
+    passwordEnvironment: 'SIGECAT_SEED_OFFICIAL_1_PASSWORD',
     cargo: 'Técnico Administrativo',
     rol: 'Funcionario',
   },
   {
     nombreCompleto: 'Juan David Henao Vanegas',
     correo: 'apoyo.catastro@girardota.gov.co',
-    contrasena: 'apoyo2026*',
+    passwordEnvironment: 'SIGECAT_SEED_OFFICIAL_2_PASSWORD',
     cargo: 'Apoyo Administrativo',
     rol: 'Funcionario',
   },
@@ -46,9 +46,20 @@ const initialUsers: SeedUser[] = [
 
 const serviceAccountPath = path.resolve(
   process.cwd(),
-  'secrets',
-  'firebase-admin.json',
+  process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_PATH ?? 'secrets/firebase-admin.json',
 )
+
+const resetPasswords = process.env.SIGECAT_RESET_SEED_PASSWORDS === 'true'
+
+function getRequiredPassword(seedUser: SeedUser): string {
+  const password = process.env[seedUser.passwordEnvironment]
+  if (!password) {
+    throw new Error(
+      `Falta la variable de entorno ${seedUser.passwordEnvironment}. No incluyas contraseñas en el repositorio.`,
+    )
+  }
+  return password
+}
 
 const serviceAccount = JSON.parse(
   readFileSync(serviceAccountPath, 'utf8'),
@@ -79,13 +90,17 @@ async function seedInitialUser(seedUser: SeedUser): Promise<void> {
 
     const createdUser = await auth.createUser({
       email: seedUser.correo,
-      password: seedUser.contrasena,
+      password: getRequiredPassword(seedUser),
       displayName: seedUser.nombreCompleto,
       disabled: false,
     })
 
     uid = createdUser.uid
     authStatus = 'creado'
+  }
+
+  if (authStatus === 'ya existía' && resetPasswords) {
+    await auth.updateUser(uid, { password: getRequiredPassword(seedUser) })
   }
 
   const userDocument = firestore.collection('usuarios').doc(uid)

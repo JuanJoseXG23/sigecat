@@ -9,19 +9,38 @@ npm install
 npm run dev
 ```
 
-## Inicializar los usuarios
+## Inicializar o rotar usuarios
 
-El seed usa Firebase Admin, por lo que requiere una cuenta de servicio del proyecto `sigecat-7c6ec`. En Firebase Console ve a **Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada**. No subas ese archivo al repositorio.
-
-En PowerShell, define la ruta absoluta del archivo descargado y ejecuta el seed:
+El seed requiere una cuenta de servicio de Firebase Admin que no debe subirse al repositorio.
+Para crear cuentas que aún no existen, define la ruta y las contraseñas nuevas sólo en la sesión
+actual de PowerShell:
 
 ```powershell
-$env:GOOGLE_APPLICATION_CREDENTIALS = 'C:\ruta\segura\service-account.json'
+$env:FIREBASE_ADMIN_SERVICE_ACCOUNT_PATH = 'C:\ruta\segura\service-account.json'
+$env:SIGECAT_SEED_ADMIN_PASSWORD = 'contraseña-nueva-y-segura'
+$env:SIGECAT_SEED_COORDINATOR_PASSWORD = 'contraseña-nueva-y-segura'
+$env:SIGECAT_SEED_OFFICIAL_1_PASSWORD = 'contraseña-nueva-y-segura'
+$env:SIGECAT_SEED_OFFICIAL_2_PASSWORD = 'contraseña-nueva-y-segura'
 npm run seed
 ```
 
-El script crea los usuarios de Authentication y sus perfiles en `usuarios`. Es idempotente: conserva los usuarios y perfiles que ya existen, y los informa en la consola.
+El proceso es idempotente y conserva usuarios existentes. Para rotar explícitamente las
+contraseñas de estas cuentas, define además:
 
-## Reglas de Firestore
+```powershell
+$env:SIGECAT_RESET_SEED_PASSWORDS = 'true'
+npm run seed
+```
 
-El archivo `firestore.rules` permite que cada usuario consulte su propio perfil, actualice únicamente `ultimoIngreso` y reserva la administración de perfiles para el rol `Administrador`. Publícalo desde Firebase Console antes de usar la autenticación en producción.
+Después de una rotación, invalida sesiones desde Firebase Authentication. Nunca guardes
+contraseñas en archivos versionados, `.env.production` ni historial de terminal.
+
+## Reglas de Firebase
+
+`firestore.rules` exige un perfil activo para acceder a datos y limita las tareas a su
+responsable. `storage.rules` bloquea Storage por completo hasta implementar cargas seguras.
+Despliega ambas reglas antes de usar estos cambios en producción:
+
+```powershell
+firebase deploy --only firestore:rules,storage
+```

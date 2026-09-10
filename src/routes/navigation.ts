@@ -37,7 +37,7 @@ export const appNavigation: readonly AppNavigationItem[] = [
     roles: ['Administrador', 'Coordinador'],
   },
   { label: 'Tipos de trámite', path: '/tipos-tramite', icon: FileText, roles: ['Administrador'] },
-  { label: 'Configuración', path: '/configuracion', icon: Settings, roles: allRoles },
+  { label: 'Configuración', path: '/configuracion', icon: Settings, roles: ['Administrador'] },
 ]
 
 export function getNavigationItem(pathname: string): AppNavigationItem | undefined {

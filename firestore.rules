@@ -1,74 +1,90 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
+    function signedInWithActiveProfile() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.activo == true;
     }
 
     function isAdministrator() {
-      return signedIn() &&
+      return signedInWithActiveProfile() &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'Administrador';
     }
 
-    function canManageExpedients() {
-      return signedIn() &&
+    function isOperationalUser() {
+      return signedInWithActiveProfile() &&
         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol in
           ['Administrador', 'Coordinador', 'Funcionario'];
     }
 
-    function canDeleteRadicationAndHistory() {
-      return signedIn() && request.auth.uid == 'AwFgpoMeCgQ0FyZ4R4gHIv2LlyC2';
-    }
-
     match /usuarios/{userId} {
-      allow get: if signedIn() && (request.auth.uid == userId || isAdministrator());
-      allow list: if signedIn();
+      allow get: if signedInWithActiveProfile() &&
+        (request.auth.uid == userId || isAdministrator());
+      // Operational users need this query solely to select an assignee. Split this
+      // data into a minimal public directory before allowing the Consulta role.
+      allow list: if isOperationalUser();
       allow create, delete: if isAdministrator();
       allow update: if isAdministrator() ||
-        (request.auth.uid == userId &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ultimoIngreso']));
+        (signedInWithActiveProfile() && request.auth.uid == userId &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['ultimoIngreso']));
     }
 
     match /expedientes/{expedientId} {
-      allow get, list: if signedIn();
-      allow create, update: if canManageExpedients();
+      allow get, list: if signedInWithActiveProfile();
+      allow create, update: if isOperationalUser();
       allow delete: if false;
 
       match /historial/{historyId} {
-        allow get, list: if signedIn();
-        allow create: if canManageExpedients();
-        allow update: if false;
-        allow delete: if canDeleteRadicationAndHistory();
+        allow get, list: if signedInWithActiveProfile();
+        allow create: if isOperationalUser() && request.resource.data.usuario == request.auth.uid;
+        allow update, delete: if false;
       }
 
       match /observaciones/{observationId} {
-        allow get, list: if signedIn();
-        allow create: if canManageExpedients();
+        allow get, list: if signedInWithActiveProfile();
+        allow create: if isOperationalUser() && request.resource.data.creadoPor == request.auth.uid;
         allow update, delete: if false;
       }
     }
 
+    // Legacy document records are retained while documents are migrated to the
+    // workflow field. Their author cannot be forged and deletion is administrative.
+    match /documentosEscaneados/{documentId} {
+      allow get, list: if signedInWithActiveProfile();
+      allow create: if isOperationalUser() && request.resource.data.creadoPor == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdministrator();
+    }
+
     match /tiposTramite/{typeId} {
-      allow get, list: if signedIn();
+      allow get, list: if signedInWithActiveProfile();
       allow create, update: if isAdministrator();
       allow delete: if false;
     }
 
     match /configuracion/{configurationId} {
-      allow get, list: if signedIn();
+      allow get, list: if signedInWithActiveProfile();
       allow create, update: if isAdministrator();
       allow delete: if false;
     }
 
     match /radicados/{filingId} {
-      allow get, list: if signedIn();
-      allow create: if canManageExpedients();
+      allow get, list: if signedInWithActiveProfile();
+      allow create: if isOperationalUser();
       allow update: if false;
-      allow delete: if canDeleteRadicationAndHistory();
+      allow delete: if isAdministrator();
     }
 
     match /tareas/{taskId} {
-      allow get, list, create, update, delete: if signedIn();
+      allow get: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;
+      allow list: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;
+      allow create: if signedInWithActiveProfile() &&
+        request.resource.data.responsableId == request.auth.uid;
+      allow update: if signedInWithActiveProfile() &&
+        resource.data.responsableId == request.auth.uid &&
+        request.resource.data.responsableId == resource.data.responsableId;
+      allow delete: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;
     }
   }
 }

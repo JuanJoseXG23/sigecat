@@ -9,10 +9,8 @@ import { Select } from '@/components/ui/select'
 import { useAuth } from '@/hooks/use-auth'
 import { deleteFiling, listFilings } from '@/services/filing.service'
 
-const JUAN_JOSE_UID = 'AwFgpoMeCgQ0FyZ4R4gHIv2LlyC2'
-
 export function FilingPage() {
-  const { user } = useAuth()
+  const { profile } = useAuth()
   const client = useQueryClient()
   const {
     data = [],
@@ -22,7 +20,7 @@ export function FilingPage() {
   const [search, setSearch] = useState('')
   const [type, setType] = useState('')
   const [municipality, setMunicipality] = useState('')
-  const canDelete = user?.uid === JUAN_JOSE_UID
+  const canDelete = profile?.rol === 'Administrador'
   const remove = useMutation({
     mutationFn: deleteFiling,
     onSuccess: () => client.invalidateQueries({ queryKey: ['filings'] }),
