@@ -1,13 +1,17 @@
-import { Building2 } from 'lucide-react'
 import { Outlet } from 'react-router-dom'
+import shield from '@/img/Escudo_de_Girardota.webp'
 
 export function AuthLayout() {
   return (
     <main className="grid min-h-screen place-items-center bg-slate-50 p-5">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 grid size-12 place-items-center rounded-xl bg-primary text-white">
-            <Building2 />
+          <div className="mx-auto mb-4 grid size-16 place-items-center rounded-2xl bg-white p-2 shadow-lg shadow-emerald-950/10 ring-1 ring-slate-200">
+            <img
+              src={shield}
+              alt="Escudo del Municipio de Girardota"
+              className="size-full object-contain"
+            />
           </div>
           <h1 className="text-2xl font-semibold text-slate-900">SIGECAT</h1>
           <p className="mt-1 text-sm text-slate-500">

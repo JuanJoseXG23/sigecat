@@ -29,11 +29,11 @@ function SideNavigation({ collapsed = false, onNavigate }: NavigationProps) {
             onClick={onNavigate}
             className={({ isActive }) =>
               cn(
-                'flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                'group flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
                 collapsed ? 'justify-center' : 'gap-3',
                 isActive
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950',
+                  : 'text-slate-600 hover:bg-emerald-50 hover:text-primary',
               )
             }
           >
@@ -90,6 +90,9 @@ export function MainLayout() {
       >
         <Brand collapsed={collapsed} />
         <SideNavigation collapsed={collapsed} />
+        {!collapsed && (
+          <p className="px-5 pt-3 text-xs leading-5 text-slate-400">Gestión documental catastral</p>
+        )}
         <div className="absolute inset-x-0 bottom-5 flex justify-center">
           <Button
             variant="ghost"
@@ -159,7 +162,13 @@ export function MainLayout() {
               {breadcrumbs.map((breadcrumb, index) => (
                 <span key={breadcrumb} className="flex items-center gap-2">
                   {index > 0 && <span className="text-slate-300">/</span>}
-                  <span className={cn(index === breadcrumbs.length - 1 ? 'truncate font-medium text-slate-800' : 'hidden text-slate-500 sm:inline')}>
+                  <span
+                    className={cn(
+                      index === breadcrumbs.length - 1
+                        ? 'truncate font-medium text-slate-800'
+                        : 'hidden text-slate-500 sm:inline',
+                    )}
+                  >
                     {breadcrumb}
                   </span>
                 </span>
@@ -171,14 +180,20 @@ export function MainLayout() {
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg p-1 text-left outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-ring">
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-medium text-slate-800">{profile?.nombreCompleto}</p>
-                <p className="text-xs text-slate-500">{profile?.cargo} · {profile?.rol}</p>
+                <p className="text-xs text-slate-500">
+                  {profile?.cargo} · {profile?.rol}
+                </p>
               </div>
-              <Avatar aria-label={`Usuario: ${profile?.nombreCompleto ?? 'sin nombre'}`}>{initial}</Avatar>
+              <Avatar aria-label={`Usuario: ${profile?.nombreCompleto ?? 'sin nombre'}`}>
+                {initial}
+              </Avatar>
             </summary>
-            <div className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+            <div className="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl shadow-slate-900/10">
               <div className="border-b border-slate-100 px-3 py-2 sm:hidden">
                 <p className="text-sm font-medium text-slate-800">{profile?.nombreCompleto}</p>
-                <p className="mt-0.5 text-xs text-slate-500">{profile?.cargo} · {profile?.rol}</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {profile?.cargo} · {profile?.rol}
+                </p>
               </div>
               <button
                 className="mt-1 flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-red-50 hover:text-destructive"

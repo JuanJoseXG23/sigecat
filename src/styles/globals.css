@@ -32,5 +32,55 @@
   }
   body {
     @apply bg-background font-sans text-foreground antialiased;
+    min-width: 320px;
+    background-image: radial-gradient(
+      circle at 0% 0%,
+      hsl(var(--primary) / 0.06),
+      transparent 27rem
+    );
+  }
+  ::selection {
+    @apply bg-primary/20 text-foreground;
+  }
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2;
+  }
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-slate-300;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
+
+@layer components {
+  .page-heading {
+    @apply text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl;
+  }
+  .page-kicker {
+    @apply text-sm font-semibold text-primary;
+  }
+  .page-description {
+    @apply mt-1 max-w-2xl text-sm leading-6 text-slate-500;
+  }
+  .table-shell {
+    @apply overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm;
+  }
+  .table-head {
+    @apply border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+  .empty-state {
+    @apply px-5 py-12 text-center text-sm text-slate-500;
   }
 }

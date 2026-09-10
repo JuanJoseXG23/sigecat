@@ -3,13 +3,15 @@ import { type ButtonHTMLAttributes, forwardRef } from 'react'
 import { cn } from '@/lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center rounded-md text-sm font-semibold shadow-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-semibold shadow-sm transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'border-2 border-primary bg-primary text-primary-foreground hover:-translate-y-px hover:bg-primary/90 hover:shadow-md',
-        outline: 'border-2 border-primary bg-white text-primary hover:-translate-y-px hover:bg-primary hover:text-primary-foreground hover:shadow-md',
-        ghost: 'border border-transparent hover:bg-accent hover:text-accent-foreground',
+        default:
+          'border border-primary bg-primary text-primary-foreground hover:-translate-y-px hover:bg-primary/90 hover:shadow-md active:translate-y-0',
+        outline:
+          'border border-slate-300 bg-white text-slate-700 hover:border-primary hover:bg-primary/5 hover:text-primary',
+        ghost: 'border border-transparent text-slate-600 hover:bg-slate-100 hover:text-slate-900',
       },
       size: { default: 'h-10 px-4 py-2', sm: 'h-9 rounded-md px-3', lg: 'h-11 rounded-md px-8' },
     },

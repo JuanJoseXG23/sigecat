@@ -22,7 +22,11 @@ function priorityVariant(priority?: ExpedientPriority) {
 }
 
 function deadlineVariant(status?: 'En plazo' | 'Próximo a vencer' | 'Vencido') {
-  return status === 'Vencido' ? 'destructive' : status === 'Próximo a vencer' ? 'warning' : 'success'
+  return status === 'Vencido'
+    ? 'destructive'
+    : status === 'Próximo a vencer'
+      ? 'warning'
+      : 'success'
 }
 function initials(name?: string) {
   return (
@@ -102,7 +106,7 @@ export function DashboardPage() {
         <p className="text-sm text-slate-500">
           Inicio <span className="mx-1 text-slate-300">/</span> Dashboard
         </p>
-        <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900">
+        <h1 className="mt-5 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
           Bienvenido, {profile?.nombreCompleto ?? 'funcionario'} 👋
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -110,6 +114,24 @@ export function DashboardPage() {
         </p>
       </header>
       <Card className="border-slate-200 p-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-slate-800">Filtrar expedientes</p>
+          {(status || municipality || official || type || priority) && (
+            <button
+              type="button"
+              className="text-sm font-medium text-primary hover:underline"
+              onClick={() => {
+                setStatus('')
+                setMunicipality('')
+                setOfficial('')
+                setType('')
+                setPriority('')
+              }}
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
         <div className="grid gap-3 md:grid-cols-5">
           <Select value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="">Todos los estados</option>
@@ -234,9 +256,7 @@ export function DashboardPage() {
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      <Badge variant={deadlineVariant(item.estadoTermino)}>
-                        {item.estado}
-                      </Badge>
+                      <Badge variant={deadlineVariant(item.estadoTermino)}>{item.estado}</Badge>
                     </td>
                     <td className="px-4 py-4">
                       <Badge variant={priorityVariant(item.prioridad)}>
