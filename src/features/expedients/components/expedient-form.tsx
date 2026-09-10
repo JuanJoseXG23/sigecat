@@ -198,9 +198,6 @@ export function ExpedientForm({
           <Field label="Municipio">
             <Input {...form.register('predios.0.municipio')} />
           </Field>
-          <Field label="Número predial">
-            <Input {...form.register('predios.0.numeroPredial')} />
-          </Field>
           <Field label="Matrícula inmobiliaria">
             <Input {...form.register('predios.0.matriculaInmobiliaria')} />
           </Field>

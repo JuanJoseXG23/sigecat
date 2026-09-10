@@ -68,7 +68,7 @@ function processAssignmentNotifications() {
     var data = notification.data;
     try {
       var deadline = data.fechaLimite ? Utilities.formatDate(new Date(data.fechaLimite), TIME_ZONE, 'dd/MM/yyyy') : 'No registrada';
-      var body = 'Hola ' + (data.destinatarioNombre || '') + ',\n\nTienes un nuevo expediente asignado.\n\nNúmero de expediente: ' + (data.numeroRadicado || '') + '\nTrámite: ' + (data.tipoTramite || 'No registrado') + '\nSolicitante: ' + (data.solicitante || 'No registrado') + '\nPredio: ' + (data.predio || 'No registrado') + '\nFecha límite de respuesta: ' + deadline + '\n\nIngresa a SIGECAT para gestionarlo.';
+      var body = 'Hola ' + (data.destinatarioNombre || '') + ',\n\nTienes un nuevo expediente asignado.\n\nNúmero de expediente: ' + (data.numeroRadicado || '') + '\nTrámite: ' + (data.tipoTramite || 'No registrado') + '\nSolicitante: ' + (data.solicitante || 'No registrado') + '\nFecha límite de respuesta: ' + deadline + '\n\nIngresa a SIGECAT para gestionarlo.';
       MailApp.sendEmail({ to: data.destinatarioCorreo, subject: 'SIGECAT: nuevo expediente asignado - ' + (data.numeroRadicado || ''), body: body });
       patchFields_('notificacionesAsignacion/' + notification.id, { estado: 'Enviado', fechaProcesamiento: new Date() });
     } catch (error) {

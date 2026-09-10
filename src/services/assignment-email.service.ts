@@ -14,7 +14,6 @@ export async function queueAssignmentEmail(
     numeroRadicado: expedient.numeroRadicado,
     tipoTramite: expedient.tipoTramite ?? '',
     solicitante: expedient.solicitantes[0]?.nombre ?? '',
-    predio: expedient.predios[0]?.direccion ?? expedient.predios[0]?.numeroPredial ?? '',
     fechaLimite: expedient.fechaLimite?.toDate().toISOString() ?? '',
     estado: 'Pendiente',
     fechaSolicitud: serverTimestamp(),
