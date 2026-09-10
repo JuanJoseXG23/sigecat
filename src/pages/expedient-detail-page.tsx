@@ -248,10 +248,13 @@ export function ExpedientDetailPage() {
           ))}
         </div>
       </Card>
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b" role="tablist" aria-label="Secciones del expediente">
         {tabs.map((value) => (
           <button
             key={value}
+            type="button"
+            role="tab"
+            aria-selected={tab === value}
             onClick={() => setTab(value)}
             className={`border-b-2 px-4 py-3 text-sm ${tab === value ? 'border-primary text-primary' : 'border-transparent text-slate-500'}`}
           >

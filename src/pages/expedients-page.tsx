@@ -45,6 +45,7 @@ export function ExpedientsPage() {
   const [page, setPage] = useState(1)
   const [formOpen, setFormOpen] = useState(false)
   const [selectedExpedient, setSelectedExpedient] = useState<Expedient | undefined>()
+  const [operationError, setOperationError] = useState('')
   const canManage = hasRole(['Administrador', 'Coordinador', 'Funcionario'])
 
   const refresh = async () => {
@@ -53,6 +54,7 @@ export function ExpedientsPage() {
 
   const saveMutation = useMutation({
     mutationFn: async (values: ExpedientFormData) => {
+      setOperationError('')
       const official = officials.find((item) => item.uid === values.funcionarioAsignadoUid)
       const assignedOfficial = official
         ? { uid: official.uid, nombreCompleto: official.nombreCompleto }
@@ -68,11 +70,20 @@ export function ExpedientsPage() {
       setFormOpen(false)
       setSelectedExpedient(undefined)
     },
+    onError: (error) => {
+      setOperationError(error instanceof Error ? error.message : 'No fue posible guardar el expediente.')
+    },
   })
 
   const archiveMutation = useMutation({
-    mutationFn: (id: string) => archiveExpedient(id, user!.uid),
+    mutationFn: (id: string) => {
+      setOperationError('')
+      return archiveExpedient(id, user!.uid)
+    },
     onSuccess: refresh,
+    onError: (error) => {
+      setOperationError(error instanceof Error ? error.message : 'No fue posible archivar el expediente.')
+    },
   })
 
   const filteredExpedients = useMemo(() => {
@@ -145,6 +156,12 @@ export function ExpedientsPage() {
           </Button>
         )}
       </div>
+
+      {operationError && (
+        <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {operationError}
+        </p>
+      )}
 
       <Card className="p-4">
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_10rem_auto]">
@@ -359,9 +376,7 @@ export function ExpedientsPage() {
               onSubmit={async (values) => saveMutation.mutateAsync(values)}
             />
             {saveMutation.isError && (
-              <p className="mt-4 text-sm text-destructive">
-                No fue posible guardar el expediente. Intenta nuevamente.
-              </p>
+              <p className="mt-4 text-sm text-destructive">{operationError || 'No fue posible guardar el expediente. Intenta nuevamente.'}</p>
             )}
           </Card>
         </div>

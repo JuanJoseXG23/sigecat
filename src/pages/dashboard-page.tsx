@@ -1,6 +1,6 @@
 import {
+  AlertTriangle,
   CalendarDays,
-  CheckCircle2,
   Clock3,
   FileText,
   MessageSquare,
@@ -19,6 +19,10 @@ import { EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES, type ExpedientPriority } from
 
 function priorityVariant(priority?: ExpedientPriority) {
   return priority === 'Alta' ? 'destructive' : priority === 'Media' ? 'warning' : 'success'
+}
+
+function deadlineVariant(status?: 'En plazo' | 'Próximo a vencer' | 'Vencido') {
+  return status === 'Vencido' ? 'destructive' : status === 'Próximo a vencer' ? 'warning' : 'success'
 }
 function initials(name?: string) {
   return (
@@ -61,8 +65,8 @@ export function DashboardPage() {
     [
       'Vencidos',
       rows.filter((item) => item.estadoTermino === 'Vencido').length,
-      CheckCircle2,
-      'emerald',
+      AlertTriangle,
+      'red',
     ],
     [
       'Próximos a vencer',
@@ -86,6 +90,7 @@ export function DashboardPage() {
     ],
   ] as const
   const metricToneClasses = {
+    red: { icon: 'bg-red-100 text-red-600', line: 'bg-red-500' },
     emerald: { icon: 'bg-emerald-100 text-emerald-600', line: 'bg-emerald-500' },
     amber: { icon: 'bg-amber-100 text-amber-600', line: 'bg-amber-500' },
     sky: { icon: 'bg-sky-100 text-sky-600', line: 'bg-sky-500' },
@@ -229,7 +234,7 @@ export function DashboardPage() {
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      <Badge variant={item.estadoTermino === 'Vencido' ? 'destructive' : 'success'}>
+                      <Badge variant={deadlineVariant(item.estadoTermino)}>
                         {item.estado}
                       </Badge>
                     </td>
@@ -240,7 +245,10 @@ export function DashboardPage() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex gap-2">
-                        <Clock3 size={16} className="mt-0.5 text-slate-400" />
+                        <Clock3
+                          size={16}
+                          className={`mt-0.5 ${item.estadoTermino === 'Vencido' ? 'text-red-500' : item.estadoTermino === 'Próximo a vencer' ? 'text-amber-500' : 'text-slate-400'}`}
+                        />
                         <div>
                           <p className="font-medium text-slate-800">
                             {item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? '—'}
