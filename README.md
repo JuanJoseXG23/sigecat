@@ -38,9 +38,10 @@ contraseñas en archivos versionados, `.env.production` ni historial de terminal
 ## Reglas de Firebase
 
 `firestore.rules` exige un perfil activo para acceder a datos y limita las tareas a su
-responsable. `storage.rules` bloquea Storage por completo hasta implementar cargas seguras.
-Despliega ambas reglas antes de usar estos cambios en producción:
+responsable. Firebase Storage no está configurado en este proyecto y no se debe habilitar hasta
+implementar cargas seguras. Despliega las reglas de Firestore antes de usar estos cambios en
+producción:
 
 ```powershell
-firebase deploy --only firestore:rules,storage
+firebase deploy --only firestore:rules
 ```
