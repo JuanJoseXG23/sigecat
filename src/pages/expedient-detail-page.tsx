@@ -103,6 +103,7 @@ export function ExpedientDetailPage() {
   const [date, setDate] = useState('')
   const [notes, setNotes] = useState('')
   const [actionError, setActionError] = useState('')
+  const [actionNotice, setActionNotice] = useState('')
   void setOther
   const refresh = () =>
     Promise.all(
@@ -118,6 +119,7 @@ export function ExpedientDetailPage() {
   const execute = useMutation({
     mutationFn: async () => {
       setActionError('')
+      setActionNotice('')
       if (!item || !user) return
       const flow = item.trasladoPorCompetencia ? TRANSFER_FLOW : STANDARD_FLOW
       const index = flow.indexOf(item.estado)
@@ -139,6 +141,8 @@ export function ExpedientDetailPage() {
             { uid: selected.uid, nombreCompleto: selected.nombreCompleto },
             user.uid,
           )
+        if (selected)
+          setActionNotice(`Expediente asignado a ${selected.nombreCompleto}. Enviando correo de notificación; llegará en máximo cinco minutos.`)
         else await updateExternalAssignee(item.id, other, user.uid)
         return completeRequiredActuation(
           item.id,
@@ -152,11 +156,15 @@ export function ExpedientDetailPage() {
         if (choice === 'change') {
           const selected = officials.find((entry) => entry.uid === responsible)
           if (selected)
-            return updateExpedientAssignee(
+            await updateExpedientAssignee(
               item.id,
               { uid: selected.uid, nombreCompleto: selected.nombreCompleto },
               user.uid,
             )
+          if (selected) {
+            setActionNotice(`Expediente reasignado a ${selected.nombreCompleto}. Enviando correo de notificación; llegará en máximo cinco minutos.`)
+            return
+          }
           return updateExternalAssignee(item.id, other, user.uid)
         }
         if (choice === 'transfer') return transferByCompetence(item.id, destination, reason, user.uid)
@@ -207,6 +215,7 @@ export function ExpedientDetailPage() {
     workflowDocuments.some((document) => document.tipo === workflowRequirement.documentType)
   return (
     <section className="mx-auto max-w-7xl space-y-5">
+      {actionNotice && <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{actionNotice}</p>}
       <div className="flex justify-between items-start">
         <div>
           <Link to="/dashboard" className="text-sm text-slate-500">

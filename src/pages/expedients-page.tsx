@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { ArrowDownUp, Edit3, ExternalLink, FilePlus2, Search, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -35,6 +35,7 @@ function priorityVariant(
 
 export function ExpedientsPage() {
   const { user, hasRole } = useAuth()
+  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: expedients = [], isLoading, isError } = useExpedients()
   const { data: officials = [] } = useAssignableOfficials()
@@ -46,6 +47,7 @@ export function ExpedientsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [selectedExpedient, setSelectedExpedient] = useState<Expedient | undefined>()
   const [operationError, setOperationError] = useState('')
+  const [operationNotice, setOperationNotice] = useState('')
   const canManage = hasRole(['Administrador', 'Coordinador', 'Funcionario'])
 
   const refresh = async () => {
@@ -55,20 +57,27 @@ export function ExpedientsPage() {
   const saveMutation = useMutation({
     mutationFn: async (values: ExpedientFormData) => {
       setOperationError('')
+      setOperationNotice('')
       const official = officials.find((item) => item.uid === values.funcionarioAsignadoUid)
       const assignedOfficial = official
         ? { uid: official.uid, nombreCompleto: official.nombreCompleto }
         : selectedExpedient?.funcionarioAsignado
       if (selectedExpedient) {
         await updateExpedient(selectedExpedient.id, values, user!.uid, assignedOfficial)
+        return { assignedOfficialName: assignedOfficial?.nombreCompleto }
       } else if (user) {
-        await createExpedient(values, user.uid, assignedOfficial)
+        const id = await createExpedient(values, user.uid, assignedOfficial)
+        return { id, assignedOfficialName: assignedOfficial?.nombreCompleto }
       }
+      return { assignedOfficialName: assignedOfficial?.nombreCompleto }
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       await refresh()
       setFormOpen(false)
       setSelectedExpedient(undefined)
+      if (result?.assignedOfficialName)
+        setOperationNotice(`Expediente asignado a ${result.assignedOfficialName}. Enviando correo de notificación; llegará en máximo cinco minutos.`)
+      if (result?.id) navigate(`/expedientes/${result.id}`)
     },
     onError: (error) => {
       setOperationError(error instanceof Error ? error.message : 'No fue posible guardar el expediente.')
@@ -160,6 +169,11 @@ export function ExpedientsPage() {
       {operationError && (
         <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           {operationError}
+        </p>
+      )}
+      {operationNotice && (
+        <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          {operationNotice}
         </p>
       )}
 
@@ -373,7 +387,7 @@ export function ExpedientsPage() {
               expedient={selectedExpedient}
               isSaving={saveMutation.isPending}
               onCancel={() => setFormOpen(false)}
-              onSubmit={async (values) => saveMutation.mutateAsync(values)}
+              onSubmit={async (values) => { await saveMutation.mutateAsync(values) }}
             />
             {saveMutation.isError && (
               <p className="mt-4 text-sm text-destructive">{operationError || 'No fue posible guardar el expediente. Intenta nuevamente.'}</p>

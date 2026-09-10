@@ -101,7 +101,7 @@ export function ExpedientForm({
   }, [expedient, form])
 
   const submit: SubmitHandler<FormValues> = async (values) => {
-    await onSubmit(values)
+    await onSubmit({ ...values, estado: expedient ? values.estado : 'Recibido' })
   }
 
   return (
@@ -219,7 +219,7 @@ export function ExpedientForm({
             </Select>
             {selectedType && <span className="block text-xs font-normal text-slate-500">Flujo: {selectedType.flujoEstados.join(' → ')}</span>}
           </Field>
-          <Field label="Estado">
+          {expedient && <Field label="Estado">
             <Select {...form.register('estado')}>
               {(selectedType?.flujoEstados ?? EXPEDIENT_STATUSES).map((status) => (
                 <option key={status} value={status}>
@@ -227,7 +227,7 @@ export function ExpedientForm({
                 </option>
               ))}
             </Select>
-          </Field>
+          </Field>}
           <Field label="Prioridad">
             <Select {...form.register('prioridad')}>
               <option value="">Sin prioridad</option>

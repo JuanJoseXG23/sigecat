@@ -153,9 +153,9 @@ export async function createExpedient(
   values: ExpedientFormData,
   createdBy: string,
   assignedOfficial?: AssignedOfficial,
-): Promise<void> {
+): Promise<string> {
   const reference = doc(collection(firestore, EXPEDIENTS_COLLECTION))
-  const expedientData = await toExpedientData(values, assignedOfficial)
+  const expedientData = await toExpedientData({ ...values, estado: 'Recibido' }, assignedOfficial)
   await setDoc(reference, {
     ...expedientData,
     id: reference.id,
@@ -170,6 +170,7 @@ export async function createExpedient(
     if (recipient?.activo)
       await queueAssignmentEmail(expedientData as Pick<Expedient, 'numeroRadicado' | 'tipoTramite' | 'solicitantes' | 'predios' | 'fechaLimite'>, recipient)
   }
+  return reference.id
 }
 
 export async function updateExpedient(
