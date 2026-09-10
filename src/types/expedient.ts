@@ -101,6 +101,11 @@ export interface Expedient {
   diasRestantes?: number
   diasVencidos?: number
   estadoTermino?: 'En plazo' | 'Próximo a vencer' | 'Vencido'
+  /** Marca creada por el proceso diario para no repetir el mismo aviso. */
+  ultimaAlertaVencimiento?: {
+    clave: string
+    fecha: Timestamp
+  }
   observacionesIniciales?: string
   carpetaOneDrive?: string
   documentosEscaneados?: ScannedDocument[]

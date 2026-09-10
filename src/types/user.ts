@@ -12,6 +12,8 @@ export interface UserProfile {
   dependencia?: string
   rol: UserRole
   activo: boolean
+  /** Indica si el funcionario acepta recibir alertas de vencimiento por correo. */
+  recibeAlertasVencimiento?: boolean
   fechaCreacion: Timestamp
   ultimoIngreso: Timestamp | null
 }

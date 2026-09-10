@@ -8,11 +8,12 @@ export type DeadlineStatus = 'En plazo' | 'Próximo a vencer' | 'Vencido'
 export interface BusinessConfiguration {
   diasFestivos?: string[]
   umbralProximoVencer?: number
+  alertasCorreoHabilitadas?: boolean
 }
 
 export async function saveBusinessConfiguration(values: Required<BusinessConfiguration>): Promise<void> {
   const holidays = [...new Set(values.diasFestivos)].sort()
-  await setDoc(doc(firestore, 'configuracion', 'reglasNegocio'), { diasFestivos: holidays, umbralProximoVencer: values.umbralProximoVencer, fechaActualizacion: serverTimestamp() }, { merge: true })
+  await setDoc(doc(firestore, 'configuracion', 'reglasNegocio'), { diasFestivos: holidays, umbralProximoVencer: values.umbralProximoVencer, alertasCorreoHabilitadas: values.alertasCorreoHabilitadas, fechaActualizacion: serverTimestamp() }, { merge: true })
 }
 
 export async function getBusinessConfiguration(): Promise<Required<BusinessConfiguration>> {
@@ -21,6 +22,7 @@ export async function getBusinessConfiguration(): Promise<Required<BusinessConfi
   return {
     diasFestivos: data?.diasFestivos ?? [],
     umbralProximoVencer: data?.umbralProximoVencer ?? BUSINESS_RULES.dueSoonDays,
+    alertasCorreoHabilitadas: data?.alertasCorreoHabilitadas ?? false,
   }
 }
 

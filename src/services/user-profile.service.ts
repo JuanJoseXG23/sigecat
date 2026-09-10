@@ -40,3 +40,7 @@ export async function saveUserProfile(values: Omit<UserProfile, 'fechaCreacion' 
 export async function setUserActive(uid: string, activo: boolean): Promise<void> {
   await updateDoc(doc(firestore, USERS_COLLECTION, uid), { activo })
 }
+
+export async function setDeadlineEmailAlerts(uid: string, recibeAlertasVencimiento: boolean): Promise<void> {
+  await updateDoc(doc(firestore, USERS_COLLECTION, uid), { recibeAlertasVencimiento })
+}
