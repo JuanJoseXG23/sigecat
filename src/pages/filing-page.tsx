@@ -1,17 +1,13 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ExternalLink, FileText, Trash2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ExternalLink, FileText } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { useAuth } from '@/hooks/use-auth'
-import { deleteFiling, listFilings } from '@/services/filing.service'
+import { listFilings } from '@/services/filing.service'
 
 export function FilingPage() {
-  const { profile } = useAuth()
-  const client = useQueryClient()
   const {
     data = [],
     isLoading,
@@ -20,11 +16,6 @@ export function FilingPage() {
   const [search, setSearch] = useState('')
   const [type, setType] = useState('')
   const [municipality, setMunicipality] = useState('')
-  const canDelete = profile?.rol === 'Administrador'
-  const remove = useMutation({
-    mutationFn: deleteFiling,
-    onSuccess: () => client.invalidateQueries({ queryKey: ['filings'] }),
-  })
   const municipalities = [...new Set(data.map((item) => item.municipio).filter(Boolean))]
   const rows = useMemo(() => {
     const normalized = search.trim().toLocaleLowerCase('es-CO')
@@ -81,27 +72,26 @@ export function FilingPage() {
               <th>Responsable</th>
               <th>Estado</th>
               <th>Soporte</th>
-              {canDelete && <th />}
             </tr>
           </thead>
           <tbody>
             {isLoading && (
               <tr>
-                <td className="p-8 text-center text-slate-500" colSpan={canDelete ? 9 : 8}>
+                <td className="p-8 text-center text-slate-500" colSpan={8}>
                   Cargando radicados…
                 </td>
               </tr>
             )}
             {isError && (
               <tr>
-                <td className="p-8 text-center text-destructive" colSpan={canDelete ? 9 : 8}>
+                <td className="p-8 text-center text-destructive" colSpan={8}>
                   No fue posible cargar los radicados.
                 </td>
               </tr>
             )}
             {!isLoading && !isError && rows.length === 0 && (
               <tr>
-                <td className="p-10 text-center text-slate-500" colSpan={canDelete ? 9 : 8}>
+                <td className="p-10 text-center text-slate-500" colSpan={8}>
                   <FileText className="mx-auto mb-2 text-slate-400" />
                   No hay radicados con los filtros seleccionados.
                 </td>
@@ -139,7 +129,7 @@ export function FilingPage() {
                     <span className="text-slate-400">Sin soporte</span>
                   )}
                 </td>
-                {canDelete && (
+                {/*
                   <td>
                     <Button
                       variant="ghost"
@@ -154,7 +144,7 @@ export function FilingPage() {
                       <Trash2 size={16} className="text-destructive" />
                     </Button>
                   </td>
-                )}
+                */}
               </tr>
             ))}
           </tbody>

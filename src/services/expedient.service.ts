@@ -92,7 +92,9 @@ async function toExpedientData(
 }
 
 export async function listExpedients(): Promise<Expedient[]> {
-  const snapshot = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION))
+  const snapshot = await getDocs(
+    query(collection(firestore, EXPEDIENTS_COLLECTION), where('activo', '==', true)),
+  )
   const configuration = await getBusinessConfiguration()
   return snapshot.docs
     .map((item) => {

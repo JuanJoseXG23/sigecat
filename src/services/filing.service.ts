@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore'
+import { collection, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore'
 import { firestore } from '@/services/firebase'
 import type { Expedient } from '@/types/expedient'
 
@@ -47,17 +47,10 @@ export async function listFilings(): Promise<FilingRecord[]> {
 }
 
 export async function registerFiling(data: Omit<FilingRecord, 'id'>): Promise<void> {
-  const existing = await getDocs(collection(firestore, COLLECTION))
-  const alreadyRegistered = existing.docs.some((entry) => {
-    const filing = entry.data() as FilingRecord
-    return filing.expedienteId === data.expedienteId && filing.numero === data.numero
-  })
-
-  if (alreadyRegistered) return
-
-  const reference = doc(collection(firestore, COLLECTION))
+  const reference = doc(
+    firestore,
+    COLLECTION,
+    `${data.expedienteId}_${encodeURIComponent(data.numero.trim())}`,
+  )
   await setDoc(reference, { ...data, id: reference.id, creadoEn: serverTimestamp() })
-}
-export async function deleteFiling(id: string): Promise<void> {
-  await deleteDoc(doc(firestore, COLLECTION, id))
 }
