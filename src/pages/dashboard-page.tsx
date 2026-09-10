@@ -85,6 +85,12 @@ export function DashboardPage() {
       'violet',
     ],
   ] as const
+  const metricToneClasses = {
+    emerald: { icon: 'bg-emerald-100 text-emerald-600', line: 'bg-emerald-500' },
+    amber: { icon: 'bg-amber-100 text-amber-600', line: 'bg-amber-500' },
+    sky: { icon: 'bg-sky-100 text-sky-600', line: 'bg-sky-500' },
+    violet: { icon: 'bg-violet-100 text-violet-600', line: 'bg-violet-500' },
+  } as const
   return (
     <section className="mx-auto max-w-[1440px] space-y-6">
       <header>
@@ -141,7 +147,7 @@ export function DashboardPage() {
           <Card key={label} className="relative overflow-hidden border-slate-200 p-5 shadow-sm">
             <div className="flex items-center gap-4">
               <div
-                className={`grid size-12 place-items-center rounded-full bg-${tone}-100 text-${tone}-600`}
+                className={`grid size-12 place-items-center rounded-full ${metricToneClasses[tone].icon}`}
               >
                 <Icon size={22} />
               </div>
@@ -150,7 +156,7 @@ export function DashboardPage() {
                 <p className="mt-1 text-2xl font-bold text-slate-900">{count}</p>
               </div>
             </div>
-            <div className={`absolute inset-x-4 bottom-0 h-1 bg-${tone}-500`} />
+            <div className={`absolute inset-x-4 bottom-0 h-1 ${metricToneClasses[tone].line}`} />
           </Card>
         ))}
       </div>
