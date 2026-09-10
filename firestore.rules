@@ -82,6 +82,11 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    match /notificacionesAsignacion/{notificationId} {
+      allow create: if isOperationalUser();
+      allow get, list, update, delete: if false;
+    }
+
     match /tareas/{taskId} {
       allow get: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;
       allow list: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;

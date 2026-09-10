@@ -7,6 +7,7 @@ function setupDailyDeadlineAlerts() {
   deleteDeadlineAlertTriggers_();
   ScriptApp.newTrigger('sendDeadlineAlerts').timeBased().everyDays(1).atHour(8).create();
   ScriptApp.newTrigger('processEmailTestRequests').timeBased().everyMinutes(5).create();
+  ScriptApp.newTrigger('processAssignmentNotifications').timeBased().everyMinutes(5).create();
   Logger.log('Alerta diaria creada correctamente.');
 }
 
@@ -33,7 +34,7 @@ function sendTestDeadlineAlert() {
 function deleteDeadlineAlertTriggers_() {
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i = i + 1) {
-    if (triggers[i].getHandlerFunction() === 'sendDeadlineAlerts' || triggers[i].getHandlerFunction() === 'processEmailTestRequests') {
+    if (triggers[i].getHandlerFunction() === 'sendDeadlineAlerts' || triggers[i].getHandlerFunction() === 'processEmailTestRequests' || triggers[i].getHandlerFunction() === 'processAssignmentNotifications') {
       ScriptApp.deleteTrigger(triggers[i]);
     }
   }
@@ -56,6 +57,22 @@ function processEmailTestRequests() {
       patchFields_('solicitudesPruebaCorreo/' + request.id, { estado: 'Enviado', fechaProcesamiento: new Date() });
     } catch (error) {
       patchFields_('solicitudesPruebaCorreo/' + request.id, { estado: 'Error', detalleError: String(error), fechaProcesamiento: new Date() });
+    }
+  }
+}
+
+function processAssignmentNotifications() {
+  var notifications = queryPendingAssignmentNotifications_();
+  for (var i = 0; i < notifications.length; i = i + 1) {
+    var notification = notifications[i];
+    var data = notification.data;
+    try {
+      var deadline = data.fechaLimite ? Utilities.formatDate(new Date(data.fechaLimite), TIME_ZONE, 'dd/MM/yyyy') : 'No registrada';
+      var body = 'Hola ' + (data.destinatarioNombre || '') + ',\n\nTienes un nuevo expediente asignado.\n\nNúmero de expediente: ' + (data.numeroRadicado || '') + '\nTrámite: ' + (data.tipoTramite || 'No registrado') + '\nSolicitante: ' + (data.solicitante || 'No registrado') + '\nPredio: ' + (data.predio || 'No registrado') + '\nFecha límite de respuesta: ' + deadline + '\n\nIngresa a SIGECAT para gestionarlo.';
+      MailApp.sendEmail({ to: data.destinatarioCorreo, subject: 'SIGECAT: nuevo expediente asignado - ' + (data.numeroRadicado || ''), body: body });
+      patchFields_('notificacionesAsignacion/' + notification.id, { estado: 'Enviado', fechaProcesamiento: new Date() });
+    } catch (error) {
+      patchFields_('notificacionesAsignacion/' + notification.id, { estado: 'Error', detalleError: String(error), fechaProcesamiento: new Date() });
     }
   }
 }
@@ -133,6 +150,20 @@ function queryPendingEmailTests_() {
       from: [{ collectionId: 'solicitudesPruebaCorreo' }],
       where: { fieldFilter: { field: { fieldPath: 'estado' }, op: 'EQUAL', value: { stringValue: 'Pendiente' } } }
     }
+  });
+  var results = [];
+  for (var i = 0; i < response.length; i = i + 1) {
+    if (response[i].document) {
+      var document = response[i].document;
+      results.push({ id: document.name.split('/').pop(), data: decodeFields_(document.fields || {}) });
+    }
+  }
+  return results;
+}
+
+function queryPendingAssignmentNotifications_() {
+  var response = firestoreRequest_('/documents:runQuery', 'post', {
+    structuredQuery: { from: [{ collectionId: 'notificacionesAsignacion' }], where: { fieldFilter: { field: { fieldPath: 'estado' }, op: 'EQUAL', value: { stringValue: 'Pendiente' } } } }
   });
   var results = [];
   for (var i = 0; i < response.length; i = i + 1) {

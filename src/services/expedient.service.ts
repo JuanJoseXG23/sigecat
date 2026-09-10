@@ -22,6 +22,8 @@ import {
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
 import { registerFiling } from '@/services/filing.service'
+import { queueAssignmentEmail } from '@/services/assignment-email.service'
+import { getUserProfile } from '@/services/user-profile.service'
 import type {
   Applicant,
   AssignedOfficial,
@@ -153,8 +155,9 @@ export async function createExpedient(
   assignedOfficial?: AssignedOfficial,
 ): Promise<void> {
   const reference = doc(collection(firestore, EXPEDIENTS_COLLECTION))
+  const expedientData = await toExpedientData(values, assignedOfficial)
   await setDoc(reference, {
-    ...(await toExpedientData(values, assignedOfficial)),
+    ...expedientData,
     id: reference.id,
     creadoPor: createdBy,
     activo: true,
@@ -162,6 +165,11 @@ export async function createExpedient(
     fechaActualizacion: serverTimestamp(),
   })
   await registerExpedientHistory(reference.id, createdBy, 'Creación del expediente')
+  if (assignedOfficial) {
+    const recipient = await getUserProfile(assignedOfficial.uid)
+    if (recipient?.activo)
+      await queueAssignmentEmail(expedientData as Pick<Expedient, 'numeroRadicado' | 'tipoTramite' | 'solicitantes' | 'predios' | 'fechaLimite'>, recipient)
+  }
 }
 
 export async function updateExpedient(
@@ -265,6 +273,10 @@ export async function updateExpedientAssignee(
     'Cambio de responsable',
     `${current?.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'} → ${assignee?.nombreCompleto ?? 'Sin asignar'}`,
   )
+  if (assignee && current) {
+    const recipient = await getUserProfile(assignee.uid)
+    if (recipient?.activo) await queueAssignmentEmail(current, recipient)
+  }
 }
 
 export async function updateExternalAssignee(
