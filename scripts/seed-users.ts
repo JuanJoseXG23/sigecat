@@ -44,10 +44,13 @@ const initialUsers: SeedUser[] = [
   },
 ]
 
-const serviceAccountPath = path.resolve(
-  process.cwd(),
-  process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_PATH ?? 'secrets/firebase-admin.json',
-)
+const configuredServiceAccountPath = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_PATH
+  ?.trim()
+  .replace(/^["']|["']$/g, '')
+
+const serviceAccountPath = configuredServiceAccountPath
+  ? path.resolve(configuredServiceAccountPath)
+  : path.resolve(process.cwd(), 'secrets/firebase-admin.json')
 
 const resetPasswords = process.env.SIGECAT_RESET_SEED_PASSWORDS === 'true'
 
