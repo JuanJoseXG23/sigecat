@@ -21,10 +21,12 @@ import {
 } from '@/services/business-rules.service'
 import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
 import { toDateKey } from '@/lib/expedient-deadline'
+import { parseDocumentLink } from '@/lib/document-links'
+import { getFilingCorrectionError, planFilingCorrection } from '@/lib/record-corrections'
 import type { Actuation } from '@/lib/expedient-workflow'
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
-import { getFilingReference, registerFiling } from '@/services/filing.service'
+import { getFilingReference, registerFiling, type FilingRecord } from '@/services/filing.service'
 import { queueAssignmentEmail } from '@/services/assignment-email.service'
 import type {
   ActuationFields,
@@ -37,8 +39,7 @@ import type {
   WorkflowDocument,
   WorkflowDocumentPayload,
 } from '@/types/expedient'
-import { isFinalizedExpedient, type DocumentClassification } from '@/types/expedient'
-import type { ProcedureType } from '@/types/procedure-type'
+import { isFinalizedExpedient } from '@/types/expedient'
 
 const EXPEDIENTS_COLLECTION = 'expedientes'
 
@@ -118,9 +119,7 @@ async function toExpedientData(
     tipoTramiteId: procedureType?.id,
     tipoTramite: procedureType?.nombre ?? values.tipoTramite?.trim(),
     asunto: values.asunto?.trim(),
-    nivelAcceso: values.nivelAcceso,
     diasTermino: responseDays,
-    clasificacionDocumental: toClassification(procedureType),
     solicitantes: values.solicitantes.map((applicant) => removeEmptyFields(applicant)),
     predios: values.predios.map((property) => removeEmptyFields(property)),
     funcionarioAsignado: assignedOfficial,
@@ -131,18 +130,6 @@ async function toExpedientData(
     estadoTermino: timeline.estadoTermino,
     observacionesIniciales: values.observacionesIniciales?.trim(),
   })
-}
-
-function toClassification(type: ProcedureType): DocumentClassification | undefined {
-  const classification = removeEmptyFields({
-    codigo: type.codigoTRD,
-    serie: type.serie,
-    subserie: type.subserie,
-    retencionGestion: type.retencionGestion,
-    retencionCentral: type.retencionCentral,
-    disposicionFinal: type.disposicionFinal,
-  })
-  return Object.keys(classification).length ? classification : undefined
 }
 
 async function withDeadlineStatus(items: Expedient[]): Promise<Expedient[]> {
@@ -250,8 +237,6 @@ export async function updateExpedient(
     fechaRecibido: values.fechaRecibido ? toTimestamp(values.fechaRecibido) : deleteField(),
     medioIngreso: values.medioIngreso?.trim() || deleteField(),
     asunto: values.asunto?.trim() || deleteField(),
-    nivelAcceso: values.nivelAcceso ?? deleteField(),
-    clasificacionDocumental: data.clasificacionDocumental ?? deleteField(),
     funcionarioAsignado: assignedOfficial ?? deleteField(),
     prioridad: values.prioridad ?? deleteField(),
     observacionesIniciales: values.observacionesIniciales?.trim() || deleteField(),
@@ -573,4 +558,96 @@ export async function listExpedientHistory(id: string): Promise<ExpedientHistory
   return result.docs
     .map((item) => ({ id: item.id, ...item.data() }) as ExpedientHistoryEntry)
     .sort((a, b) => (b.fecha?.toMillis() ?? 0) - (a.fecha?.toMillis() ?? 0))
+}
+
+/**
+ * Corrige número o fecha de un radicado ya registrado (solo supervisores). El id del radicado
+ * incluye el número, así que un número nuevo crea otro documento y borra el anterior. En el
+ * mismo lote se actualiza cada lugar del expediente que lo menciona y se deja el historial.
+ */
+export async function correctFiling(
+  filing: FilingRecord,
+  values: { number: string; date: string },
+  userId: string,
+): Promise<void> {
+  const number = values.number.trim()
+  const correction = { previousNumber: filing.numero, number, date: values.date }
+  const error = getFilingCorrectionError(correction, filing.fecha, toDateKey(new Date()))
+  if (error) throw new Error(error)
+
+  const previousReference = doc(firestore, 'radicados', filing.id)
+  const [previous, expedient] = await Promise.all([
+    getDoc(previousReference),
+    getExpedient(filing.expedienteId),
+  ])
+  if (!previous.exists()) throw new Error('El radicado ya no existe.')
+
+  const batch = writeBatch(firestore)
+  const audit = { editadoPor: userId, fechaEdicion: serverTimestamp() }
+  if (number !== filing.numero) {
+    const reference = getFilingReference(filing.expedienteId, number)
+    if ((await getDoc(reference)).exists())
+      throw new Error(`El radicado ${number} ya está registrado para este expediente.`)
+    batch.set(reference, {
+      ...previous.data(),
+      numero: number,
+      fecha: values.date,
+      id: reference.id,
+      ...audit,
+    })
+    batch.delete(previousReference)
+  } else {
+    batch.update(previousReference, { fecha: values.date, ...audit })
+  }
+
+  if (expedient) {
+    const changes = planFilingCorrection(expedient, correction, (date) => toTimestamp(date)!)
+    if (Object.keys(changes).length)
+      batch.update(expedientReference(expedient.id), {
+        ...changes,
+        fechaActualizacion: serverTimestamp(),
+      })
+    registerExpedientHistory(
+      batch,
+      expedient.id,
+      userId,
+      'Corrigió radicado',
+      `${filing.tipo}: ${filing.numero} del ${filing.fecha} → ${number} del ${values.date}.`,
+    )
+  }
+  await commit(batch)
+}
+
+/** Corrige nombre, enlace o folios de un documento asociado (solo supervisores). */
+export async function correctWorkflowDocument(
+  expedientId: string,
+  documentId: string,
+  values: { name: string; url: string; folios: string },
+  userId: string,
+): Promise<void> {
+  const parsed = parseDocumentLink(values.name, values.url, values.folios)
+  if ('error' in parsed) throw new Error(parsed.error)
+  const expedient = await getExpedient(expedientId)
+  const current = expedient?.documentosWorkflow?.find((document) => document.id === documentId)
+  if (!expedient || !current) throw new Error('No se encontró el documento.')
+
+  // Firestore no acepta undefined: sin folios, el campo se omite.
+  const updated: WorkflowDocument = { ...current, ...parsed.document }
+  if (!parsed.document.folios) delete updated.folios
+  const batch = writeBatch(firestore)
+  batch.update(expedientReference(expedientId), {
+    documentosWorkflow: (expedient.documentosWorkflow ?? []).map((document) =>
+      document.id === documentId ? updated : document,
+    ),
+    fechaActualizacion: serverTimestamp(),
+  })
+  const changes = [
+    current.nombre !== updated.nombre && `Nombre: ${current.nombre} → ${updated.nombre}`,
+    current.url !== updated.url && 'Enlace actualizado',
+    current.folios !== updated.folios &&
+      `Folios: ${current.folios ?? '—'} → ${updated.folios ?? '—'}`,
+  ].filter(Boolean)
+  if (!changes.length) throw new Error('No hay cambios para guardar.')
+  registerExpedientHistory(batch, expedientId, userId, 'Corrigió documento', changes.join('. '))
+  await commit(batch)
 }

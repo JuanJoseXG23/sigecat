@@ -1,4 +1,4 @@
-import { ExternalLink, FileText, Printer } from 'lucide-react'
+import { ExternalLink, FileText, Pencil, Printer } from 'lucide-react'
 import { Badge, type BadgeVariant } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/feedback'
@@ -64,7 +64,6 @@ function ControlSheet({
   expedient: Expedient
   index: ReturnType<typeof buildIndex>
 }) {
-  const classification = expedient.clasificacionDocumental
   const closed = isFinalizedExpedient(expedient)
   const cell = 'border border-slate-400 px-2 py-1 align-top'
   return (
@@ -90,15 +89,8 @@ function ControlSheet({
         <tbody>
           <tr>
             <td className={`${cell} font-semibold`}>Unidad administrativa</td>
-            <td className={cell}>Secretaría de Hacienda · Catastro</td>
-            <td className={`${cell} font-semibold`}>Código TRD</td>
-            <td className={cell}>{classification?.codigo ?? ''}</td>
-          </tr>
-          <tr>
-            <td className={`${cell} font-semibold`}>Serie / subserie</td>
             <td className={cell} colSpan={3}>
-              {classification?.serie ?? ''}
-              {classification?.subserie ? ` / ${classification.subserie}` : ''}
+              Secretaría de Hacienda · Catastro
             </td>
           </tr>
           <tr>
@@ -119,10 +111,10 @@ function ControlSheet({
             <td className={cell}>{closed ? formatDate(getClosingDate(expedient)) : 'Abierto'}</td>
           </tr>
           <tr>
-            <td className={`${cell} font-semibold`}>Nivel de acceso</td>
-            <td className={cell}>{expedient.nivelAcceso ?? ''}</td>
             <td className={`${cell} font-semibold`}>Total de folios</td>
-            <td className={cell}>{index.folios || ''}</td>
+            <td className={cell} colSpan={3}>
+              {index.folios || ''}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -169,7 +161,14 @@ function ControlSheet({
   )
 }
 
-export function ExpedientDocuments({ expedient }: { expedient: Expedient }) {
+export function ExpedientDocuments({
+  expedient,
+  onEditDocument,
+}: {
+  expedient: Expedient
+  /** Solo para quien puede corregir documentos. */
+  onEditDocument?: (document: WorkflowDocument) => void
+}) {
   const index = buildIndex(expedient.documentosWorkflow ?? [])
 
   if (!index.items.length)
@@ -235,15 +234,28 @@ export function ExpedientDocuments({ expedient }: { expedient: Expedient }) {
                   <p>{document.usuario}</p>
                   <p className="text-xs text-muted-foreground">{formatDateTime(document.fecha)}</p>
                 </td>
-                <td className="text-right">
-                  <a
-                    href={document.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="link inline-flex items-center gap-1"
-                  >
-                    Abrir <ExternalLink size={14} />
-                  </a>
+                <td>
+                  <div className="flex items-center justify-end gap-1">
+                    {onEditDocument && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => onEditDocument(document)}
+                        aria-label={`Corregir ${document.nombre}`}
+                        title="Corregir documento"
+                      >
+                        <Pencil size={15} />
+                      </Button>
+                    )}
+                    <a
+                      href={document.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="link inline-flex items-center gap-1 px-2"
+                    >
+                      Abrir <ExternalLink size={14} />
+                    </a>
+                  </div>
                 </td>
               </tr>
             ))}

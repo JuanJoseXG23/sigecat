@@ -31,14 +31,14 @@ service cloud.firestore {
 
     // Mirrors canManageExpedient in src/lib/permissions.ts; keep both in sync.
     // A Funcionario only handles expedients that are unassigned or assigned to
-    // them, and finalized expedients can only be changed by an Administrador.
+    // them; finalized expedients can only be corrected by supervisors.
     function canManageExpedient(expedient) {
       return expedient.get('activo', false) == true
         ? isSupervisor() ||
           (isOperationalUser() &&
             (expedient.get('funcionarioAsignado', null) == null ||
              expedient.funcionarioAsignado.uid == request.auth.uid))
-        : isAdministrator();
+        : isSupervisor();
     }
 
     // Closing an expedient through the workflow is part of the Funcionario's job;
@@ -115,8 +115,12 @@ service cloud.firestore {
       allow create: if isOperationalUser() &&
         request.resource.data.expedienteId is string &&
         existsAfter(expedientPath(request.resource.data.expedienteId));
-      allow update: if false;
-      allow delete: if isAdministrator();
+      // Supervisors correct the date in place; a corrected number is a new document
+      // (its id includes the number) plus the deletion of the old one.
+      allow update: if isSupervisor() &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['fecha', 'editadoPor', 'fechaEdicion']);
+      allow delete: if isSupervisor();
     }
 
     match /solicitudesPruebaCorreo/{requestId} {

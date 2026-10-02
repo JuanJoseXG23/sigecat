@@ -33,9 +33,8 @@ también la actualizan. Si se edita un perfil desde la consola de Firebase, se r
 | `numeroRadicado`                                                               | Radicado de entrada; único                                                                                                                  |
 | `fechaRadicado`, `fechaRecibido?`, `medioIngreso?`                             | Datos de recepción                                                                                                                          |
 | `tipoTramiteId`, `tipoTramite`                                                 | Tipo de trámite y su nombre al momento de guardar                                                                                           |
-| `asunto?`, `nivelAcceso?`                                                      | Resumen de la petición; `Pública`, `Pública clasificada` o `Pública reservada`                                                              |
+| `asunto?`                                                                      | Resumen de la petición                                                                                                                      |
 | `diasTermino?`, `diasAmpliacion?`, `ampliacionesPlazo[]?`                      | Término inicial, días ampliados y detalle de cada ampliación (radicado, días, motivo, fechas límite)                                        |
-| `clasificacionDocumental?`                                                     | Copia de la TRD del trámite: `codigo`, `serie`, `subserie`, `retencionGestion`, `retencionCentral`, `disposicionFinal`                      |
 | `solicitantes[]`                                                               | `nombre`, `documento`, `telefono`, `correo`, `tipoSolicitante`                                                                              |
 | `predios[]`                                                                    | `municipio`, `numeroPredial`, `matriculaInmobiliaria`, `direccion`                                                                          |
 | `estado`                                                                       | Ver [flujo-y-permisos.md](flujo-y-permisos.md)                                                                                              |
@@ -48,7 +47,7 @@ también la actualizan. Si se edita un perfil desde la consola de Firebase, se r
 | `ultimaAlertaVencimiento?`                                                     | Lo escribe solo Apps Script para no repetir alertas                                                                                         |
 | `activo`                                                                       | `false` cuando está finalizado o archivado                                                                                                  |
 | `creadoPor`, `fechaCreacion`, `fechaActualizacion`                             | Auditoría; los dos primeros son inmutables                                                                                                  |
-| `fechaCierre?`                                                                 | Al finalizar o archivar; inicia la retención. Los cerrados antes de este campo usan `fechaActualizacion`                                    |
+| `fechaCierre?`                                                                 | Al finalizar o archivar. Los cerrados antes de este campo usan `fechaActualizacion`                                                         |
 
 Subcolección **`historial`**: `usuario`, `accion`, `detalle`, `fecha`. Solo se agregan registros;
 nunca se editan ni se borran.
@@ -61,13 +60,13 @@ borrar expedientes.
 Radicados de salida, traslado y ampliación de plazo registrados en el flujo: `numero`, `fecha`,
 `tipo`, `expedienteId`, `expedienteRadicado?`, `solicitante`, `responsable`, `estado`, `municipio`, `observaciones`,
 `documentoUrl?`, `documentoNombre?`. El id evita registrar dos veces el mismo número en un
-expediente. Se crean pero no se editan.
+expediente. Administrador y Coordinador corrigen `fecha` (con `editadoPor` y `fechaEdicion`);
+un número corregido es un documento nuevo y el anterior se borra.
 
 ## `tiposTramite/{id}`
 
 `nombre`, `descripcion`, `diasRespuesta`, `flujoEstados`, `activo`, los indicadores
-informativos `requiereVisita` y `requiereRevisionJuridica`, y los campos opcionales de la TRD:
-`codigoTRD`, `serie`, `subserie`, `retencionGestion`, `retencionCentral`, `disposicionFinal`. Solo el Administrador escribe; se
+informativos `requiereVisita` y `requiereRevisionJuridica`. Solo el Administrador escribe; se
 desactivan en vez de borrarse.
 
 ## `configuracion/reglasNegocio`

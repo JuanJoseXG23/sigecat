@@ -12,21 +12,11 @@ import { Alert, EmptyState, ErrorAlert } from '@/components/ui/feedback'
 import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/page-header'
-import { Select } from '@/components/ui/select'
 import { useToast } from '@/components/ui/toast-context'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import { normalizeSearch } from '@/lib/format'
 import { deactivateProcedureType, saveProcedureType } from '@/services/procedure-type.service'
-import {
-  FINAL_DISPOSITIONS,
-  type ProcedureType,
-  type ProcedureTypeInput,
-} from '@/types/procedure-type'
-
-const optionalYears = z.preprocess(
-  (value) => (value === '' || value === null || Number.isNaN(value) ? undefined : Number(value)),
-  z.number().int().min(0, 'No puede ser negativo.').max(100).optional(),
-)
+import type { ProcedureType, ProcedureTypeInput } from '@/types/procedure-type'
 
 const schema = z.object({
   nombre: z.string().trim().min(1, 'Ingresa el nombre.'),
@@ -38,15 +28,6 @@ const schema = z.object({
     .max(120),
   requiereVisita: z.boolean(),
   requiereRevisionJuridica: z.boolean(),
-  codigoTRD: z.string().trim().optional(),
-  serie: z.string().trim().optional(),
-  subserie: z.string().trim().optional(),
-  retencionGestion: optionalYears,
-  retencionCentral: optionalYears,
-  disposicionFinal: z.preprocess(
-    (value) => (value === '' ? undefined : value),
-    z.enum(FINAL_DISPOSITIONS).optional(),
-  ),
 })
 type FormInput = z.input<typeof schema>
 
@@ -56,12 +37,6 @@ const empty: FormInput = {
   diasRespuesta: 15,
   requiereVisita: false,
   requiereRevisionJuridica: false,
-  codigoTRD: '',
-  serie: '',
-  subserie: '',
-  retencionGestion: '',
-  retencionCentral: '',
-  disposicionFinal: '',
 }
 
 const LEGAL_TERMS = [
@@ -119,12 +94,6 @@ export function ProcedureTypesPage() {
             diasRespuesta: item.diasRespuesta,
             requiereVisita: item.requiereVisita,
             requiereRevisionJuridica: item.requiereRevisionJuridica,
-            codigoTRD: item.codigoTRD ?? '',
-            serie: item.serie ?? '',
-            subserie: item.subserie ?? '',
-            retencionGestion: item.retencionGestion ?? '',
-            retencionCentral: item.retencionCentral ?? '',
-            disposicionFinal: item.disposicionFinal ?? '',
           }
         : empty,
     )
@@ -135,8 +104,8 @@ export function ProcedureTypesPage() {
     <section className="mx-auto max-w-6xl space-y-6">
       <PageHeader
         kicker="Administración"
-        title="Tipos de trámite y TRD"
-        description="Cada trámite define su término en días hábiles y su clasificación en la Tabla de Retención Documental."
+        title="Tipos de trámite"
+        description="Cada trámite define su término de respuesta en días hábiles."
         actions={
           <Button onClick={() => openForm()}>
             <Plus size={16} /> Nuevo trámite
@@ -157,13 +126,11 @@ export function ProcedureTypesPage() {
       </div>
 
       <div className="table-shell overflow-x-auto">
-        <table className="data-table min-w-[820px]">
+        <table className="data-table min-w-[640px]">
           <thead>
             <tr>
               <th>Trámite</th>
               <th>Término</th>
-              <th>Serie documental (TRD)</th>
-              <th>Retención</th>
               <th>Requisitos</th>
               <th>
                 <span className="sr-only">Acciones</span>
@@ -182,30 +149,6 @@ export function ProcedureTypesPage() {
                   )}
                 </td>
                 <td className="whitespace-nowrap">{item.diasRespuesta} días hábiles</td>
-                <td>
-                  {item.serie ? (
-                    <>
-                      <p>{item.serie}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {[item.codigoTRD, item.subserie].filter(Boolean).join(' · ')}
-                      </p>
-                    </>
-                  ) : (
-                    <Badge variant="warning">Sin TRD</Badge>
-                  )}
-                </td>
-                <td className="whitespace-nowrap">
-                  {item.retencionGestion !== undefined ? (
-                    <>
-                      <p>
-                        {item.retencionGestion} AG · {item.retencionCentral ?? 0} AC
-                      </p>
-                      <p className="text-xs text-muted-foreground">{item.disposicionFinal ?? ''}</p>
-                    </>
-                  ) : (
-                    '—'
-                  )}
-                </td>
                 <td>
                   <div className="flex flex-wrap gap-1">
                     {item.requiereVisita && <Badge variant="info">Visita</Badge>}
@@ -243,7 +186,7 @@ export function ProcedureTypesPage() {
           <EmptyState
             icon={FileCog}
             title={search ? 'Sin resultados' : 'No hay tipos de trámite'}
-            description="Crea el primero con sus días hábiles y su serie documental."
+            description="Crea el primero con sus días hábiles de respuesta."
           />
         )}
       </div>
@@ -251,7 +194,6 @@ export function ProcedureTypesPage() {
       <Dialog
         open={formOpen}
         onClose={close}
-        size="lg"
         busy={save.isPending}
         title={editing ? 'Editar trámite' : 'Nuevo trámite'}
         description="El flujo institucional se aplica automáticamente a todos los trámites."
@@ -297,41 +239,6 @@ export function ProcedureTypesPage() {
             </label>
           </div>
 
-          <fieldset className="space-y-4 rounded-xl border border-border p-4">
-            <legend className="px-1 text-sm font-semibold text-slate-900">
-              Tabla de Retención Documental
-            </legend>
-            <p className="text-xs text-muted-foreground">
-              Se copia a cada expediente nuevo de este trámite. AG: años en archivo de gestión; AC:
-              años en archivo central, contados desde el cierre.
-            </p>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Código">
-                <Input {...form.register('codigoTRD')} placeholder="Ej. 210.42.03" />
-              </Field>
-              <Field label="Serie" className="sm:col-span-2">
-                <Input {...form.register('serie')} placeholder="Ej. Trámites catastrales" />
-              </Field>
-              <Field label="Subserie" className="sm:col-span-3">
-                <Input {...form.register('subserie')} placeholder="Ej. Rectificaciones" />
-              </Field>
-              <Field label="Años AG" error={errors.retencionGestion?.message}>
-                <Input type="number" min={0} {...form.register('retencionGestion')} />
-              </Field>
-              <Field label="Años AC" error={errors.retencionCentral?.message}>
-                <Input type="number" min={0} {...form.register('retencionCentral')} />
-              </Field>
-              <Field label="Disposición final">
-                <Select {...form.register('disposicionFinal')}>
-                  <option value="">Sin definir</option>
-                  {FINAL_DISPOSITIONS.map((value) => (
-                    <option key={value}>{value}</option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-          </fieldset>
-
           <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
             <Button variant="outline" onClick={close} disabled={save.isPending}>
               Cancelar
@@ -353,7 +260,7 @@ export function ProcedureTypesPage() {
         onConfirm={() => deactivating && remove.mutate(deactivating.id)}
       >
         “{deactivating?.nombre}” dejará de ofrecerse al radicar. Los expedientes existentes
-        conservan su término y su clasificación.
+        conservan su término.
       </ConfirmDialog>
     </section>
   )

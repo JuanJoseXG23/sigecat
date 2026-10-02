@@ -24,11 +24,7 @@ export const APPLICANT_TYPES = [
   'Otro',
 ] as const
 
-/** Clasificación de la información según la Ley 1712 de 2014 (transparencia). */
-export const ACCESS_LEVELS = ['Pública', 'Pública clasificada', 'Pública reservada'] as const
-
 export type ExpedientStatus = (typeof EXPEDIENT_STATUSES)[number]
-export type AccessLevel = (typeof ACCESS_LEVELS)[number]
 export type ExpedientPriority = (typeof EXPEDIENT_PRIORITIES)[number]
 export type ApplicantType = (typeof APPLICANT_TYPES)[number]
 
@@ -93,16 +89,6 @@ export interface DeadlineExtension {
   fecha: Timestamp
 }
 
-/** Copia de la Tabla de Retención Documental del tipo de trámite al crear el expediente. */
-export interface DocumentClassification {
-  codigo?: string
-  serie?: string
-  subserie?: string
-  retencionGestion?: number
-  retencionCentral?: number
-  disposicionFinal?: string
-}
-
 export interface Expedient extends ActuationFields {
   id: string
   numeroRadicado: string
@@ -112,13 +98,11 @@ export interface Expedient extends ActuationFields {
   tipoTramiteId?: string
   tipoTramite?: string
   asunto?: string
-  nivelAcceso?: AccessLevel
   /** Término inicial del tipo de trámite al momento de guardar, en días hábiles. */
   diasTermino?: number
   /** Suma de días hábiles ampliados; la fecha límite los incluye. */
   diasAmpliacion?: number
   ampliacionesPlazo?: DeadlineExtension[]
-  clasificacionDocumental?: DocumentClassification
   solicitantes: Applicant[]
   predios: Property[]
   funcionarioAsignado?: AssignedOfficial
@@ -140,7 +124,7 @@ export interface Expedient extends ActuationFields {
   documentosWorkflow?: WorkflowDocument[]
   fechaCreacion: Timestamp
   fechaActualizacion: Timestamp
-  /** Fecha en que se finalizó o archivó; inicia el tiempo de retención documental. */
+  /** Fecha en que se finalizó o archivó el expediente. */
   fechaCierre?: Timestamp
   creadoPor: string
   activo: boolean
@@ -171,7 +155,6 @@ export interface ExpedientFormData {
   tipoTramiteId?: string
   tipoTramite?: string
   asunto?: string
-  nivelAcceso?: AccessLevel
   solicitantes: Applicant[]
   predios: Property[]
   funcionarioAsignadoUid?: string

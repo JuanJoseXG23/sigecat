@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, CalendarPlus, FileSearch, Lock } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarPlus, FileSearch, Pencil } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
@@ -8,6 +8,11 @@ import { buttonVariants } from '@/components/ui/button-variants'
 import { EmptyState, LoadingState } from '@/components/ui/feedback'
 import { useToast } from '@/components/ui/toast-context'
 import { ActuationDialog } from '@/features/expedients/components/actuation-dialog'
+import {
+  EditDocumentDialog,
+  EditExpedientDialog,
+  EditFilingDialog,
+} from '@/features/expedients/components/correction-dialogs'
 import { DeadlineBadge, StatusBadge } from '@/features/expedients/components/expedient-badges'
 import { ExpedientDocuments } from '@/features/expedients/components/expedient-documents'
 import { ExpedientHistory } from '@/features/expedients/components/expedient-history'
@@ -18,10 +23,10 @@ import { useAuth } from '@/hooks/use-auth'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
 import { getFlow, getStepDefinition, type Actuation } from '@/lib/expedient-workflow'
 import { formatDate, formatLongDate } from '@/lib/format'
-import { canManageExpedient } from '@/lib/permissions'
+import { canCorrectRecords, canManageExpedient } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
-import { listExpedientFilings } from '@/services/filing.service'
-import { getClosingDate, isFinalizedExpedient } from '@/types/expedient'
+import { listExpedientFilings, type FilingRecord } from '@/services/filing.service'
+import { getClosingDate, isFinalizedExpedient, type WorkflowDocument } from '@/types/expedient'
 
 const tabs = [
   { id: 'resumen', label: 'Resumen' },
@@ -59,7 +64,9 @@ export function ExpedientDetailPage() {
     queryFn: () => listExpedientFilings(id!),
     enabled: Boolean(id),
   })
-  const [dialog, setDialog] = useState<'actuation' | 'extension' | null>(null)
+  const [dialog, setDialog] = useState<'actuation' | 'extension' | 'edit' | null>(null)
+  const [editingFiling, setEditingFiling] = useState<FilingRecord | null>(null)
+  const [editingDocument, setEditingDocument] = useState<WorkflowDocument | null>(null)
   const associatedFilings = useMemo(
     () =>
       Array.from(
@@ -87,6 +94,8 @@ export function ExpedientDetailPage() {
 
   const finalized = isFinalizedExpedient(item)
   const canManage = !finalized && canManageExpedient(profile, item)
+  const canEditData = canManageExpedient(profile, item)
+  const canCorrect = canCorrectRecords(profile)
   const flow = getFlow(item)
   const currentIndex = flow.indexOf(item.estado)
   const step = getStepDefinition(item.estado)
@@ -96,7 +105,6 @@ export function ExpedientDetailPage() {
     documentos: item.documentosWorkflow?.length ?? 0,
     historial: history.length,
   }
-  const restricted = item.nivelAcceso && item.nivelAcceso !== 'Pública'
 
   const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate('/dashboard'))
 
@@ -120,11 +128,6 @@ export function ExpedientDetailPage() {
               {Boolean(item.diasAmpliacion) && (
                 <Badge variant="info">Plazo ampliado +{item.diasAmpliacion}</Badge>
               )}
-              {restricted && (
-                <Badge variant="default">
-                  <Lock size={12} /> {item.nivelAcceso}
-                </Badge>
-              )}
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
               Radicado {item.numeroRadicado}
@@ -138,10 +141,21 @@ export function ExpedientDetailPage() {
 
           <div className="flex shrink-0 flex-col gap-3 lg:items-end">
             {finalized ? (
-              <div className="rounded-xl bg-muted/60 px-4 py-3 text-sm">
-                <p className="font-semibold text-slate-900">Expediente cerrado · solo consulta</p>
-                <p className="text-muted-foreground">Cierre: {formatDate(getClosingDate(item))}</p>
-              </div>
+              <>
+                <div className="rounded-xl bg-muted/60 px-4 py-3 text-sm">
+                  <p className="font-semibold text-slate-900">
+                    Expediente cerrado · {canEditData ? 'corrección habilitada' : 'solo consulta'}
+                  </p>
+                  <p className="text-muted-foreground">
+                    Cierre: {formatDate(getClosingDate(item))}
+                  </p>
+                </div>
+                {canEditData && (
+                  <Button variant="outline" className="no-print" onClick={() => setDialog('edit')}>
+                    <Pencil size={16} /> Editar datos
+                  </Button>
+                )}
+              </>
             ) : (
               <>
                 {item.fechaLimite && (
@@ -151,6 +165,9 @@ export function ExpedientDetailPage() {
                 )}
                 {canManage ? (
                   <div className="no-print flex flex-wrap gap-2">
+                    <Button variant="outline" onClick={() => setDialog('edit')}>
+                      <Pencil size={16} /> Editar datos
+                    </Button>
                     {canExtend && (
                       <Button variant="outline" onClick={() => setDialog('extension')}>
                         <CalendarPlus size={17} /> Ampliar plazo
@@ -212,8 +229,19 @@ export function ExpedientDetailPage() {
       </div>
 
       <div role="tabpanel">
-        {tab === 'resumen' && <ExpedientSummary expedient={item} filings={associatedFilings} />}
-        {tab === 'documentos' && <ExpedientDocuments expedient={item} />}
+        {tab === 'resumen' && (
+          <ExpedientSummary
+            expedient={item}
+            filings={associatedFilings}
+            onEditFiling={canCorrect ? setEditingFiling : undefined}
+          />
+        )}
+        {tab === 'documentos' && (
+          <ExpedientDocuments
+            expedient={item}
+            onEditDocument={canCorrect ? setEditingDocument : undefined}
+          />
+        )}
         {tab === 'historial' && <ExpedientHistory entries={history} />}
       </div>
 
@@ -225,6 +253,19 @@ export function ExpedientDetailPage() {
             setDialog(null)
             toast(describeActuation(actuation))
           }}
+        />
+      )}
+      {dialog === 'edit' && (
+        <EditExpedientDialog expedient={item} onClose={() => setDialog(null)} />
+      )}
+      {editingFiling && (
+        <EditFilingDialog filing={editingFiling} onClose={() => setEditingFiling(null)} />
+      )}
+      {editingDocument && (
+        <EditDocumentDialog
+          expedientId={item.id}
+          document={editingDocument}
+          onClose={() => setEditingDocument(null)}
         />
       )}
       {dialog === 'extension' && (

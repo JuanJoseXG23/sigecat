@@ -1,14 +1,17 @@
-import { ExternalLink, Hourglass, MapPin, Stamp, UserRound } from 'lucide-react'
+import { ExternalLink, Hourglass, MapPin, Pencil, Stamp, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { DeadlineBadge } from '@/features/expedients/components/expedient-badges'
 import { describeRemainingDays, formatDate, formatLongDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { FilingRecord } from '@/services/filing.service'
-import type { Expedient } from '@/types/expedient'
+import { Badge } from '@/components/ui/badge'
+import { getClosingDate, isFinalizedExpedient, type Expedient } from '@/types/expedient'
 
 interface ExpedientSummaryProps {
   expedient: Expedient
   filings: FilingRecord[]
+  /** Solo para quien puede corregir radicados. */
+  onEditFiling?: (filing: FilingRecord) => void
 }
 
 function Panel({
@@ -49,6 +52,27 @@ function DeadlinePanel({ item }: { item: Expedient }) {
         <p className="text-sm text-muted-foreground">Sin fecha límite calculada.</p>
       </Panel>
     )
+  if (isFinalizedExpedient(item)) {
+    // Después del cierre no corren términos: solo importa si se cerró a tiempo.
+    const closing = getClosingDate(item)
+    const deadline = item.fechaLimite.toDate()
+    deadline.setHours(23, 59, 59, 999)
+    const onTime = closing <= deadline
+    return (
+      <Panel title="Término de respuesta">
+        <Badge variant={onTime ? 'success' : 'destructive'} dot>
+          {onTime ? 'Cerrado dentro del término' : 'Cerrado fuera del término'}
+        </Badge>
+        <dl className="mt-4 divide-y divide-border">
+          <Detail label="Fecha límite">{formatDate(item.fechaLimite)}</Detail>
+          <Detail label="Fecha de cierre">{formatDate(closing)}</Detail>
+          {Boolean(item.diasAmpliacion) && (
+            <Detail label="Ampliación">+{item.diasAmpliacion} días hábiles</Detail>
+          )}
+        </dl>
+      </Panel>
+    )
+  }
   const total = (item.diasTermino ?? 0) + (item.diasAmpliacion ?? 0)
   const remaining = item.diasRestantes ?? 0
   const progress = total ? Math.min(100, Math.max(0, ((total - remaining) / total) * 100)) : null
@@ -95,8 +119,11 @@ function DeadlinePanel({ item }: { item: Expedient }) {
   )
 }
 
-export function ExpedientSummary({ expedient: item, filings }: ExpedientSummaryProps) {
-  const classification = item.clasificacionDocumental
+export function ExpedientSummary({
+  expedient: item,
+  filings,
+  onEditFiling,
+}: ExpedientSummaryProps) {
   return (
     <div className="grid gap-5 lg:grid-cols-3">
       <div className="space-y-5 lg:col-span-2">
@@ -198,29 +225,6 @@ export function ExpedientSummary({ expedient: item, filings }: ExpedientSummaryP
           </dl>
         </Panel>
 
-        <Panel title="Clasificación documental">
-          <dl className="divide-y divide-border">
-            <Detail label="Nivel de acceso">{item.nivelAcceso ?? 'Sin clasificar'}</Detail>
-            <Detail label="Código TRD">{classification?.codigo ?? '—'}</Detail>
-            <Detail label="Serie / subserie">
-              {classification?.serie
-                ? `${classification.serie}${classification.subserie ? ` / ${classification.subserie}` : ''}`
-                : '—'}
-            </Detail>
-            <Detail label="Retención">
-              {classification?.retencionGestion !== undefined
-                ? `${classification.retencionGestion} AG · ${classification.retencionCentral ?? 0} AC`
-                : '—'}
-            </Detail>
-            <Detail label="Disposición final">{classification?.disposicionFinal ?? '—'}</Detail>
-          </dl>
-          {!classification && (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Configura la TRD en Tipos de trámite para clasificar los nuevos expedientes.
-            </p>
-          )}
-        </Panel>
-
         <Panel title="Radicados asociados" icon={<Stamp size={16} className="text-primary" />}>
           {filings.length ? (
             <ul className="space-y-2">
@@ -232,17 +236,30 @@ export function ExpedientSummary({ expedient: item, filings }: ExpedientSummaryP
                       {filing.tipo} · {formatDate(filing.fecha)}
                     </span>
                   </span>
-                  {filing.documentoUrl && (
-                    <a
-                      href={filing.documentoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-slate-400 hover:text-primary"
-                      aria-label={`Abrir soporte del radicado ${filing.numero}`}
-                    >
-                      <ExternalLink size={15} />
-                    </a>
-                  )}
+                  <span className="flex shrink-0 items-center gap-1">
+                    {onEditFiling && (
+                      <button
+                        type="button"
+                        onClick={() => onEditFiling(filing)}
+                        className="grid size-7 place-items-center rounded-md text-slate-400 hover:bg-muted hover:text-primary"
+                        aria-label={`Corregir el radicado ${filing.numero}`}
+                        title="Corregir radicado"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                    )}
+                    {filing.documentoUrl && (
+                      <a
+                        href={filing.documentoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="grid size-7 place-items-center rounded-md text-slate-400 hover:bg-muted hover:text-primary"
+                        aria-label={`Abrir soporte del radicado ${filing.numero}`}
+                      >
+                        <ExternalLink size={14} />
+                      </a>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>

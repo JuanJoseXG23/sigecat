@@ -2,12 +2,12 @@
 
 ## Roles
 
-| Rol           | Puede                                                                                        |
-| ------------- | -------------------------------------------------------------------------------------------- |
-| Administrador | Todo: usuarios, tipos de trámite, configuración, reportes; modificar expedientes finalizados |
-| Coordinador   | Gestionar y archivar cualquier expediente activo; ver reportes                               |
-| Funcionario   | Crear expedientes y gestionar los que no tienen responsable o le están asignados             |
-| Consulta      | Ver dashboard, expedientes, biblioteca e histórico; no modifica nada                         |
+| Rol           | Puede                                                                                                            |
+| ------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Administrador | Todo: usuarios, tipos de trámite, configuración, reportes; corregir expedientes cerrados, radicados y documentos |
+| Coordinador   | Gestionar y archivar cualquier expediente; corregir expedientes cerrados, radicados y documentos; ver reportes   |
+| Funcionario   | Crear expedientes y gestionar los que no tienen responsable o le están asignados                                 |
+| Consulta      | Ver dashboard, expedientes, biblioteca e histórico; no modifica nada                                             |
 
 Menú por rol (definido en `src/routes/navigation.ts`):
 
@@ -93,19 +93,22 @@ anterior), `diasAmpliacion`, el detalle en `ampliacionesPlazo[]`, el escaneo com
 `AMPLIACION_PLAZO`, el radicado (tipo `Ampliación de plazo`) y el historial. Las reglas están en
 `src/lib/deadline-extension.ts` con sus pruebas; el tope está en `MAX_EXTENSION_FACTOR`.
 
-## Gestión documental
+## Correcciones (Administrador y Coordinador)
 
-- **Tabla de Retención Documental.** Cada tipo de trámite registra código, serie, subserie, años
-  en archivo de gestión (AG) y central (AC) y disposición final. Se copian al expediente al
-  crearlo (`clasificacionDocumental`).
-- **Retención.** Histórico calcula la fase de cada expediente cerrado desde su `fechaCierre`
-  (`src/lib/retention.ts`): en archivo de gestión, listo para transferencia primaria o para
-  aplicar la disposición final. Exporta el inventario con las columnas del FUID.
-- **Hoja de control e índice.** La pestaña Documentos del expediente lista los documentos en
-  orden cronológico con foliación consecutiva (si se registran los folios) e imprime la hoja de
-  control.
-- **Nivel de acceso** (Ley 1712 de 2014): pública, pública clasificada (por defecto, por los datos
-  personales) o pública reservada.
+- **Datos del expediente:** botón **Editar datos** en el detalle, también si el expediente ya está
+  cerrado. El estado del flujo no cambia.
+- **Radicados** de salida, traslado y ampliación: número y fecha, desde Radicación o desde el
+  resumen del expediente. Como el id del radicado incluye el número, un número nuevo crea otro
+  documento y borra el anterior; en el mismo lote se actualizan el radicado de la actuación, los
+  documentos y las ampliaciones que lo mencionan (`src/lib/record-corrections.ts`).
+- **Documentos asociados:** nombre, enlace y folios, desde la pestaña Documentos.
+
+Toda corrección queda en el historial con el valor anterior y el nuevo.
+
+## Hoja de control
+
+La pestaña Documentos lista los documentos en orden cronológico con foliación consecutiva (si se
+registran los folios) e imprime la hoja de control del expediente.
 
 ## Correos
 

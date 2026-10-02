@@ -14,7 +14,7 @@ import { describeRemainingDays, formatLongDate } from '@/lib/format'
 import { useBusinessConfiguration } from '@/hooks/use-business-configuration'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import type { Expedient, ExpedientFormData } from '@/types/expedient'
-import { ACCESS_LEVELS, APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
+import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
 
 type FormInput = z.input<typeof expedientSchema>
 type FormValues = z.output<typeof expedientSchema>
@@ -62,8 +62,6 @@ function getDefaultValues(expedient?: Expedient): FormInput {
     tipoTramiteId: expedient?.tipoTramiteId ?? '',
     tipoTramite: expedient?.tipoTramite ?? '',
     asunto: expedient?.asunto ?? '',
-    // Los expedientes catastrales contienen datos personales (Ley 1581 de 2012).
-    nivelAcceso: expedient ? expedient.nivelAcceso : 'Pública clasificada',
     solicitantes: expedient?.solicitantes.length ? expedient.solicitantes : [emptyApplicant],
     predios: expedient?.predios.length ? expedient.predios : [emptyProperty],
     funcionarioAsignadoUid: expedient?.funcionarioAsignado?.uid ?? '',
@@ -193,7 +191,7 @@ export function ExpedientForm({ expedient, isSaving, onCancel, onSubmit }: Exped
       <FormSection
         step={2}
         title="Trámite y término"
-        description="El tipo de trámite define los días hábiles de respuesta y su clasificación documental."
+        description="El tipo de trámite define los días hábiles de respuesta."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Tipo de trámite" required error={errors.tipoTramiteId?.message}>
@@ -239,13 +237,6 @@ export function ExpedientForm({ expedient, isSaving, onCancel, onSubmit }: Exped
                 {extensionDays ? ` + ${extensionDays} de ampliación` : ''}, sin sábados, domingos ni
                 festivos de Colombia. {describeRemainingDays(timeline.diasRestantes)}.
               </p>
-              {selectedType?.serie && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Serie documental: {selectedType.codigoTRD ? `${selectedType.codigoTRD} · ` : ''}
-                  {selectedType.serie}
-                  {selectedType.subserie ? ` / ${selectedType.subserie}` : ''}
-                </p>
-              )}
             </div>
           </div>
         )}
@@ -324,26 +315,7 @@ export function ExpedientForm({ expedient, isSaving, onCancel, onSubmit }: Exped
         </Button>
       </FormSection>
 
-      <FormSection
-        step={5}
-        title="Gestión documental"
-        description="Clasificación de la información según la Ley 1712 de 2014."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            label="Nivel de acceso"
-            hint="Los datos personales hacen la información pública clasificada."
-          >
-            <Select {...form.register('nivelAcceso')}>
-              <option value="">Sin clasificar</option>
-              {ACCESS_LEVELS.map((level) => (
-                <option key={level} value={level}>
-                  {level}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        </div>
+      <FormSection step={5} title="Observaciones">
         <Field label="Observaciones iniciales">
           <Textarea {...form.register('observacionesIniciales')} />
         </Field>

@@ -99,7 +99,7 @@ export function ExpedientsPage() {
       setArchiveReason('')
       toast({
         title: `Expediente ${item.numeroRadicado} archivado`,
-        description: 'Lo encuentras en Histórico y retención.',
+        description: 'Lo encuentras en el Histórico.',
       })
     },
   })
@@ -196,7 +196,7 @@ export function ExpedientsPage() {
                 <>
                   Si el expediente ya fue cerrado, búscalo en{' '}
                   <Link to="/historico" className="link">
-                    Histórico y retención
+                    el Histórico
                   </Link>
                   .
                 </>

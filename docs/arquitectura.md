@@ -36,7 +36,7 @@ src/
                 avisos, toasts) con la paleta institucional de globals.css
   hooks/        Hooks de TanStack Query que envuelven los servicios
   services/     Único lugar que accede a Firestore
-  lib/          Lógica pura y probada: días hábiles y festivos, ampliación de plazo, retención,
+  lib/          Lógica pura y probada: días hábiles y festivos, ampliación de plazo, correcciones,
                 permisos, enlaces, CSV y formatos de fecha
   types/        Modelos de datos
 scripts/        Tareas administrativas con firebase-admin (crear usuarios, seed)

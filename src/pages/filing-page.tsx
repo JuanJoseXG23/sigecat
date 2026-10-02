@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Download, ExternalLink, Search, Stamp, X } from 'lucide-react'
+import { Download, ExternalLink, Pencil, Search, Stamp, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Badge, type BadgeVariant } from '@/components/ui/badge'
@@ -8,8 +8,11 @@ import { EmptyState, TableSkeleton } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
+import { EditFilingDialog } from '@/features/expedients/components/correction-dialogs'
+import { useAuth } from '@/hooks/use-auth'
 import { downloadCsv } from '@/lib/csv'
 import { formatDate, normalizeSearch } from '@/lib/format'
+import { canCorrectRecords } from '@/lib/permissions'
 import { listFilings, type FilingRecord } from '@/services/filing.service'
 
 const typeVariants: Record<string, BadgeVariant> = {
@@ -33,6 +36,9 @@ export function FilingPage() {
   const [search, setSearch] = useState('')
   const [type, setType] = useState('')
   const [month, setMonth] = useState('')
+  const [editing, setEditing] = useState<FilingRecord | null>(null)
+  const { profile } = useAuth()
+  const canCorrect = canCorrectRecords(profile)
   const types = [...new Set(data.map((item) => item.tipo))]
   const months = [...new Set(data.map((item) => item.fecha.slice(0, 7)))].sort().reverse()
   const rows = useMemo(() => {
@@ -145,10 +151,15 @@ export function FilingPage() {
               <th>Solicitante</th>
               <th>Responsable</th>
               <th>Soporte</th>
+              {canCorrect && (
+                <th>
+                  <span className="sr-only">Corregir</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
-            {isLoading && <TableSkeleton columns={6} />}
+            {isLoading && <TableSkeleton columns={canCorrect ? 7 : 6} />}
             {rows.map((item) => (
               <tr key={item.id}>
                 <td>
@@ -181,6 +192,19 @@ export function FilingPage() {
                     <span className="text-muted-foreground">Sin soporte</span>
                   )}
                 </td>
+                {canCorrect && (
+                  <td className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setEditing(item)}
+                      aria-label={`Corregir el radicado ${item.numero}`}
+                      title="Corregir radicado"
+                    >
+                      <Pencil size={15} />
+                    </Button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -198,6 +222,7 @@ export function FilingPage() {
           />
         )}
       </div>
+      {editing && <EditFilingDialog filing={editing} onClose={() => setEditing(null)} />}
     </section>
   )
 }

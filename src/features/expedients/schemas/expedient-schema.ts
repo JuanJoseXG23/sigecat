@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { ACCESS_LEVELS, APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
+import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
 
 const optionalText = z.string().trim().optional()
 
@@ -11,10 +11,6 @@ export const expedientSchema = z.object({
   tipoTramiteId: z.string().trim().min(1, 'Selecciona un tipo de trámite.'),
   tipoTramite: optionalText,
   asunto: optionalText,
-  nivelAcceso: z.preprocess(
-    (value) => (value === '' ? undefined : value),
-    z.enum(ACCESS_LEVELS).optional(),
-  ),
   solicitantes: z
     .array(
       z.object({

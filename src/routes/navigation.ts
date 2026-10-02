@@ -65,7 +65,7 @@ export const appNavigation: readonly AppNavigationItem[] = [
     group: 'Archivo',
   },
   {
-    label: 'Histórico y retención',
+    label: 'Histórico',
     path: '/historico',
     icon: Archive,
     roles: allRoles,
@@ -86,7 +86,7 @@ export const appNavigation: readonly AppNavigationItem[] = [
     group: 'Administración',
   },
   {
-    label: 'Tipos de trámite y TRD',
+    label: 'Tipos de trámite',
     path: '/tipos-tramite',
     icon: FileCog,
     roles: ['Administrador'],
