@@ -79,16 +79,14 @@ export function DashboardPage() {
       'amber',
     ],
     [
-      'Pendientes de visita',
-      rows.filter((item) => item.estado === 'Pendiente de Visita').length,
+      'Por asignar',
+      rows.filter((item) => item.estado === 'Recibido' || item.estado === 'Asignado').length,
       UserRound,
       'sky',
     ],
     [
       'Pendientes de respuesta',
-      rows.filter(
-        (item) => item.estado.includes('respuesta') || item.estado === 'Pendiente de Información',
-      ).length,
+      rows.filter((item) => item.estado.toLocaleLowerCase('es-CO').includes('respuesta')).length,
       MessageSquare,
       'violet',
     ],

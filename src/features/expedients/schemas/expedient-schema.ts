@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
+import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
 
 const optionalText = z.string().trim().optional()
 
@@ -30,7 +30,6 @@ export const expedientSchema = z.object({
     }),
   ),
   funcionarioAsignadoUid: optionalText,
-  estado: z.enum(EXPEDIENT_STATUSES).optional(),
   prioridad: z.enum(EXPEDIENT_PRIORITIES).optional(),
   observacionesIniciales: optionalText,
 })

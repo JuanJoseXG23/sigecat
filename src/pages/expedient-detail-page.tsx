@@ -319,7 +319,7 @@ export function ExpedientDetailPage() {
                         (new Date().getTime() - item.fechaRadicado.toDate().getTime()) /
                           (1000 * 60 * 60 * 24),
                       )}
-                      diasRestantes={item.diasRestantes}
+                      estadoTermino={item.estadoTermino}
                     />
                   )}
                 </div>

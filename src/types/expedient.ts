@@ -10,12 +10,7 @@ export const EXPEDIENT_STATUSES = [
   'Generar respuesta al ciudadano',
   'Radicar respuesta',
   'Archivo (Finalizado)',
-  'En Estudio',
-  'Pendiente de Información',
-  'Pendiente de Visita',
-  'En Revisión',
-  'Respondido',
-  'Finalizado',
+  // Archivo administrativo fuera del flujo, reservado a supervisores.
   'Archivado',
 ] as const
 
@@ -53,7 +48,8 @@ export interface AssignedOfficial {
   nombreCompleto: string
 }
 
-export type DocumentType = 'Radicado Inicial' | 'Respuesta Radicada' | 'Traslado con Radicado' | 'Respuesta Traslado'
+export type DocumentType =
+  'Radicado Inicial' | 'Respuesta Radicada' | 'Traslado con Radicado' | 'Respuesta Traslado'
 
 export interface ScannedDocument {
   id: string
@@ -116,11 +112,26 @@ export interface Expedient {
   activo: boolean
 }
 
-export const STANDARD_FLOW: ExpedientStatus[] = ['Recibido', 'Asignado', 'En respuesta', 'Radicado de salida', 'Archivo (Finalizado)']
-export const TRANSFER_FLOW: ExpedientStatus[] = ['Recibido', 'Asignado', 'En respuesta', 'Traslado por competencia', 'Generar radicado de traslado', 'Generar respuesta al ciudadano', 'Radicar respuesta', 'Archivo (Finalizado)']
+export const STANDARD_FLOW: ExpedientStatus[] = [
+  'Recibido',
+  'Asignado',
+  'En respuesta',
+  'Radicado de salida',
+  'Archivo (Finalizado)',
+]
+export const TRANSFER_FLOW: ExpedientStatus[] = [
+  'Recibido',
+  'Asignado',
+  'En respuesta',
+  'Traslado por competencia',
+  'Generar radicado de traslado',
+  'Generar respuesta al ciudadano',
+  'Radicar respuesta',
+  'Archivo (Finalizado)',
+]
 
 export function isFinalizedExpedient(item: Pick<Expedient, 'estado' | 'activo'>): boolean {
-  return !item.activo || item.estado === 'Archivo (Finalizado)' || item.estado === 'Finalizado' || item.estado === 'Archivado'
+  return !item.activo || item.estado === 'Archivo (Finalizado)' || item.estado === 'Archivado'
 }
 
 export interface ExpedientFormData {
@@ -133,7 +144,6 @@ export interface ExpedientFormData {
   solicitantes: Applicant[]
   predios: Property[]
   funcionarioAsignadoUid?: string
-  estado?: ExpedientStatus
   prioridad?: ExpedientPriority
   observacionesIniciales?: string
 }

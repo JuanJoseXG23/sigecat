@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Timestamp } from 'firebase/firestore'
-import { Paperclip, Plus, Trash2 } from 'lucide-react'
+import { ExternalLink, Link2, Plus, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/hooks/use-auth'
 import { useTasks } from '@/hooks/use-tasks'
+import { isInstitutionalDocumentUrl } from '@/lib/document-links'
 import { createTask, deleteTask, moveTask } from '@/services/task.service'
 import { TASK_STATUSES, type TaskPriority, type TaskStatus } from '@/types/task'
 
@@ -17,6 +18,21 @@ function signal(date?: { toDate(): Date }) {
   if (!date) return 'bg-slate-300'
   const days = Math.ceil((date.toDate().getTime() - Date.now()) / 86400000)
   return days <= 0 ? 'bg-red-500' : days <= 5 ? 'bg-amber-400' : 'bg-emerald-500'
+}
+
+/** Las tareas antiguas guardaban solo el nombre del archivo; se muestran como texto. */
+function Attachment({ value }: { value: string }) {
+  if (!isInstitutionalDocumentUrl(value)) return <span className="truncate">{value}</span>
+  return (
+    <a
+      href={value}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 truncate text-primary hover:underline"
+    >
+      <ExternalLink size={12} className="shrink-0" /> Abrir anexo
+    </a>
+  )
 }
 
 export function AgendaPage() {
@@ -29,22 +45,203 @@ export function AgendaPage() {
   const [dueDate, setDueDate] = useState('')
   const [priority, setPriority] = useState<TaskPriority>('Media')
   const [attachments, setAttachments] = useState<string[]>([])
+  const [link, setLink] = useState('')
+  const [linkError, setLinkError] = useState('')
   const refresh = () => client.invalidateQueries({ queryKey: ['tasks', user?.uid] })
+  const close = () => {
+    setOpen(false)
+    setTitle('')
+    setDescription('')
+    setDueDate('')
+    setAttachments([])
+    setLink('')
+    setLinkError('')
+  }
+  const addLink = () => {
+    const value = link.trim()
+    if (!isInstitutionalDocumentUrl(value)) {
+      setLinkError('Usa un enlace HTTPS válido de OneDrive o SharePoint institucional.')
+      return
+    }
+    if (!attachments.includes(value)) setAttachments([...attachments, value])
+    setLink('')
+    setLinkError('')
+  }
   const create = useMutation({
-    mutationFn: () => createTask({
-      titulo: title.trim(), descripcion: description.trim() || undefined, prioridad: priority,
-      estado: 'Pendientes', responsableId: user!.uid, responsable: profile?.nombreCompleto ?? '',
-      checklist: [], anexos: attachments,
-      ...(dueDate ? { fechaLimite: Timestamp.fromDate(new Date(`${dueDate}T00:00:00`)) } : {}),
-    }),
-    onSuccess: () => { setOpen(false); setTitle(''); setDescription(''); setDueDate(''); setAttachments([]); return refresh() },
+    mutationFn: () =>
+      createTask({
+        titulo: title.trim(),
+        descripcion: description.trim() || undefined,
+        prioridad: priority,
+        estado: 'Pendientes',
+        responsableId: user!.uid,
+        responsable: profile?.nombreCompleto ?? '',
+        checklist: [],
+        anexos: attachments,
+        ...(dueDate ? { fechaLimite: Timestamp.fromDate(new Date(`${dueDate}T00:00:00`)) } : {}),
+      }),
+    onSuccess: () => {
+      close()
+      return refresh()
+    },
   })
-  const move = useMutation({ mutationFn: ({ id, status }: { id: string; status: TaskStatus }) => moveTask(id, status), onSuccess: refresh })
+  const move = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: TaskStatus }) => moveTask(id, status),
+    onSuccess: refresh,
+  })
   const remove = useMutation({ mutationFn: deleteTask, onSuccess: refresh })
 
-  return <section className="mx-auto max-w-7xl space-y-5">
-    <div className="flex items-center justify-between"><div><p className="text-sm font-medium text-primary">Organización personal</p><h1 className="text-2xl font-semibold">Mi Agenda</h1></div><Button onClick={() => setOpen(true)}><Plus size={17}/> Crear tarea</Button></div>
-    <div className="grid gap-4 lg:grid-cols-4">{TASK_STATUSES.map((status) => <Card key={status} className="min-h-64 bg-slate-50 p-3" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { const id = event.dataTransfer.getData('text/task'); if (id) move.mutate({ id, status }) }}><h2 className="mb-3 font-semibold">{status}</h2>{data.filter((task) => task.estado === status).map((task) => <article key={task.id} draggable onDragStart={(event) => event.dataTransfer.setData('text/task', task.id)} className="mb-3 cursor-grab rounded-lg border bg-white p-3 shadow-sm"><div className="flex justify-between gap-2"><b className="text-sm">{task.titulo}</b><span className={`mt-1 size-3 shrink-0 rounded-full ${signal(task.fechaLimite)}`}/></div><Badge className="mt-2" variant={task.prioridad === 'Alta' ? 'destructive' : 'default'}>{task.prioridad}</Badge>{task.descripcion && <p className="mt-2 text-xs text-slate-600">{task.descripcion}</p>}{task.anexos?.length ? <p className="mt-2 flex items-center gap-1 text-xs text-slate-500"><Paperclip size={13}/>{task.anexos.length} anexo(s)</p> : null}{status === 'Finalizadas' && <Button className="mt-2" variant="ghost" size="sm" onClick={() => { if (window.confirm(`¿Eliminar la tarea “${task.titulo}”?`)) remove.mutate(task.id) }}><Trash2 size={14} className="text-destructive"/> Eliminar</Button>}</article>)}</Card>)}</div>
-    {open && <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4"><Card className="w-full max-w-xl p-6"><h2 className="text-lg font-semibold">Crear tarea</h2><p className="text-sm text-slate-500">Solo el título es obligatorio.</p><div className="mt-4 grid gap-3"><Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Título de la tarea *"/><Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)}/><Select value={priority} onChange={(event) => setPriority(event.target.value as TaskPriority)}><option>Alta</option><option>Media</option><option>Baja</option></Select><Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Descripción opcional"/><Input type="file" multiple onChange={(event) => setAttachments(Array.from(event.target.files ?? []).map((file) => file.name))}/></div><div className="mt-5 flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button><Button disabled={!title.trim() || create.isPending} onClick={() => create.mutate()}>Crear tarea</Button></div></Card></div>}
-  </section>
+  return (
+    <section className="mx-auto max-w-7xl space-y-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-primary">Organización personal</p>
+          <h1 className="text-2xl font-semibold">Mi Agenda</h1>
+        </div>
+        <Button onClick={() => setOpen(true)}>
+          <Plus size={17} /> Crear tarea
+        </Button>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-4">
+        {TASK_STATUSES.map((status) => (
+          <Card
+            key={status}
+            className="min-h-64 bg-slate-50 p-3"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              const id = event.dataTransfer.getData('text/task')
+              if (id) move.mutate({ id, status })
+            }}
+          >
+            <h2 className="mb-3 font-semibold">{status}</h2>
+            {data
+              .filter((task) => task.estado === status)
+              .map((task) => (
+                <article
+                  key={task.id}
+                  draggable
+                  onDragStart={(event) => event.dataTransfer.setData('text/task', task.id)}
+                  className="mb-3 cursor-grab rounded-lg border bg-white p-3 shadow-sm"
+                >
+                  <div className="flex justify-between gap-2">
+                    <b className="text-sm">{task.titulo}</b>
+                    <span
+                      className={`mt-1 size-3 shrink-0 rounded-full ${signal(task.fechaLimite)}`}
+                    />
+                  </div>
+                  <Badge
+                    className="mt-2"
+                    variant={task.prioridad === 'Alta' ? 'destructive' : 'default'}
+                  >
+                    {task.prioridad}
+                  </Badge>
+                  {task.descripcion && (
+                    <p className="mt-2 text-xs text-slate-600">{task.descripcion}</p>
+                  )}
+                  {task.anexos?.length ? (
+                    <ul className="mt-2 space-y-1 text-xs text-slate-500">
+                      {task.anexos.map((value) => (
+                        <li key={value} className="flex min-w-0 items-center gap-1">
+                          <Attachment value={value} />
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {status === 'Finalizadas' && (
+                    <Button
+                      className="mt-2"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        if (window.confirm(`¿Eliminar la tarea “${task.titulo}”?`))
+                          remove.mutate(task.id)
+                      }}
+                    >
+                      <Trash2 size={14} className="text-destructive" /> Eliminar
+                    </Button>
+                  )}
+                </article>
+              ))}
+          </Card>
+        ))}
+      </div>
+      {open && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
+          <Card className="w-full max-w-xl p-6">
+            <h2 className="text-lg font-semibold">Crear tarea</h2>
+            <p className="text-sm text-slate-500">Solo el título es obligatorio.</p>
+            <div className="mt-4 grid gap-3">
+              <Input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder="Título de la tarea *"
+              />
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(event) => setDueDate(event.target.value)}
+              />
+              <Select
+                value={priority}
+                onChange={(event) => setPriority(event.target.value as TaskPriority)}
+              >
+                <option>Alta</option>
+                <option>Media</option>
+                <option>Baja</option>
+              </Select>
+              <Textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                placeholder="Descripción opcional"
+              />
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    value={link}
+                    onChange={(event) => setLink(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        addLink()
+                      }
+                    }}
+                    placeholder="Enlace de OneDrive del anexo (opcional)"
+                  />
+                  <Button type="button" variant="outline" disabled={!link.trim()} onClick={addLink}>
+                    <Link2 size={16} /> Agregar
+                  </Button>
+                </div>
+                {linkError && <p className="text-xs text-destructive">{linkError}</p>}
+                {attachments.map((value) => (
+                  <div
+                    key={value}
+                    className="flex items-center justify-between gap-2 rounded-md border p-2 text-xs"
+                  >
+                    <span className="truncate">{value}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      aria-label="Quitar anexo"
+                      onClick={() => setAttachments(attachments.filter((item) => item !== value))}
+                    >
+                      <X size={14} />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="outline" onClick={close}>
+                Cancelar
+              </Button>
+              <Button disabled={!title.trim() || create.isPending} onClick={() => create.mutate()}>
+                Crear tarea
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+    </section>
+  )
 }

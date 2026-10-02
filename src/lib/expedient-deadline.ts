@@ -7,7 +7,8 @@ function isBusinessDay(date: Date, holidays: Set<string>): boolean {
   return day !== 0 && day !== 6 && !holidays.has(toDateKey(date))
 }
 
-function toDateKey(date: Date): string {
+/** Fecha local en formato yyyy-mm-dd; a diferencia de toISOString, no se desplaza a UTC. */
+export function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
@@ -29,7 +30,11 @@ export function addBusinessDays(startDate: Date, days: number, holidays: string[
   return result
 }
 
-export function getRemainingBusinessDays(deadline: Date, today = new Date(), holidays: string[] = []): number {
+export function getRemainingBusinessDays(
+  deadline: Date,
+  today = new Date(),
+  holidays: string[] = [],
+): number {
   const target = startOfDay(deadline)
   let cursor = startOfDay(today)
   const direction = target >= cursor ? 1 : -1
@@ -43,7 +48,12 @@ export function getRemainingBusinessDays(deadline: Date, today = new Date(), hol
   return remainingDays
 }
 
-export function calculateExpedientTimeline(filingDate: string, responseDays: number, today = new Date(), holidays: string[] = []) {
+export function calculateExpedientTimeline(
+  filingDate: string,
+  responseDays: number,
+  today = new Date(),
+  holidays: string[] = [],
+) {
   const [year, month, day] = filingDate.split('-').map(Number)
   const date = new Date(year, month - 1, day)
   const fechaLimite = addBusinessDays(date, responseDays, holidays)

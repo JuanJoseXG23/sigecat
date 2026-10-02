@@ -10,7 +10,8 @@
     "test": "tsx --test src/lib/*.test.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "seed": "tsx scripts/seed-users.ts"
+    "seed": "tsx scripts/seed-users.ts",
+    "user:create": "tsx scripts/create-user.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",

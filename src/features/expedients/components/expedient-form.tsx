@@ -10,10 +10,11 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { expedientSchema } from '@/features/expedients/schemas/expedient-schema'
-import { calculateExpedientTimeline } from '@/lib/expedient-deadline'
+import { calculateExpedientTimeline, toDateKey } from '@/lib/expedient-deadline'
+import { useBusinessConfiguration } from '@/hooks/use-business-configuration'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import type { Expedient, ExpedientFormData } from '@/types/expedient'
-import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
+import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
 
 type FormValues = z.infer<typeof expedientSchema>
 
@@ -40,7 +41,7 @@ const emptyProperty = {
 
 function toDateInput(value?: { toDate: () => Date }): string {
   if (!value) return ''
-  return value.toDate().toISOString().slice(0, 10)
+  return toDateKey(value.toDate())
 }
 
 function getDefaultValues(expedient?: Expedient): FormValues {
@@ -54,7 +55,6 @@ function getDefaultValues(expedient?: Expedient): FormValues {
     solicitantes: expedient?.solicitantes.length ? expedient.solicitantes : [emptyApplicant],
     predios: expedient?.predios.length ? expedient.predios : [emptyProperty],
     funcionarioAsignadoUid: expedient?.funcionarioAsignado?.uid ?? '',
-    estado: expedient?.estado ?? 'Recibido',
     prioridad: expedient?.prioridad,
     observacionesIniciales: expedient?.observacionesIniciales ?? '',
   }
@@ -78,30 +78,35 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-export function ExpedientForm({
-  expedient,
-  isSaving,
-  onCancel,
-  onSubmit,
-}: ExpedientFormProps) {
+export function ExpedientForm({ expedient, isSaving, onCancel, onSubmit }: ExpedientFormProps) {
   const form = useForm<FormValues>({
     resolver: zodResolver(expedientSchema),
     defaultValues: getDefaultValues(expedient),
     mode: 'onSubmit',
   })
   const applicants = useFieldArray({ control: form.control, name: 'solicitantes' })
+  const properties = useFieldArray({ control: form.control, name: 'predios' })
   const filingDate = useWatch({ control: form.control, name: 'fechaRadicado' })
   const procedureTypeId = useWatch({ control: form.control, name: 'tipoTramiteId' })
   const { data: procedureTypes = [] } = useProcedureTypes()
+  const { data: configuration } = useBusinessConfiguration()
   const selectedType = procedureTypes.find((item) => item.id === procedureTypeId)
-  const timeline = filingDate && selectedType ? calculateExpedientTimeline(filingDate, selectedType.diasRespuesta) : undefined
+  const timeline =
+    filingDate && selectedType
+      ? calculateExpedientTimeline(
+          filingDate,
+          selectedType.diasRespuesta,
+          new Date(),
+          configuration?.diasFestivos,
+        )
+      : undefined
 
   useEffect(() => {
     form.reset(getDefaultValues(expedient))
   }, [expedient, form])
 
   const submit: SubmitHandler<FormValues> = async (values) => {
-    await onSubmit({ ...values, estado: expedient ? values.estado : 'Recibido' })
+    await onSubmit(values)
   }
 
   return (
@@ -194,17 +199,43 @@ export function ExpedientForm({
       </FormSection>
 
       <FormSection title="Información predial">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Municipio">
-            <Input {...form.register('predios.0.municipio')} />
-          </Field>
-          <Field label="Matrícula inmobiliaria">
-            <Input {...form.register('predios.0.matriculaInmobiliaria')} />
-          </Field>
-          <Field label="Dirección">
-            <Input {...form.register('predios.0.direccion')} />
-          </Field>
+        <div className="space-y-3">
+          {properties.fields.map((field, index) => (
+            <Card key={field.id} className="relative p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-800">Predio {index + 1}</p>
+                {properties.fields.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    onClick={() => properties.remove(index)}
+                    aria-label={`Eliminar predio ${index + 1}`}
+                  >
+                    <Trash2 size={16} className="text-destructive" />
+                  </Button>
+                )}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Municipio">
+                  <Input {...form.register(`predios.${index}.municipio`)} />
+                </Field>
+                <Field label="Número predial">
+                  <Input {...form.register(`predios.${index}.numeroPredial`)} />
+                </Field>
+                <Field label="Matrícula inmobiliaria">
+                  <Input {...form.register(`predios.${index}.matriculaInmobiliaria`)} />
+                </Field>
+                <Field label="Dirección">
+                  <Input {...form.register(`predios.${index}.direccion`)} />
+                </Field>
+              </div>
+            </Card>
+          ))}
         </div>
+        <Button variant="outline" type="button" onClick={() => properties.append(emptyProperty)}>
+          <Plus size={16} /> Agregar predio
+        </Button>
       </FormSection>
 
       <FormSection title="Gestión">
@@ -212,19 +243,18 @@ export function ExpedientForm({
           <Field label="Tipo de trámite">
             <Select {...form.register('tipoTramiteId')}>
               <option value="">Sin tipo configurado</option>
-              {procedureTypes.map((type) => <option key={type.id} value={type.id}>{type.nombre} · {type.diasRespuesta} días hábiles</option>)}
-            </Select>
-            {selectedType && <span className="block text-xs font-normal text-slate-500">Flujo: {selectedType.flujoEstados.join(' → ')}</span>}
-          </Field>
-          {expedient && <Field label="Estado">
-            <Select {...form.register('estado')}>
-              {(selectedType?.flujoEstados ?? EXPEDIENT_STATUSES).map((status) => (
-                <option key={status} value={status}>
-                  {status}
+              {procedureTypes.map((type) => (
+                <option key={type.id} value={type.id}>
+                  {type.nombre} · {type.diasRespuesta} días hábiles
                 </option>
               ))}
             </Select>
-          </Field>}
+            {selectedType && (
+              <span className="block text-xs font-normal text-slate-500">
+                Flujo: {selectedType.flujoEstados.join(' → ')}
+              </span>
+            )}
+          </Field>
           <Field label="Prioridad">
             <Select {...form.register('prioridad')}>
               <option value="">Sin prioridad</option>

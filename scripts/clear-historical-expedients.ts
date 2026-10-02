@@ -8,7 +8,7 @@ const firestore = getFirestore(app)
 const expedients = await firestore.collection('expedientes').get()
 const historical = expedients.docs.filter((item) => {
   const data = item.data()
-  return data.activo === false || ['Archivo (Finalizado)', 'Finalizado', 'Archivado'].includes(data.estado)
+  return data.activo === false || ['Archivo (Finalizado)', 'Archivado'].includes(data.estado)
 })
 
 let deleted = 0

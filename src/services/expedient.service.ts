@@ -19,6 +19,7 @@ import {
   getDeadlineStatus,
   registerExpedientHistory,
 } from '@/services/business-rules.service'
+import { toDateKey } from '@/lib/expedient-deadline'
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
 import { getFilingReference, registerFiling } from '@/services/filing.service'
@@ -112,7 +113,6 @@ async function toExpedientData(
     solicitantes: values.solicitantes.map((applicant) => removeEmptyFields(applicant)),
     predios: values.predios.map((property) => removeEmptyFields(property)),
     funcionarioAsignado: assignedOfficial,
-    estado: values.estado ?? 'Recibido',
     prioridad: values.prioridad,
     fechaLimite,
     diasRestantes: timeline.diasRestantes,
@@ -184,11 +184,13 @@ export async function createExpedient(
   assignedOfficial?: AssignedOfficial,
 ): Promise<string> {
   const reference = doc(collection(firestore, EXPEDIENTS_COLLECTION))
-  const expedientData = await toExpedientData({ ...values, estado: 'Recibido' }, assignedOfficial)
+  const expedientData = await toExpedientData(values, assignedOfficial)
   await ensureUniqueFilingNumber(expedientData.numeroRadicado as string)
   const batch = writeBatch(firestore)
   batch.set(reference, {
     ...expedientData,
+    // El estado solo avanza desde el flujo del expediente, nunca desde el formulario.
+    estado: 'Recibido',
     id: reference.id,
     creadoPor: createdBy,
     activo: true,
@@ -217,7 +219,6 @@ export async function updateExpedient(
     ...data,
     fechaRecibido: values.fechaRecibido ? toTimestamp(values.fechaRecibido) : deleteField(),
     medioIngreso: values.medioIngreso?.trim() || deleteField(),
-    tipoTramite: values.tipoTramite?.trim() || deleteField(),
     funcionarioAsignado: assignedOfficial ?? deleteField(),
     prioridad: values.prioridad ?? deleteField(),
     observacionesIniciales: values.observacionesIniciales?.trim() || deleteField(),
@@ -225,7 +226,8 @@ export async function updateExpedient(
   })
   if (current) {
     const changes = [
-      current.estado !== data.estado && `Estado: ${current.estado} → ${data.estado}`,
+      current.tipoTramite !== data.tipoTramite &&
+        `Tipo de trámite: ${current.tipoTramite ?? 'Sin tipo'} → ${data.tipoTramite}`,
       current.funcionarioAsignado?.uid !== assignedOfficial?.uid &&
         `Responsable: ${current.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'} → ${assignedOfficial?.nombreCompleto ?? 'Sin asignar'}`,
       current.prioridad !== data.prioridad &&
@@ -391,7 +393,7 @@ export async function completeRequiredActuation(
 
     registerFiling(batch, {
       numero: filingNumber,
-      fecha: fields.fechaRadicadoActuacion ?? new Date().toISOString().slice(0, 10),
+      fecha: fields.fechaRadicadoActuacion ?? toDateKey(new Date()),
       tipo: action.includes('traslado') ? 'Traslado' : 'Salida',
       expedienteId: current.id,
       solicitante: current.solicitantes[0]?.nombre ?? '',

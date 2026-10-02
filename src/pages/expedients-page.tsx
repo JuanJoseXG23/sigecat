@@ -11,7 +11,6 @@ import { ExpedientForm } from '@/features/expedients/components/expedient-form'
 import { useAuth } from '@/hooks/use-auth'
 import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useExpedients } from '@/hooks/use-expedients'
-import { getRemainingBusinessDays } from '@/lib/expedient-deadline'
 import { canManageExpedient, isSupervisor } from '@/lib/permissions'
 import { archiveExpedient, createExpedient, updateExpedient } from '@/services/expedient.service'
 import type { Expedient, ExpedientFormData, ExpedientPriority } from '@/types/expedient'
@@ -292,9 +291,9 @@ export function ExpedientsPage() {
                   </td>
                   <td className="px-5 py-4">
                     <p>{formatDate(item.fechaLimite)}</p>
-                    {item.fechaLimite && (
+                    {item.diasRestantes !== undefined && (
                       <p className="mt-0.5 text-xs text-slate-500">
-                        {getRemainingBusinessDays(item.fechaLimite.toDate())} días hábiles
+                        {item.diasRestantes} días hábiles
                       </p>
                     )}
                   </td>

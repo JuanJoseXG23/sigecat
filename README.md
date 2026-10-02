@@ -35,6 +35,18 @@ npm run seed
 Después de una rotación, invalida sesiones desde Firebase Authentication. Nunca guardes
 contraseñas en archivos versionados, `.env.production` ni historial de terminal.
 
+## Crear usuarios
+
+Requiere la cuenta de servicio en `secrets/firebase-admin.json` (o en la ruta de
+`FIREBASE_ADMIN_SERVICE_ACCOUNT_PATH`). Nadie elige ni ve la contraseña: el script imprime un enlace
+de un solo uso para que la persona defina la suya.
+
+```powershell
+npm run user:create -- --nombre "Ana Pérez" --correo ana.perez@girardota.gov.co --cargo "Técnico Administrativo" --rol Funcionario --dependencia "Catastro"
+```
+
+Roles válidos: `Administrador`, `Coordinador`, `Funcionario`, `Consulta`.
+
 ## Reglas de Firebase
 
 `firestore.rules` exige un perfil activo para acceder a datos y limita las tareas a su

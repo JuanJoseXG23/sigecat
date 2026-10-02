@@ -16,12 +16,20 @@ export function getRequiredDocumentForStatus(
   }
 
   // Si hay traslado por competencia, necesita escanear Traslado con Radicado
-  if (trasladoPorCompetencia && currentStatus === 'En respuesta' && nextStatus === 'Traslado por competencia') {
+  if (
+    trasladoPorCompetencia &&
+    currentStatus === 'En respuesta' &&
+    nextStatus === 'Traslado por competencia'
+  ) {
     return 'Traslado con Radicado'
   }
 
   // Cuando hace respuesta al traslado, necesita escanear Respuesta Traslado
-  if (trasladoPorCompetencia && currentStatus === 'Generar respuesta al ciudadano' && nextStatus === 'Radicar respuesta') {
+  if (
+    trasladoPorCompetencia &&
+    currentStatus === 'Generar respuesta al ciudadano' &&
+    nextStatus === 'Radicar respuesta'
+  ) {
     return 'Respuesta Traslado'
   }
 

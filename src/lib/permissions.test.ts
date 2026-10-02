@@ -11,13 +11,22 @@ const assignedTo = (uid: string) => ({ uid, nombreCompleto: uid })
 test('supervisores gestionan cualquier expediente activo', () => {
   assert.equal(isSupervisor(admin), true)
   assert.equal(isSupervisor(coordinator), true)
-  assert.equal(canManageExpedient(coordinator, { activo: true, funcionarioAsignado: assignedTo('x') }), true)
+  assert.equal(
+    canManageExpedient(coordinator, { activo: true, funcionarioAsignado: assignedTo('x') }),
+    true,
+  )
 })
 
 test('un funcionario solo gestiona expedientes propios o sin asignar', () => {
   assert.equal(canManageExpedient(official, { activo: true }), true)
-  assert.equal(canManageExpedient(official, { activo: true, funcionarioAsignado: assignedTo('f') }), true)
-  assert.equal(canManageExpedient(official, { activo: true, funcionarioAsignado: assignedTo('x') }), false)
+  assert.equal(
+    canManageExpedient(official, { activo: true, funcionarioAsignado: assignedTo('f') }),
+    true,
+  )
+  assert.equal(
+    canManageExpedient(official, { activo: true, funcionarioAsignado: assignedTo('x') }),
+    false,
+  )
 })
 
 test('consulta y sesiones sin perfil no gestionan expedientes', () => {
@@ -28,5 +37,8 @@ test('consulta y sesiones sin perfil no gestionan expedientes', () => {
 test('los expedientes finalizados solo los modifica el administrador', () => {
   assert.equal(canManageExpedient(admin, { activo: false }), true)
   assert.equal(canManageExpedient(coordinator, { activo: false }), false)
-  assert.equal(canManageExpedient(official, { activo: false, funcionarioAsignado: assignedTo('f') }), false)
+  assert.equal(
+    canManageExpedient(official, { activo: false, funcionarioAsignado: assignedTo('f') }),
+    false,
+  )
 })
