@@ -631,35 +631,6 @@ export function ExpedientDetailPage() {
           </Card>
         </div>
       )}
-
-      {/*
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
-          <Card className="w-full max-w-lg p-6">
-            <h2 className="text-lg font-semibold">Eliminar expediente</h2>
-            <p className="mt-3 text-sm text-slate-600">
-              ¿Estás seguro de que deseas eliminar permanentemente este expediente{' '}
-              <strong>({item.numeroRadicado})</strong>? Esta acción no se puede deshacer y se
-              eliminarán todos los documentos, observaciones e historial asociados.
-            </p>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setDeleteDialogOpen(false)}
-                disabled={deleteExpedientMutation.isPending}
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => deleteExpedientMutation.mutate()}
-                disabled={deleteExpedientMutation.isPending}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                {deleteExpedientMutation.isPending ? 'Eliminando...' : 'Eliminar permanentemente'}
-              </Button>
-            </div>
-          </Card>
-        </div>
-      */}
     </section>
   )
 }

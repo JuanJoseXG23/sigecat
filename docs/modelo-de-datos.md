@@ -1,0 +1,77 @@
+# Modelo de datos (Firestore)
+
+Los tipos de TypeScript de `src/types/` son la referencia exacta; aquí se resume qué guarda cada
+colección y quién puede escribir en ella según `firestore.rules`.
+
+## `usuarios/{uid}`
+
+El id del documento es el uid de Firebase Authentication.
+
+| Campo                                               | Descripción                                                |
+| --------------------------------------------------- | ---------------------------------------------------------- |
+| `nombreCompleto`, `correo`, `cargo`, `dependencia?` | Datos de la persona                                        |
+| `rol`                                               | `Administrador`, `Coordinador`, `Funcionario` o `Consulta` |
+| `activo`                                            | Si es `false`, la sesión se cierra al entrar               |
+| `recibeAlertasVencimiento?`                         | Recibe alertas diarias de vencimiento                      |
+| `fechaCreacion`, `ultimoIngreso`                    | Fechas                                                     |
+
+Escriben: el Administrador; cada usuario solo actualiza su propio `ultimoIngreso`.
+
+## `expedientes/{id}`
+
+| Campo                                                                          | Descripción                                                                                                  |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `numeroRadicado`                                                               | Radicado de entrada; único                                                                                   |
+| `fechaRadicado`, `fechaRecibido?`, `medioIngreso?`                             | Datos de recepción                                                                                           |
+| `tipoTramiteId`, `tipoTramite`                                                 | Tipo de trámite y su nombre al momento de guardar                                                            |
+| `solicitantes[]`                                                               | `nombre`, `documento`, `telefono`, `correo`, `tipoSolicitante`                                               |
+| `predios[]`                                                                    | `municipio`, `numeroPredial`, `matriculaInmobiliaria`, `direccion`                                           |
+| `estado`                                                                       | Ver [flujo-y-permisos.md](flujo-y-permisos.md)                                                               |
+| `prioridad?`                                                                   | `Alta`, `Media` o `Baja`                                                                                     |
+| `funcionarioAsignado?`                                                         | `{ uid, nombreCompleto }`                                                                                    |
+| `responsableExterno?`, `trasladoPorCompetencia?`                               | Dependencia destino de un traslado                                                                           |
+| `fechaLimite`, `diasRestantes`, `diasVencidos`, `estadoTermino`                | Término (se recalcula al leer)                                                                               |
+| `documentosWorkflow[]`                                                         | Enlaces de OneDrive: `tipo` (`RECIBIDO`, `RADICADO_SALIDA`, `TRASLADO`), `nombre`, `url`, `usuario`, `fecha` |
+| `formatoFisicoFirmado?`, `numeroRadicadoActuacion?`, `fechaRadicadoActuacion?` | Datos de las actuaciones                                                                                     |
+| `ultimaAlertaVencimiento?`                                                     | Lo escribe solo Apps Script para no repetir alertas                                                          |
+| `activo`                                                                       | `false` cuando está finalizado o archivado                                                                   |
+| `creadoPor`, `fechaCreacion`, `fechaActualizacion`                             | Auditoría; los dos primeros son inmutables                                                                   |
+
+Subcolección **`historial`**: `usuario`, `accion`, `detalle`, `fecha`. Solo se agregan registros;
+nunca se editan ni se borran.
+
+Escriben: usuarios operativos según [los permisos](flujo-y-permisos.md#roles). Nadie puede
+borrar expedientes.
+
+## `radicados/{expedienteId}_{numero}`
+
+Radicados de salida y traslado registrados en el flujo: `numero`, `fecha`, `tipo`,
+`expedienteId`, `solicitante`, `responsable`, `estado`, `municipio`, `observaciones`,
+`documentoUrl?`, `documentoNombre?`. El id evita registrar dos veces el mismo número en un
+expediente. Se crean pero no se editan.
+
+## `tiposTramite/{id}`
+
+`nombre`, `descripcion`, `diasRespuesta`, `flujoEstados`, `activo`, y los indicadores
+informativos `requiereVisita` y `requiereRevisionJuridica`. Solo el Administrador escribe; se
+desactivan en vez de borrarse.
+
+## `configuracion/reglasNegocio`
+
+`diasFestivos[]` (`yyyy-mm-dd`), `umbralProximoVencer`, `alertasCorreoHabilitadas`. Solo el
+Administrador escribe.
+
+## `tareas/{id}`
+
+Tareas personales de **Mi Agenda**: `titulo`, `descripcion?`, `prioridad`, `estado`
+(`Pendientes`, `En proceso`, `Por revisar`, `Finalizadas`), `fechaLimite?`, `anexos[]` (enlaces de
+OneDrive), `responsableId`. Cada usuario solo ve y modifica las suyas.
+
+## Colas de correo
+
+Las crea la aplicación y las procesa Apps Script, que marca `estado` como `Enviado`, `Error` u
+`Omitido` y agrega `fechaProcesamiento` y `detalleError?`.
+
+- **`notificacionesAsignacion`**: `expedienteId`, `destinatarioUid`, `solicitadoPor`, `estado`,
+  `fechaSolicitud`. Las reglas exigen que el destinatario sea el responsable del expediente.
+- **`solicitudesPruebaCorreo`**: correo de prueba; solo administradores.

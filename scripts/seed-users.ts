@@ -44,9 +44,8 @@ const initialUsers: SeedUser[] = [
   },
 ]
 
-const configuredServiceAccountPath = process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_PATH
-  ?.trim()
-  .replace(/^["']|["']$/g, '')
+const configuredServiceAccountPath =
+  process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_PATH?.trim().replace(/^["']|["']$/g, '')
 
 const serviceAccountPath = configuredServiceAccountPath
   ? path.resolve(configuredServiceAccountPath)
@@ -64,9 +63,7 @@ function getRequiredPassword(seedUser: SeedUser): string {
   return password
 }
 
-const serviceAccount = JSON.parse(
-  readFileSync(serviceAccountPath, 'utf8'),
-)
+const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'))
 
 const app =
   getApps().length > 0

@@ -48,8 +48,6 @@ export function DocumentsLibraryPage() {
         return '📤'
       case 'Documento de traslado':
         return '🔄'
-      case 'Respuesta Traslado':
-        return '💬'
       default:
         return '📄'
     }

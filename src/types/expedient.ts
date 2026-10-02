@@ -48,18 +48,6 @@ export interface AssignedOfficial {
   nombreCompleto: string
 }
 
-export type DocumentType =
-  'Radicado Inicial' | 'Respuesta Radicada' | 'Traslado con Radicado' | 'Respuesta Traslado'
-
-export interface ScannedDocument {
-  id: string
-  tipo: DocumentType
-  radicado: string
-  urlOneDrive: string
-  fechaEscaneo: Timestamp
-  creadoPor: string
-}
-
 export type WorkflowDocumentType = 'RECIBIDO' | 'RADICADO_SALIDA' | 'TRASLADO'
 
 export interface WorkflowDocument {
@@ -104,7 +92,6 @@ export interface Expedient {
   }
   observacionesIniciales?: string
   carpetaOneDrive?: string
-  documentosEscaneados?: ScannedDocument[]
   documentosWorkflow?: WorkflowDocument[]
   fechaCreacion: Timestamp
   fechaActualizacion: Timestamp
@@ -154,11 +141,4 @@ export interface ExpedientHistoryEntry {
   accion: string
   detalle: string
   fecha: Timestamp | null
-}
-
-export interface ExpedientObservation {
-  id: string
-  contenido: string
-  creadoPor: string
-  fechaCreacion: Timestamp | null
 }

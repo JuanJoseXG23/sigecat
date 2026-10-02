@@ -129,22 +129,6 @@ export function FilingPage() {
                     <span className="text-slate-400">Sin soporte</span>
                   )}
                 </td>
-                {/*
-                  <td>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Eliminar radicado ${item.numero}`}
-                      disabled={remove.isPending}
-                      onClick={() => {
-                        if (window.confirm(`¿Eliminar permanentemente el radicado ${item.numero}?`))
-                          remove.mutate(item.id)
-                      }}
-                    >
-                      <Trash2 size={16} className="text-destructive" />
-                    </Button>
-                  </td>
-                */}
               </tr>
             ))}
           </tbody>

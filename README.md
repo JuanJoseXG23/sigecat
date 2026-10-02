@@ -1,6 +1,11 @@
 # SIGECAT
 
-Sistema Integral de Gestión Catastral Documental para el Municipio de Girardota.
+Sistema Integral de Gestión Catastral Documental para el Municipio de Girardota: registra,
+asigna, controla términos y archiva los expedientes de Catastro, con historial de cada actuación.
+
+- [Arquitectura](docs/arquitectura.md): stack, carpetas, convenciones y publicación.
+- [Flujo y permisos](docs/flujo-y-permisos.md): roles, estados, términos y correos.
+- [Modelo de datos](docs/modelo-de-datos.md): colecciones de Firestore.
 
 ## Inicio local
 
@@ -49,13 +54,12 @@ Roles válidos: `Administrador`, `Coordinador`, `Funcionario`, `Consulta`.
 
 ## Reglas de Firebase
 
-`firestore.rules` exige un perfil activo para acceder a datos y limita las tareas a su
-responsable. Firebase Storage no está configurado en este proyecto y no se debe habilitar hasta
-implementar cargas seguras. Despliega las reglas de Firestore antes de usar estos cambios en
-producción:
+`firestore.rules` exige un perfil activo para acceder a datos y aplica los permisos por rol
+descritos en [Flujo y permisos](docs/flujo-y-permisos.md). Se despliegan aparte del sitio, después
+de cada cambio:
 
 ```powershell
-firebase deploy --only firestore:rules
+firebase deploy --only firestore:rules --project sigecat-7c6ec
 ```
 
 ## Alertas de vencimiento por correo

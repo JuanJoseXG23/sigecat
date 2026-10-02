@@ -1,4 +1,12 @@
-import { collection, doc, getDoc, getDocs, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore'
 import { firestore } from '@/services/firebase'
 import type { UserProfile } from '@/types/user'
 
@@ -27,10 +35,14 @@ export async function listAssignableOfficials(): Promise<UserProfile[]> {
 
 export async function listUsers(): Promise<UserProfile[]> {
   const snapshot = await getDocs(collection(firestore, USERS_COLLECTION))
-  return snapshot.docs.map((item) => item.data() as UserProfile).sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto))
+  return snapshot.docs
+    .map((item) => item.data() as UserProfile)
+    .sort((a, b) => a.nombreCompleto.localeCompare(b.nombreCompleto))
 }
 
-export async function saveUserProfile(values: Omit<UserProfile, 'fechaCreacion' | 'ultimoIngreso'>): Promise<void> {
+export async function saveUserProfile(
+  values: Omit<UserProfile, 'fechaCreacion' | 'ultimoIngreso'>,
+): Promise<void> {
   const reference = doc(firestore, USERS_COLLECTION, values.uid)
   const current = await getDoc(reference)
   if (current.exists()) await updateDoc(reference, { ...values })
@@ -41,6 +53,9 @@ export async function setUserActive(uid: string, activo: boolean): Promise<void>
   await updateDoc(doc(firestore, USERS_COLLECTION, uid), { activo })
 }
 
-export async function setDeadlineEmailAlerts(uid: string, recibeAlertasVencimiento: boolean): Promise<void> {
+export async function setDeadlineEmailAlerts(
+  uid: string,
+  recibeAlertasVencimiento: boolean,
+): Promise<void> {
   await updateDoc(doc(firestore, USERS_COLLECTION, uid), { recibeAlertasVencimiento })
 }

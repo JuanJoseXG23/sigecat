@@ -29,7 +29,6 @@ import type {
   Expedient,
   ExpedientFormData,
   ExpedientHistoryEntry,
-  ExpedientObservation,
   ExpedientStatus,
   WorkflowDocument,
   WorkflowDocumentPayload,
@@ -422,11 +421,4 @@ export async function listExpedientHistory(id: string): Promise<ExpedientHistory
   return result.docs
     .map((item) => ({ id: item.id, ...item.data() }) as ExpedientHistoryEntry)
     .sort((a, b) => (b.fecha?.toMillis() ?? 0) - (a.fecha?.toMillis() ?? 0))
-}
-
-export async function listExpedientObservations(id: string): Promise<ExpedientObservation[]> {
-  const result = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, id, 'observaciones'))
-  return result.docs
-    .map((item) => ({ id: item.id, ...item.data() }) as ExpedientObservation)
-    .sort((a, b) => (b.fechaCreacion?.toMillis() ?? 0) - (a.fechaCreacion?.toMillis() ?? 0))
 }

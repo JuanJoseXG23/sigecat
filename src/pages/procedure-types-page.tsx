@@ -11,6 +11,153 @@ import { deactivateProcedureType, saveProcedureType } from '@/services/procedure
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import type { ProcedureType, ProcedureTypeInput } from '@/types/procedure-type'
 
-const schema = z.object({ nombre: z.string().trim().min(1, 'Ingresa el nombre.'), descripcion: z.string().trim().optional(), diasRespuesta: z.coerce.number().int().min(1, 'Indica los días hábiles.'), requiereVisita: z.boolean(), requiereRevisionJuridica: z.boolean() })
-const empty: ProcedureTypeInput = { nombre: '', descripcion: '', diasRespuesta: 0, requiereVisita: false, requiereRevisionJuridica: false }
-export function ProcedureTypesPage() { const { data = [] } = useProcedureTypes(); const client = useQueryClient(); const [search, setSearch] = useState(''); const [editing, setEditing] = useState<ProcedureType>(); const form = useForm<ProcedureTypeInput>({ resolver: zodResolver(schema), defaultValues: empty }); const refresh = () => client.invalidateQueries({ queryKey: ['procedure-types'] }); const save = useMutation({ mutationFn: (values: ProcedureTypeInput) => saveProcedureType(values, editing?.id), onSuccess: () => { void refresh(); setEditing(undefined); form.reset(empty) } }); const remove = useMutation({ mutationFn: deactivateProcedureType, onSuccess: refresh }); const rows = useMemo(() => data.filter((item) => item.nombre.toLowerCase().includes(search.toLowerCase())), [data, search]); const edit = (item: ProcedureType) => { setEditing(item); form.reset({ nombre: item.nombre, descripcion: item.descripcion ?? '', diasRespuesta: item.diasRespuesta, requiereVisita: item.requiereVisita, requiereRevisionJuridica: item.requiereRevisionJuridica }) }; return <section className="mx-auto max-w-6xl space-y-6"><div className="flex items-end justify-between"><div><p className="text-sm font-medium text-primary">Configuración</p><h1 className="text-2xl font-semibold">Tipos de trámite</h1><p className="mt-1 text-sm text-slate-500">Registra cada trámite real y sus días hábiles. El flujo institucional se aplica automáticamente.</p></div><Button onClick={() => { setEditing(undefined); form.reset(empty) }}><Plus size={16}/> Nuevo trámite</Button></div><Card className="p-4"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar trámite"/></Card><Card className="overflow-x-auto"><table className="w-full text-sm"><thead className="bg-slate-50 text-left"><tr><th className="p-4">Trámite</th><th>Días hábiles</th><th>Visita</th><th>Jurídica</th><th/></tr></thead><tbody>{rows.length ? rows.map((item) => <tr className="border-t" key={item.id}><td className="p-4 font-medium">{item.nombre}<small className="block text-slate-500">{item.descripcion}</small></td><td>{item.diasRespuesta}</td><td>{item.requiereVisita ? 'Sí' : 'No'}</td><td>{item.requiereRevisionJuridica ? 'Sí' : 'No'}</td><td><Button variant="ghost" size="sm" onClick={() => edit(item)}>Editar</Button><Button variant="ghost" size="sm" onClick={() => remove.mutate(item.id)}>Desactivar</Button></td></tr>) : <tr><td className="p-8 text-center text-slate-500" colSpan={5}>No hay tipos registrados. Crea el primero con sus días hábiles.</td></tr>}</tbody></table></Card><Card className="p-5"><h2 className="font-semibold">{editing ? 'Editar trámite' : 'Crear trámite'}</h2><form className="mt-4" onSubmit={form.handleSubmit((values) => save.mutate(values))}><div className="grid gap-3 sm:grid-cols-2"><Input {...form.register('nombre')} placeholder="Nombre del trámite"/><Input type="number" min="1" {...form.register('diasRespuesta')} placeholder="Días hábiles de respuesta"/><Input className="sm:col-span-2" {...form.register('descripcion')} placeholder="Descripción"/><label><input type="checkbox" {...form.register('requiereVisita')}/> Requiere visita</label><label><input type="checkbox" {...form.register('requiereRevisionJuridica')}/> Requiere revisión jurídica</label></div>{form.formState.errors.diasRespuesta && <p className="mt-2 text-sm text-destructive">{form.formState.errors.diasRespuesta.message}</p>}<Button className="mt-4" type="submit">Guardar trámite</Button></form></Card></section> }
+const schema = z.object({
+  nombre: z.string().trim().min(1, 'Ingresa el nombre.'),
+  descripcion: z.string().trim().optional(),
+  diasRespuesta: z.coerce.number().int().min(1, 'Indica los días hábiles.'),
+  requiereVisita: z.boolean(),
+  requiereRevisionJuridica: z.boolean(),
+})
+const empty: ProcedureTypeInput = {
+  nombre: '',
+  descripcion: '',
+  diasRespuesta: 0,
+  requiereVisita: false,
+  requiereRevisionJuridica: false,
+}
+export function ProcedureTypesPage() {
+  const { data = [] } = useProcedureTypes()
+  const client = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [editing, setEditing] = useState<ProcedureType>()
+  const form = useForm<ProcedureTypeInput>({ resolver: zodResolver(schema), defaultValues: empty })
+  const refresh = () => client.invalidateQueries({ queryKey: ['procedure-types'] })
+  const save = useMutation({
+    mutationFn: (values: ProcedureTypeInput) => saveProcedureType(values, editing?.id),
+    onSuccess: () => {
+      void refresh()
+      setEditing(undefined)
+      form.reset(empty)
+    },
+  })
+  const remove = useMutation({ mutationFn: deactivateProcedureType, onSuccess: refresh })
+  const rows = useMemo(
+    () => data.filter((item) => item.nombre.toLowerCase().includes(search.toLowerCase())),
+    [data, search],
+  )
+  const edit = (item: ProcedureType) => {
+    setEditing(item)
+    form.reset({
+      nombre: item.nombre,
+      descripcion: item.descripcion ?? '',
+      diasRespuesta: item.diasRespuesta,
+      requiereVisita: item.requiereVisita,
+      requiereRevisionJuridica: item.requiereRevisionJuridica,
+    })
+  }
+  return (
+    <section className="mx-auto max-w-6xl space-y-6">
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-sm font-medium text-primary">Configuración</p>
+          <h1 className="text-2xl font-semibold">Tipos de trámite</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Registra cada trámite real y sus días hábiles. El flujo institucional se aplica
+            automáticamente.
+          </p>
+        </div>
+        <Button
+          onClick={() => {
+            setEditing(undefined)
+            form.reset(empty)
+          }}
+        >
+          <Plus size={16} /> Nuevo trámite
+        </Button>
+      </div>
+      <Card className="p-4">
+        <Input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Buscar trámite"
+        />
+      </Card>
+      <Card className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-left">
+            <tr>
+              <th className="p-4">Trámite</th>
+              <th>Días hábiles</th>
+              <th>Visita</th>
+              <th>Jurídica</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length ? (
+              rows.map((item) => (
+                <tr className="border-t" key={item.id}>
+                  <td className="p-4 font-medium">
+                    {item.nombre}
+                    <small className="block text-slate-500">{item.descripcion}</small>
+                  </td>
+                  <td>{item.diasRespuesta}</td>
+                  <td>{item.requiereVisita ? 'Sí' : 'No'}</td>
+                  <td>{item.requiereRevisionJuridica ? 'Sí' : 'No'}</td>
+                  <td>
+                    <Button variant="ghost" size="sm" onClick={() => edit(item)}>
+                      Editar
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => remove.mutate(item.id)}>
+                      Desactivar
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td className="p-8 text-center text-slate-500" colSpan={5}>
+                  No hay tipos registrados. Crea el primero con sus días hábiles.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
+      <Card className="p-5">
+        <h2 className="font-semibold">{editing ? 'Editar trámite' : 'Crear trámite'}</h2>
+        <form className="mt-4" onSubmit={form.handleSubmit((values) => save.mutate(values))}>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Input {...form.register('nombre')} placeholder="Nombre del trámite" />
+            <Input
+              type="number"
+              min="1"
+              {...form.register('diasRespuesta')}
+              placeholder="Días hábiles de respuesta"
+            />
+            <Input
+              className="sm:col-span-2"
+              {...form.register('descripcion')}
+              placeholder="Descripción"
+            />
+            <label>
+              <input type="checkbox" {...form.register('requiereVisita')} /> Requiere visita
+            </label>
+            <label>
+              <input type="checkbox" {...form.register('requiereRevisionJuridica')} /> Requiere
+              revisión jurídica
+            </label>
+          </div>
+          {form.formState.errors.diasRespuesta && (
+            <p className="mt-2 text-sm text-destructive">
+              {form.formState.errors.diasRespuesta.message}
+            </p>
+          )}
+          <Button className="mt-4" type="submit">
+            Guardar trámite
+          </Button>
+        </form>
+      </Card>
+    </section>
+  )
+}

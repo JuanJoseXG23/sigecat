@@ -87,21 +87,6 @@ service cloud.firestore {
           existsAfter(expedientPath(expedientId));
         allow update, delete: if false;
       }
-
-      match /observaciones/{observationId} {
-        allow get, list: if signedInWithActiveProfile();
-        allow create: if isOperationalUser() &&
-          request.resource.data.creadoPor == request.auth.uid &&
-          existsAfter(expedientPath(expedientId));
-        allow update, delete: if false;
-      }
-    }
-
-    // Legacy document records, kept read-only while they remain in the library.
-    match /documentosEscaneados/{documentId} {
-      allow get, list: if signedInWithActiveProfile();
-      allow create, update: if false;
-      allow delete: if isAdministrator();
     }
 
     match /tiposTramite/{typeId} {
