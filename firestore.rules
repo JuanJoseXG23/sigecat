@@ -86,6 +86,9 @@ service cloud.firestore {
       allow update: if canManageExpedient(resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys()
           .hasAny(['id', 'creadoPor', 'fechaCreacion', 'ultimaAlertaVencimiento']) &&
+        // The entry filing number identifies the expedient; only supervisors correct it.
+        (isSupervisor() ||
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['numeroRadicado'])) &&
         isAllowedActivoChange();
       allow delete: if false;
 

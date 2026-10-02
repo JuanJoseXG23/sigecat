@@ -21,6 +21,8 @@ type FormValues = z.output<typeof expedientSchema>
 
 interface ExpedientFormProps {
   expedient?: Expedient
+  /** Al editar, solo Administrador y Coordinador corrigen el radicado de entrada. */
+  canEditEntryFiling?: boolean
   isSaving: boolean
   onCancel: () => void
   onSubmit: (values: ExpedientFormData) => Promise<void>
@@ -123,7 +125,14 @@ function RepeatableCard({
   )
 }
 
-export function ExpedientForm({ expedient, isSaving, onCancel, onSubmit }: ExpedientFormProps) {
+export function ExpedientForm({
+  expedient,
+  canEditEntryFiling = true,
+  isSaving,
+  onCancel,
+  onSubmit,
+}: ExpedientFormProps) {
+  const entryFilingLocked = Boolean(expedient) && !canEditEntryFiling
   const form = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(expedientSchema),
     defaultValues: getDefaultValues(expedient),
@@ -164,8 +173,27 @@ export function ExpedientForm({ expedient, isSaving, onCancel, onSubmit }: Exped
         description="Datos del radicado de entrada tal como aparecen en el sello o planilla."
       >
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Número de radicado" required error={errors.numeroRadicado?.message}>
-            <Input placeholder="Ej. 2026-00125" {...form.register('numeroRadicado')} />
+          <Field
+            label="Radicado de entrada"
+            required
+            error={errors.numeroRadicado?.message}
+            hint={
+              expedient
+                ? entryFilingLocked
+                  ? 'Identifica el expediente y no cambia. Solo Administración o Coordinación lo corrigen.'
+                  : 'Identifica el expediente. Las respuestas, traslados y ampliaciones se radican en cada paso y no lo reemplazan.'
+                : undefined
+            }
+          >
+            <Input
+              placeholder="Ej. 2026-00125"
+              readOnly={entryFilingLocked}
+              aria-readonly={entryFilingLocked}
+              className={
+                entryFilingLocked ? 'cursor-not-allowed bg-muted text-slate-600' : undefined
+              }
+              {...form.register('numeroRadicado')}
+            />
           </Field>
           <Field label="Fecha de radicado" required error={errors.fechaRadicado?.message}>
             <Input type="date" max={toDateKey(new Date())} {...form.register('fechaRadicado')} />

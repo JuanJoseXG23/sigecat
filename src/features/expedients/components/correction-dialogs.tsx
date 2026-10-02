@@ -10,6 +10,7 @@ import { ExpedientForm } from '@/features/expedients/components/expedient-form'
 import { EXPEDIENT_QUERIES } from '@/features/expedients/expedient-queries'
 import { useAuth } from '@/hooks/use-auth'
 import { toDateKey } from '@/lib/expedient-deadline'
+import { isSupervisor } from '@/lib/permissions'
 import {
   correctFiling,
   correctWorkflowDocument,
@@ -165,16 +166,16 @@ export function EditExpedientDialog({
   expedient: Expedient
   onClose: () => void
 }) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const toast = useToast()
   const refresh = useRefreshExpedients()
   const save = useMutation({
     mutationFn: (values: Parameters<typeof updateExpedient>[1]) =>
       updateExpedient(expedient.id, values, user!.uid, expedient.funcionarioAsignado),
-    onSuccess: async () => {
+    onSuccess: async (_, values) => {
       await refresh()
       onClose()
-      toast({ title: 'Cambios guardados', description: `Radicado ${expedient.numeroRadicado}.` })
+      toast({ title: 'Cambios guardados', description: `Radicado ${values.numeroRadicado}.` })
     },
   })
 
@@ -197,6 +198,7 @@ export function EditExpedientDialog({
         <ErrorAlert error={save.error} fallback="No fue posible guardar el expediente." />
         <ExpedientForm
           expedient={expedient}
+          canEditEntryFiling={isSupervisor(profile)}
           isSaving={save.isPending}
           onCancel={onClose}
           onSubmit={async (values) => {

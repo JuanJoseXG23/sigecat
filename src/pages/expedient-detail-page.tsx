@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { buttonVariants } from '@/components/ui/button-variants'
-import { EmptyState, LoadingState } from '@/components/ui/feedback'
+import { Alert, EmptyState, LoadingState } from '@/components/ui/feedback'
 import { useToast } from '@/components/ui/toast-context'
 import { ActuationDialog } from '@/features/expedients/components/actuation-dialog'
 import {
@@ -21,6 +21,7 @@ import { ExtensionDialog } from '@/features/expedients/components/extension-dial
 import { WorkflowStepper } from '@/features/expedients/components/workflow-stepper'
 import { useAuth } from '@/hooks/use-auth'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
+import { hasReplacedEntryFiling, suggestEntryFiling } from '@/lib/entry-filing'
 import { getFlow, getStepDefinition, type Actuation } from '@/lib/expedient-workflow'
 import { formatDate, formatLongDate } from '@/lib/format'
 import { canCorrectRecords, canManageExpedient } from '@/lib/permissions'
@@ -100,6 +101,8 @@ export function ExpedientDetailPage() {
   const currentIndex = flow.indexOf(item.estado)
   const step = getStepDefinition(item.estado)
   const canExtend = canManage && Boolean(item.fechaLimite) && (item.diasRestantes ?? 0) >= 0
+  const entryFilingReplaced = hasReplacedEntryFiling(item)
+  const suggestedEntryFiling = entryFilingReplaced ? suggestEntryFiling(item) : undefined
   const counts: Record<Tab, number | undefined> = {
     resumen: undefined,
     documentos: item.documentosWorkflow?.length ?? 0,
@@ -193,6 +196,25 @@ export function ExpedientDetailPage() {
           <WorkflowStepper flow={flow} currentIndex={currentIndex} />
         </div>
       </div>
+
+      {entryFilingReplaced && (
+        <Alert tone="warning" title="El radicado de entrada fue reemplazado" className="no-print">
+          <p>
+            {item.numeroRadicado} es un radicado de respuesta, traslado o ampliación de este
+            expediente.{' '}
+            {suggestedEntryFiling
+              ? `El radicado de entrada parece ser ${suggestedEntryFiling} (documento recibido).`
+              : 'Revisa el documento recibido para encontrar el radicado de entrada.'}
+          </p>
+          {canCorrect ? (
+            <Button variant="outline" size="sm" className="mt-2" onClick={() => setDialog('edit')}>
+              <Pencil size={15} /> Corregir radicado de entrada
+            </Button>
+          ) : (
+            <p>Pide a Administración o Coordinación que lo corrijan.</p>
+          )}
+        </Alert>
+      )}
 
       <div
         className="no-print flex gap-1 overflow-x-auto border-b border-border"

@@ -20,6 +20,7 @@ import {
   registerExpedientHistory,
 } from '@/services/business-rules.service'
 import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
+import { getOutgoingFilingNumbers } from '@/lib/entry-filing'
 import { toDateKey } from '@/lib/expedient-deadline'
 import { parseDocumentLink } from '@/lib/document-links'
 import { getFilingCorrectionError, planFilingCorrection } from '@/lib/record-corrections'
@@ -228,7 +229,11 @@ export async function updateExpedient(
 ): Promise<void> {
   const current = await getExpedient(id)
   const data = await toExpedientData(values, assignedOfficial, current?.diasAmpliacion ?? 0)
-  if (current?.numeroRadicado !== data.numeroRadicado) {
+  if (current && current.numeroRadicado !== data.numeroRadicado) {
+    if (getOutgoingFilingNumbers(current).has(data.numeroRadicado as string))
+      throw new Error(
+        `${data.numeroRadicado} es un radicado de respuesta, traslado o ampliación de este expediente; el radicado de entrada no se reemplaza.`,
+      )
     await ensureUniqueFilingNumber(data.numeroRadicado as string, id)
   }
   const batch = writeBatch(firestore)

@@ -257,6 +257,7 @@ export function ExpedientsPage() {
         <ErrorAlert error={saveMutation.error} fallback="No fue posible guardar el expediente." />
         <ExpedientForm
           expedient={editing}
+          canEditEntryFiling={isSupervisor(profile)}
           isSaving={saveMutation.isPending}
           onCancel={closeForm}
           onSubmit={async (values) => {

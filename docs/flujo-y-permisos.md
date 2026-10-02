@@ -97,6 +97,11 @@ anterior), `diasAmpliacion`, el detalle en `ampliacionesPlazo[]`, el escaneo com
 
 - **Datos del expediente:** botón **Editar datos** en el detalle, también si el expediente ya está
   cerrado. El estado del flujo no cambia.
+- **Radicado de entrada:** identifica el expediente y es el que se muestra en todos los
+  encabezados. Solo Administrador y Coordinador lo corrigen (también en `firestore.rules`), y
+  nunca por un radicado de respuesta, traslado o ampliación del mismo expediente. Si ya se
+  reemplazó, el detalle muestra un aviso y sugiere el número del documento recibido
+  (`src/lib/entry-filing.ts`).
 - **Radicados** de salida, traslado y ampliación: número y fecha, desde Radicación o desde el
   resumen del expediente. Como el id del radicado incluye el número, un número nuevo crea otro
   documento y borra el anterior; en el mismo lote se actualizan el radicado de la actuación, los
