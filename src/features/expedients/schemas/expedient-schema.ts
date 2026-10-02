@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
+import { ACCESS_LEVELS, APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
 
 const optionalText = z.string().trim().optional()
 
@@ -10,6 +10,11 @@ export const expedientSchema = z.object({
   medioIngreso: optionalText,
   tipoTramiteId: z.string().trim().min(1, 'Selecciona un tipo de trámite.'),
   tipoTramite: optionalText,
+  asunto: optionalText,
+  nivelAcceso: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.enum(ACCESS_LEVELS).optional(),
+  ),
   solicitantes: z
     .array(
       z.object({
@@ -17,7 +22,10 @@ export const expedientSchema = z.object({
         documento: optionalText,
         telefono: optionalText,
         correo: z.string().trim().email('Ingresa un correo válido.').or(z.literal('')).optional(),
-        tipoSolicitante: z.enum(APPLICANT_TYPES).optional(),
+        tipoSolicitante: z.preprocess(
+          (value) => (value === '' ? undefined : value),
+          z.enum(APPLICANT_TYPES).optional(),
+        ),
       }),
     )
     .min(1, 'Registra al menos un solicitante.'),
@@ -30,6 +38,9 @@ export const expedientSchema = z.object({
     }),
   ),
   funcionarioAsignadoUid: optionalText,
-  prioridad: z.enum(EXPEDIENT_PRIORITIES).optional(),
+  prioridad: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.enum(EXPEDIENT_PRIORITIES).optional(),
+  ),
   observacionesIniciales: optionalText,
 })

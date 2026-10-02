@@ -28,23 +28,27 @@ también la actualizan. Si se edita un perfil desde la consola de Firebase, se r
 
 ## `expedientes/{id}`
 
-| Campo                                                                          | Descripción                                                                                                  |
-| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `numeroRadicado`                                                               | Radicado de entrada; único                                                                                   |
-| `fechaRadicado`, `fechaRecibido?`, `medioIngreso?`                             | Datos de recepción                                                                                           |
-| `tipoTramiteId`, `tipoTramite`                                                 | Tipo de trámite y su nombre al momento de guardar                                                            |
-| `solicitantes[]`                                                               | `nombre`, `documento`, `telefono`, `correo`, `tipoSolicitante`                                               |
-| `predios[]`                                                                    | `municipio`, `numeroPredial`, `matriculaInmobiliaria`, `direccion`                                           |
-| `estado`                                                                       | Ver [flujo-y-permisos.md](flujo-y-permisos.md)                                                               |
-| `prioridad?`                                                                   | `Alta`, `Media` o `Baja`                                                                                     |
-| `funcionarioAsignado?`                                                         | `{ uid, nombreCompleto }`                                                                                    |
-| `responsableExterno?`, `trasladoPorCompetencia?`                               | Dependencia destino de un traslado                                                                           |
-| `fechaLimite`, `diasRestantes`, `diasVencidos`, `estadoTermino`                | Término (se recalcula al leer)                                                                               |
-| `documentosWorkflow[]`                                                         | Enlaces de OneDrive: `tipo` (`RECIBIDO`, `RADICADO_SALIDA`, `TRASLADO`), `nombre`, `url`, `usuario`, `fecha` |
-| `formatoFisicoFirmado?`, `numeroRadicadoActuacion?`, `fechaRadicadoActuacion?` | Datos de las actuaciones                                                                                     |
-| `ultimaAlertaVencimiento?`                                                     | Lo escribe solo Apps Script para no repetir alertas                                                          |
-| `activo`                                                                       | `false` cuando está finalizado o archivado                                                                   |
-| `creadoPor`, `fechaCreacion`, `fechaActualizacion`                             | Auditoría; los dos primeros son inmutables                                                                   |
+| Campo                                                                          | Descripción                                                                                                                                 |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `numeroRadicado`                                                               | Radicado de entrada; único                                                                                                                  |
+| `fechaRadicado`, `fechaRecibido?`, `medioIngreso?`                             | Datos de recepción                                                                                                                          |
+| `tipoTramiteId`, `tipoTramite`                                                 | Tipo de trámite y su nombre al momento de guardar                                                                                           |
+| `asunto?`, `nivelAcceso?`                                                      | Resumen de la petición; `Pública`, `Pública clasificada` o `Pública reservada`                                                              |
+| `diasTermino?`, `diasAmpliacion?`, `ampliacionesPlazo[]?`                      | Término inicial, días ampliados y detalle de cada ampliación (radicado, días, motivo, fechas límite)                                        |
+| `clasificacionDocumental?`                                                     | Copia de la TRD del trámite: `codigo`, `serie`, `subserie`, `retencionGestion`, `retencionCentral`, `disposicionFinal`                      |
+| `solicitantes[]`                                                               | `nombre`, `documento`, `telefono`, `correo`, `tipoSolicitante`                                                                              |
+| `predios[]`                                                                    | `municipio`, `numeroPredial`, `matriculaInmobiliaria`, `direccion`                                                                          |
+| `estado`                                                                       | Ver [flujo-y-permisos.md](flujo-y-permisos.md)                                                                                              |
+| `prioridad?`                                                                   | `Alta`, `Media` o `Baja`                                                                                                                    |
+| `funcionarioAsignado?`                                                         | `{ uid, nombreCompleto }`                                                                                                                   |
+| `responsableExterno?`, `trasladoPorCompetencia?`                               | Dependencia destino de un traslado                                                                                                          |
+| `fechaLimite`, `diasRestantes`, `diasVencidos`, `estadoTermino`                | Término (se recalcula al leer)                                                                                                              |
+| `documentosWorkflow[]`                                                         | Enlaces de OneDrive: `tipo` (`RECIBIDO`, `RADICADO_SALIDA`, `TRASLADO`, `AMPLIACION_PLAZO`), `nombre`, `url`, `usuario`, `fecha`, `folios?` |
+| `formatoFisicoFirmado?`, `numeroRadicadoActuacion?`, `fechaRadicadoActuacion?` | Datos de las actuaciones                                                                                                                    |
+| `ultimaAlertaVencimiento?`                                                     | Lo escribe solo Apps Script para no repetir alertas                                                                                         |
+| `activo`                                                                       | `false` cuando está finalizado o archivado                                                                                                  |
+| `creadoPor`, `fechaCreacion`, `fechaActualizacion`                             | Auditoría; los dos primeros son inmutables                                                                                                  |
+| `fechaCierre?`                                                                 | Al finalizar o archivar; inicia la retención. Los cerrados antes de este campo usan `fechaActualizacion`                                    |
 
 Subcolección **`historial`**: `usuario`, `accion`, `detalle`, `fecha`. Solo se agregan registros;
 nunca se editan ni se borran.
@@ -54,27 +58,29 @@ borrar expedientes.
 
 ## `radicados/{expedienteId}_{numero}`
 
-Radicados de salida y traslado registrados en el flujo: `numero`, `fecha`, `tipo`,
-`expedienteId`, `solicitante`, `responsable`, `estado`, `municipio`, `observaciones`,
+Radicados de salida, traslado y ampliación de plazo registrados en el flujo: `numero`, `fecha`,
+`tipo`, `expedienteId`, `expedienteRadicado?`, `solicitante`, `responsable`, `estado`, `municipio`, `observaciones`,
 `documentoUrl?`, `documentoNombre?`. El id evita registrar dos veces el mismo número en un
 expediente. Se crean pero no se editan.
 
 ## `tiposTramite/{id}`
 
-`nombre`, `descripcion`, `diasRespuesta`, `flujoEstados`, `activo`, y los indicadores
-informativos `requiereVisita` y `requiereRevisionJuridica`. Solo el Administrador escribe; se
+`nombre`, `descripcion`, `diasRespuesta`, `flujoEstados`, `activo`, los indicadores
+informativos `requiereVisita` y `requiereRevisionJuridica`, y los campos opcionales de la TRD:
+`codigoTRD`, `serie`, `subserie`, `retencionGestion`, `retencionCentral`, `disposicionFinal`. Solo el Administrador escribe; se
 desactivan en vez de borrarse.
 
 ## `configuracion/reglasNegocio`
 
-`diasFestivos[]` (`yyyy-mm-dd`), `umbralProximoVencer`, `alertasCorreoHabilitadas`. Solo el
+`diasFestivos[]` (`yyyy-mm-dd`: días adicionales sin atención; los festivos nacionales se
+calculan solos), `umbralProximoVencer`, `alertasCorreoHabilitadas`. Solo el
 Administrador escribe.
 
 ## `tareas/{id}`
 
 Tareas personales de **Mi Agenda**: `titulo`, `descripcion?`, `prioridad`, `estado`
 (`Pendientes`, `En proceso`, `Por revisar`, `Finalizadas`), `fechaLimite?`, `anexos[]` (enlaces de
-OneDrive), `responsableId`. Cada usuario solo ve y modifica las suyas.
+OneDrive), `expedienteId?` y `expedienteRadicado?` (expediente relacionado), `responsableId`. Cada usuario solo ve y modifica las suyas.
 
 ## Colas de correo
 

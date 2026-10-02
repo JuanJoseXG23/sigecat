@@ -4,8 +4,11 @@ import type { UserRole } from '@/types/user'
 
 function FullPageLoader() {
   return (
-    <div className="grid min-h-screen place-items-center bg-background text-sm text-muted-foreground">
-      Cargando sesión…
+    <div className="grid min-h-screen place-items-center bg-background">
+      <div className="flex flex-col items-center gap-4 text-sm text-muted-foreground">
+        <span className="size-8 animate-spin rounded-full border-[3px] border-primary/20 border-t-primary" />
+        Cargando sesión…
+      </div>
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -29,13 +30,36 @@ export async function getActiveProcedureType(id?: string): Promise<ProcedureType
   return type.activo ? type : null
 }
 
+/** Campos opcionales de la TRD: al editar, los que quedan vacíos se eliminan. */
+function retentionData(values: ProcedureTypeInput, editing: boolean) {
+  const text = (value?: string) => value?.trim() || undefined
+  const years = (value?: number) =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined
+  const fields = {
+    codigoTRD: text(values.codigoTRD),
+    serie: text(values.serie),
+    subserie: text(values.subserie),
+    retencionGestion: years(values.retencionGestion),
+    retencionCentral: years(values.retencionCentral),
+    disposicionFinal: values.disposicionFinal || undefined,
+  }
+  return Object.fromEntries(
+    Object.entries(fields)
+      .filter(([, value]) => value !== undefined || editing)
+      .map(([key, value]) => [key, value ?? deleteField()]),
+  )
+}
+
 export async function saveProcedureType(values: ProcedureTypeInput, id?: string): Promise<void> {
   const reference = id ? doc(firestore, COLLECTION, id) : doc(collection(firestore, COLLECTION))
   const data = {
-    ...values,
-    flujoEstados: STANDARD_FLOW,
     nombre: values.nombre.trim(),
     descripcion: values.descripcion?.trim() ?? '',
+    diasRespuesta: values.diasRespuesta,
+    requiereVisita: values.requiereVisita,
+    requiereRevisionJuridica: values.requiereRevisionJuridica,
+    ...retentionData(values, Boolean(id)),
+    flujoEstados: STANDARD_FLOW,
     fechaActualizacion: serverTimestamp(),
   }
   if (id) await updateDoc(reference, data)

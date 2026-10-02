@@ -403,7 +403,70 @@ function remainingBusinessDays_(deadline, today, holidayMap) {
   while (cursor.getTime() !== target.getTime()) {
     cursor.setDate(cursor.getDate() + direction)
     var weekday = cursor.getDay()
-    if (weekday !== 0 && weekday !== 6 && !holidayMap[dateKey_(cursor)]) days += direction
+    if (weekday !== 0 && weekday !== 6 && !isHoliday_(dateKey_(cursor), holidayMap))
+      days += direction
   }
   return days
+}
+
+/* Festivos nacionales de Colombia (Ley 51 de 1983). Repite src/lib/colombian-holidays.ts:
+   si cambia uno, debe cambiar el otro. holidayMap trae los dias adicionales de SIGECAT. */
+function isHoliday_(key, holidayMap) {
+  return holidayMap[key] === true || colombianHolidays_(Number(key.slice(0, 4)))[key] === true
+}
+
+var colombianHolidayCache_ = {}
+
+function colombianHolidays_(year) {
+  if (colombianHolidayCache_[year]) return colombianHolidayCache_[year]
+
+  function utc(month, day) {
+    return new Date(Date.UTC(year, month - 1, day))
+  }
+  function plus(date, days) {
+    return new Date(date.getTime() + days * 86400000)
+  }
+  function monday(date) {
+    return plus(date, (8 - date.getUTCDay()) % 7)
+  }
+
+  // Domingo de Pascua (algoritmo de Meeus/Jones/Butcher).
+  var a = year % 19
+  var b = Math.floor(year / 100)
+  var c = year % 100
+  var d = Math.floor(b / 4)
+  var e = b % 4
+  var f = Math.floor((b + 8) / 25)
+  var g = Math.floor((b - f + 1) / 3)
+  var h = (19 * a + b - d - g + 15) % 30
+  var i = Math.floor(c / 4)
+  var k = c % 4
+  var l = (32 + 2 * e + 2 * i - h - k) % 7
+  var m = Math.floor((a + 11 * h + 22 * l) / 451)
+  var easter = utc(Math.floor((h + l - 7 * m + 114) / 31), ((h + l - 7 * m + 114) % 31) + 1)
+
+  var dates = [
+    utc(1, 1),
+    utc(5, 1),
+    utc(7, 20),
+    utc(8, 7),
+    utc(12, 8),
+    utc(12, 25),
+    monday(utc(1, 6)),
+    monday(utc(3, 19)),
+    monday(utc(6, 29)),
+    monday(utc(8, 15)),
+    monday(utc(10, 12)),
+    monday(utc(11, 1)),
+    monday(utc(11, 11)),
+    plus(easter, -3),
+    plus(easter, -2),
+    monday(plus(easter, 39)),
+    monday(plus(easter, 60)),
+    monday(plus(easter, 68)),
+  ]
+  var map = {}
+  for (var n = 0; n < dates.length; n = n + 1) map[dates[n].toISOString().slice(0, 10)] = true
+  colombianHolidayCache_[year] = map
+  return map
 }

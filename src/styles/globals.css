@@ -1,43 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Paleta institucional de la Alcaldía de Girardota (tailwind.config.ts → brand):
+ * Esperanza #07892F (primario), Prosperidad #29422F (barra lateral), Vitalidad #85DD4B,
+ * Juventud #FFE029 (acento), Valentía #ED1B24 (alertas) y Confianza #0988CE (información).
+ */
 @layer base {
   :root {
-    --background: 90 20% 98%;
-    --foreground: 126 24% 21%;
+    --background: 100 22% 97%;
+    --foreground: 138 22% 14%;
     --card: 0 0% 100%;
-    --card-foreground: 126 24% 21%;
+    --card-foreground: 138 22% 14%;
     --primary: 138 90% 28%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 126 23% 21%;
+    --secondary: 135 23% 21%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 100 17% 95%;
-    --muted-foreground: 126 12% 40%;
+    --muted: 100 18% 94%;
+    --muted-foreground: 135 8% 40%;
     --accent: 51 100% 58%;
-    --accent-foreground: 126 23% 21%;
-    --destructive: 358 85% 52%;
+    --accent-foreground: 135 23% 18%;
+    --destructive: 358 85% 50%;
     --destructive-foreground: 0 0% 100%;
-    --info: 200 92% 42%;
+    --warning: 36 95% 45%;
+    --info: 201 92% 42%;
     --info-foreground: 0 0% 100%;
-    --border: 105 16% 88%;
-    --input: 105 16% 84%;
+    --border: 105 14% 88%;
+    --input: 105 12% 82%;
     --ring: 138 90% 28%;
+    --sidebar: 136 25% 15%;
     --radius: 0.625rem;
   }
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+  }
   body {
     @apply bg-background font-sans text-foreground antialiased;
     min-width: 320px;
-    background-image: radial-gradient(
-      circle at 0% 0%,
-      hsl(var(--primary) / 0.06),
-      transparent 27rem
-    );
   }
   ::selection {
     @apply bg-primary/20 text-foreground;
@@ -52,48 +57,118 @@
   textarea {
     -webkit-tap-highlight-color: transparent;
   }
+  input[type='checkbox'] {
+    accent-color: hsl(var(--primary));
+  }
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   ::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-slate-300;
+    @apply rounded-full border-2 border-solid border-transparent bg-slate-300 bg-clip-padding;
   }
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-slate-400;
   }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer components {
-  .page-heading {
-    @apply text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl;
-  }
-  .page-kicker {
-    @apply text-sm font-semibold text-primary;
-  }
-  .page-description {
-    @apply mt-1 max-w-2xl text-sm leading-6 text-slate-500;
-  }
   .table-shell {
-    @apply overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm;
+    @apply overflow-hidden rounded-xl border border-border bg-card shadow-sm;
   }
-  .table-head {
-    @apply border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500;
+  .data-table {
+    @apply w-full text-left text-sm;
   }
-  .empty-state {
-    @apply px-5 py-12 text-center text-sm text-slate-500;
+  .data-table thead {
+    @apply border-b border-border bg-muted/60 text-xs font-semibold uppercase tracking-wide text-muted-foreground;
+  }
+  .data-table th {
+    @apply whitespace-nowrap px-3 py-3 first:pl-5 last:pr-5;
+  }
+  .data-table td {
+    @apply px-3 py-3.5 align-middle first:pl-5 last:pr-5;
+  }
+  .data-table tbody tr {
+    @apply border-b border-border/70 transition-colors last:border-0 hover:bg-primary/[0.03];
+  }
+  .label {
+    @apply text-sm font-medium text-slate-700;
+  }
+  .link {
+    @apply font-medium text-primary underline-offset-4 hover:underline;
   }
 }
 
 @layer utilities {
   .animate-fade-up {
-    animation: fade-up 350ms ease-out both;
+    animation: fade-up 300ms ease-out both;
+  }
+  .animate-fade-in {
+    animation: fade-in 150ms ease-out both;
+  }
+  .animate-slide-up {
+    animation: slide-up 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  .flag-stripe {
+    background: linear-gradient(
+      90deg,
+      theme('colors.brand.esperanza') 0 50%,
+      theme('colors.brand.juventud') 50% 100%
+    );
   }
 }
 
 @keyframes fade-up {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(10px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+}
+
+/* Impresión: por defecto se oculta la navegación; con body.print-only-sheet solo se imprime
+   el bloque .print-sheet (hoja de control del expediente). */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+  body {
+    background: white !important;
+  }
+  .no-print,
+  aside,
+  header[data-app-header] {
+    display: none !important;
+  }
+  body.print-only-sheet * {
+    visibility: hidden;
+  }
+  body.print-only-sheet .print-sheet,
+  body.print-only-sheet .print-sheet * {
+    visibility: visible;
+  }
+  body.print-only-sheet .print-sheet {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
   }
 }

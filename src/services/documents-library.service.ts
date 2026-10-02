@@ -1,6 +1,6 @@
 import { collection, getDocs, type Timestamp } from 'firebase/firestore'
 import { firestore } from '@/services/firebase'
-import type { Expedient, WorkflowDocument } from '@/types/expedient'
+import { WORKFLOW_DOCUMENT_LABELS, type Expedient, type WorkflowDocument } from '@/types/expedient'
 
 export interface LibraryDocument {
   id: string
@@ -9,26 +9,22 @@ export interface LibraryDocument {
   url: string
   fecha: Timestamp | null
   radicado?: string
+  folios?: number
 }
 
 export interface LibraryExpedient extends Expedient {
   documentos: LibraryDocument[]
 }
 
-const workflowDocumentLabels: Record<WorkflowDocument['tipo'], string> = {
-  RECIBIDO: 'Documento recibido',
-  RADICADO_SALIDA: 'Respuesta radicada',
-  TRASLADO: 'Documento de traslado',
-}
-
 function toLibraryDocument(document: WorkflowDocument): LibraryDocument {
   return {
     id: document.id,
     nombre: document.nombre,
-    tipo: workflowDocumentLabels[document.tipo],
+    tipo: WORKFLOW_DOCUMENT_LABELS[document.tipo] ?? document.tipo,
     url: document.url,
     fecha: document.fecha ?? null,
     radicado: document.radicadoNumero,
+    folios: document.folios,
   }
 }
 

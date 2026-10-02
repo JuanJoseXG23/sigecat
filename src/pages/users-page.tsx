@@ -1,170 +1,276 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Edit3 } from 'lucide-react'
-import { useState } from 'react'
+import { Pencil, Search, UserCheck, UserX, Users } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Avatar } from '@/components/ui/avatar'
+import { Badge, type BadgeVariant } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Dialog } from '@/components/ui/dialog'
+import { Alert, EmptyState, ErrorAlert, TableSkeleton } from '@/components/ui/feedback'
+import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
+import { useToast } from '@/components/ui/toast-context'
+import { useAuth } from '@/hooks/use-auth'
+import { formatDateTime, initials, normalizeSearch } from '@/lib/format'
 import { listUsers, saveUserProfile, setUserActive } from '@/services/user-profile.service'
-import { USER_ROLES, type UserProfile } from '@/types/user'
+import { USER_ROLES, type UserProfile, type UserRole } from '@/types/user'
+
+const roleVariants: Record<UserRole, BadgeVariant> = {
+  Administrador: 'violet',
+  Coordinador: 'info',
+  Funcionario: 'brand',
+  Consulta: 'default',
+}
 
 export function UsersPage() {
   const client = useQueryClient()
-  const { data = [] } = useQuery({ queryKey: ['users'], queryFn: listUsers })
+  const toast = useToast()
+  const { profile } = useAuth()
+  const { data = [], isLoading } = useQuery({ queryKey: ['users'], queryFn: listUsers })
   const [search, setSearch] = useState('')
   const [role, setRole] = useState('')
   const [active, setActive] = useState('')
   const [editing, setEditing] = useState<UserProfile | null>(null)
+  const [toggling, setToggling] = useState<UserProfile | null>(null)
   const refresh = () =>
     Promise.all(
-      ['users', 'assignable-officials', 'alert-recipients'].map((key) =>
+      ['users', 'assignable-officials', 'alert-recipients', 'user-directory'].map((key) =>
         client.invalidateQueries({ queryKey: [key] }),
       ),
     )
   const toggle = useMutation({
-    mutationFn: ({ user, value }: { user: UserProfile; value: boolean }) =>
-      setUserActive(user, value),
-    onSuccess: refresh,
+    mutationFn: (user: UserProfile) => setUserActive(user, !user.activo),
+    onSuccess: async (_, user) => {
+      await refresh()
+      setToggling(null)
+      toast({ title: `${user.nombreCompleto} ${user.activo ? 'desactivado' : 'activado'}` })
+    },
   })
   const save = useMutation({
     mutationFn: saveUserProfile,
-    onSuccess: () => {
-      void refresh()
+    onSuccess: async (_, user) => {
+      await refresh()
       setEditing(null)
+      toast({ title: 'Usuario actualizado', description: user.nombreCompleto })
     },
   })
-  const rows = data.filter(
-    (item) =>
-      (!search ||
-        `${item.nombreCompleto} ${item.correo}`.toLowerCase().includes(search.toLowerCase())) &&
-      (!role || item.rol === role) &&
-      (!active || String(item.activo) === active),
+  const rows = useMemo(
+    () =>
+      data.filter(
+        (item) =>
+          normalizeSearch(`${item.nombreCompleto} ${item.correo} ${item.cargo}`).includes(
+            normalizeSearch(search),
+          ) &&
+          (!role || item.rol === role) &&
+          (!active || String(item.activo) === active),
+      ),
+    [active, data, role, search],
   )
+
   return (
-    <section className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <p className="text-sm font-medium text-primary">Administración</p>
-        <h1 className="text-2xl font-semibold">Usuarios</h1>
-      </div>
-      <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-3">
+    <section className="mx-auto max-w-6xl space-y-6">
+      <PageHeader
+        kicker="Administración"
+        title="Usuarios"
+        description="Datos, rol y estado de las cuentas. Las cuentas nuevas se crean con npm run user:create (ver README)."
+      />
+      <ErrorAlert error={toggle.error} fallback="No fue posible cambiar el estado." />
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar nombre o correo"
+            className="pl-9"
+            placeholder="Nombre, correo o cargo"
+            aria-label="Buscar usuarios"
           />
-          <Select value={role} onChange={(event) => setRole(event.target.value)}>
-            <option value="">Todos los roles</option>
-            {USER_ROLES.map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </Select>
-          <Select value={active} onChange={(event) => setActive(event.target.value)}>
-            <option value="">Todos los estados</option>
-            <option value="true">Activos</option>
-            <option value="false">Inactivos</option>
-          </Select>
         </div>
-      </Card>
-      <Card className="overflow-x-auto">
-        <table className="w-full min-w-[850px] text-sm">
-          <thead className="bg-slate-50 text-left">
+        <Select
+          className="md:w-48"
+          value={role}
+          onChange={(event) => setRole(event.target.value)}
+          aria-label="Rol"
+        >
+          <option value="">Todos los roles</option>
+          {USER_ROLES.map((value) => (
+            <option key={value}>{value}</option>
+          ))}
+        </Select>
+        <Select
+          className="md:w-44"
+          value={active}
+          onChange={(event) => setActive(event.target.value)}
+          aria-label="Estado"
+        >
+          <option value="">Todos los estados</option>
+          <option value="true">Activos</option>
+          <option value="false">Inactivos</option>
+        </Select>
+      </div>
+      <div className="table-shell overflow-x-auto">
+        <table className="data-table min-w-[820px]">
+          <thead>
             <tr>
-              <th className="p-4">Usuario</th>
+              <th>Usuario</th>
               <th>Rol</th>
-              <th>Cargo</th>
-              <th>Dependencia</th>
+              <th>Cargo y dependencia</th>
               <th>Último acceso</th>
               <th>Estado</th>
-              <th />
+              <th>
+                <span className="sr-only">Acciones</span>
+              </th>
             </tr>
           </thead>
           <tbody>
+            {isLoading && <TableSkeleton columns={6} />}
             {rows.map((item) => (
-              <tr className="border-t" key={item.uid}>
-                <td className="p-4">
-                  <b>{item.nombreCompleto}</b>
-                  <small className="block text-slate-500">{item.correo}</small>
+              <tr key={item.uid} className={item.activo ? undefined : 'opacity-60'}>
+                <td>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="text-xs">{initials(item.nombreCompleto)}</Avatar>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-slate-900">{item.nombreCompleto}</p>
+                      <p className="truncate text-xs text-muted-foreground">{item.correo}</p>
+                    </div>
+                  </div>
                 </td>
-                <td>{item.rol}</td>
-                <td>{item.cargo}</td>
-                <td>{item.dependencia ?? '—'}</td>
-                <td>{item.ultimoIngreso?.toDate().toLocaleString('es-CO') ?? 'Sin acceso'}</td>
-                <td>{item.activo ? 'Activo' : 'Inactivo'}</td>
-                <td className="space-x-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Editar usuario"
-                    onClick={() => setEditing(item)}
-                  >
-                    <Edit3 size={16} />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggle.mutate({ user: item, value: !item.activo })}
-                  >
-                    {item.activo ? 'Desactivar' : 'Activar'}
-                  </Button>
+                <td>
+                  <Badge variant={roleVariants[item.rol]}>{item.rol}</Badge>
+                </td>
+                <td>
+                  <p>{item.cargo}</p>
+                  <p className="text-xs text-muted-foreground">{item.dependencia ?? '—'}</p>
+                </td>
+                <td className="text-muted-foreground">
+                  {formatDateTime(item.ultimoIngreso, 'Nunca')}
+                </td>
+                <td>
+                  <Badge variant={item.activo ? 'success' : 'default'} dot>
+                    {item.activo ? 'Activo' : 'Inactivo'}
+                  </Badge>
+                </td>
+                <td>
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={`Editar ${item.nombreCompleto}`}
+                      onClick={() => setEditing(item)}
+                    >
+                      <Pencil size={16} />
+                    </Button>
+                    <Button
+                      variant={item.activo ? 'ghost-destructive' : 'ghost'}
+                      size="icon"
+                      disabled={item.uid === profile?.uid}
+                      title={
+                        item.uid === profile?.uid
+                          ? 'No puedes desactivar tu propia cuenta'
+                          : undefined
+                      }
+                      aria-label={`${item.activo ? 'Desactivar' : 'Activar'} ${item.nombreCompleto}`}
+                      onClick={() => setToggling(item)}
+                    >
+                      {item.activo ? <UserX size={16} /> : <UserCheck size={16} />}
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </Card>
-      {editing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
-          <Card className="w-full max-w-xl p-6">
-            <h2 className="text-lg font-semibold">Editar usuario</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {!isLoading && !rows.length && (
+          <EmptyState icon={Users} title="No hay usuarios que coincidan" />
+        )}
+      </div>
+
+      <Dialog
+        open={Boolean(editing)}
+        onClose={() => setEditing(null)}
+        busy={save.isPending}
+        title="Editar usuario"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setEditing(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={
+                !editing?.nombreCompleto.trim() || !editing?.correo.trim() || save.isPending
+              }
+              onClick={() => editing && save.mutate(editing)}
+            >
+              {save.isPending ? 'Guardando…' : 'Guardar cambios'}
+            </Button>
+          </>
+        }
+      >
+        {editing && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <ErrorAlert error={save.error} fallback="No fue posible guardar." />
+            <Field label="Nombres y apellidos" required className="sm:col-span-2">
               <Input
                 value={editing.nombreCompleto}
                 onChange={(event) => setEditing({ ...editing, nombreCompleto: event.target.value })}
-                placeholder="Nombres y apellidos"
               />
+            </Field>
+            <Field label="Correo institucional" required className="sm:col-span-2">
               <Input
+                type="email"
                 value={editing.correo}
                 onChange={(event) => setEditing({ ...editing, correo: event.target.value })}
-                placeholder="Correo institucional"
               />
+            </Field>
+            <Field label="Cargo">
               <Input
                 value={editing.cargo}
                 onChange={(event) => setEditing({ ...editing, cargo: event.target.value })}
-                placeholder="Cargo"
               />
+            </Field>
+            <Field label="Dependencia">
               <Input
                 value={editing.dependencia ?? ''}
                 onChange={(event) => setEditing({ ...editing, dependencia: event.target.value })}
-                placeholder="Dependencia"
               />
+            </Field>
+            <Field label="Rol" className="sm:col-span-2">
               <Select
                 value={editing.rol}
                 onChange={(event) =>
-                  setEditing({ ...editing, rol: event.target.value as UserProfile['rol'] })
+                  setEditing({ ...editing, rol: event.target.value as UserRole })
                 }
               >
                 {USER_ROLES.map((value) => (
                   <option key={value}>{value}</option>
                 ))}
               </Select>
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setEditing(null)}>
-                Cancelar
-              </Button>
-              <Button
-                disabled={
-                  !editing.nombreCompleto.trim() || !editing.correo.trim() || save.isPending
-                }
-                onClick={() => save.mutate(editing)}
-              >
-                Guardar cambios
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+            </Field>
+            {editing.correo !== data.find((user) => user.uid === editing.uid)?.correo && (
+              <Alert tone="warning" className="sm:col-span-2">
+                Esto cambia el correo de contacto y de alertas, no el correo con el que la persona
+                inicia sesión.
+              </Alert>
+            )}
+          </div>
+        )}
+      </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(toggling)}
+        title={toggling?.activo ? 'Desactivar usuario' : 'Activar usuario'}
+        confirmLabel={toggling?.activo ? 'Desactivar' : 'Activar'}
+        tone={toggling?.activo ? 'destructive' : 'default'}
+        pending={toggle.isPending}
+        onCancel={() => setToggling(null)}
+        onConfirm={() => toggling && toggle.mutate(toggling)}
+      >
+        {toggling?.activo
+          ? `${toggling.nombreCompleto} no podrá ingresar y dejará de aparecer como responsable. Sus expedientes conservan el historial.`
+          : `${toggling?.nombreCompleto} podrá volver a ingresar con su contraseña actual.`}
+      </ConfirmDialog>
     </section>
   )
 }

@@ -1,11 +1,28 @@
 import { useQuery } from '@tanstack/react-query'
-import { ExternalLink, FileText } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Download, ExternalLink, Search, Stamp, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { Link } from 'react-router-dom'
+import { Badge, type BadgeVariant } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { EmptyState, TableSkeleton } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
-import { listFilings } from '@/services/filing.service'
+import { downloadCsv } from '@/lib/csv'
+import { formatDate, normalizeSearch } from '@/lib/format'
+import { listFilings, type FilingRecord } from '@/services/filing.service'
+
+const typeVariants: Record<string, BadgeVariant> = {
+  Salida: 'success',
+  Traslado: 'violet',
+  'Ampliación de plazo': 'warning',
+}
+
+const monthFormat = new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric' })
+
+function expedientLabel(item: FilingRecord): string {
+  return item.expedienteRadicado ?? item.expedienteId.slice(0, 8)
+}
 
 export function FilingPage() {
   const {
@@ -15,125 +32,172 @@ export function FilingPage() {
   } = useQuery({ queryKey: ['filings'], queryFn: listFilings })
   const [search, setSearch] = useState('')
   const [type, setType] = useState('')
-  const [municipality, setMunicipality] = useState('')
-  const municipalities = [...new Set(data.map((item) => item.municipio).filter(Boolean))]
+  const [month, setMonth] = useState('')
+  const types = [...new Set(data.map((item) => item.tipo))]
+  const months = [...new Set(data.map((item) => item.fecha.slice(0, 7)))].sort().reverse()
   const rows = useMemo(() => {
-    const normalized = search.trim().toLocaleLowerCase('es-CO')
+    const normalized = normalizeSearch(search)
     return data.filter(
       (item) =>
         (!normalized ||
-          [item.numero, item.solicitante, item.expedienteId, item.responsable].some((value) =>
-            value.toLocaleLowerCase('es-CO').includes(normalized),
+          [item.numero, item.solicitante, expedientLabel(item), item.responsable].some((value) =>
+            normalizeSearch(value ?? '').includes(normalized),
           )) &&
         (!type || item.tipo === type) &&
-        (!municipality || item.municipio === municipality),
+        (!month || item.fecha.startsWith(month)),
     )
-  }, [data, municipality, search, type])
+  }, [data, month, search, type])
+
+  const exportRows = () =>
+    downloadCsv(
+      `radicados-catastro-${month || 'todos'}.csv`,
+      [
+        'Radicado',
+        'Fecha',
+        'Tipo',
+        'Expediente',
+        'Solicitante',
+        'Responsable',
+        'Estado',
+        'Soporte',
+      ],
+      rows.map((item) => [
+        item.numero,
+        item.fecha,
+        item.tipo,
+        expedientLabel(item),
+        item.solicitante,
+        item.responsable,
+        item.estado,
+        item.documentoUrl,
+      ]),
+    )
 
   return (
-    <section className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <p className="text-sm font-medium text-primary">Gestión documental</p>
-        <h1 className="text-2xl font-semibold">Radicación</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Consulta los radicados de entrada, salida y traslado vinculados a cada expediente.
-        </p>
-      </div>
-      <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-3">
+    <section className="mx-auto max-w-[1400px] space-y-6">
+      <PageHeader
+        kicker="Gestión documental"
+        title="Radicación"
+        description="Libro de radicados de salida, traslado y ampliación de plazo generados en el flujo de cada expediente."
+        actions={
+          <Button variant="outline" onClick={exportRows} disabled={!rows.length}>
+            <Download size={16} /> Exportar a Excel
+          </Button>
+        }
+      />
+
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
+            className="pl-9"
             placeholder="Número, solicitante, expediente o responsable"
+            aria-label="Buscar radicados"
           />
-          <Select value={type} onChange={(event) => setType(event.target.value)}>
-            <option value="">Todos los tipos</option>
-            {[...new Set(data.map((item) => item.tipo))].map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </Select>
-          <Select value={municipality} onChange={(event) => setMunicipality(event.target.value)}>
-            <option value="">Todos los municipios</option>
-            {municipalities.map((value) => (
-              <option key={value}>{value}</option>
-            ))}
-          </Select>
         </div>
-      </Card>
-      <Card className="overflow-x-auto">
-        <table className="w-full min-w-[980px] text-sm">
-          <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+        <Select
+          className="md:w-52"
+          value={type}
+          onChange={(event) => setType(event.target.value)}
+          aria-label="Tipo"
+        >
+          <option value="">Todos los tipos</option>
+          {types.map((value) => (
+            <option key={value}>{value}</option>
+          ))}
+        </Select>
+        <Select
+          className="md:w-52"
+          value={month}
+          onChange={(event) => setMonth(event.target.value)}
+          aria-label="Mes"
+        >
+          <option value="">Todos los meses</option>
+          {months.map((value) => (
+            <option key={value} value={value}>
+              {monthFormat.format(new Date(`${value}-01T00:00:00`))}
+            </option>
+          ))}
+        </Select>
+        {(search || type || month) && (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setSearch('')
+              setType('')
+              setMonth('')
+            }}
+          >
+            <X size={16} /> Limpiar
+          </Button>
+        )}
+      </div>
+
+      <div className="table-shell overflow-x-auto">
+        <table className="data-table min-w-[960px]">
+          <thead>
             <tr>
-              <th className="p-4">Radicado</th>
-              <th>Fecha</th>
+              <th>Radicado</th>
               <th>Tipo</th>
               <th>Expediente</th>
               <th>Solicitante</th>
               <th>Responsable</th>
-              <th>Estado</th>
               <th>Soporte</th>
             </tr>
           </thead>
           <tbody>
-            {isLoading && (
-              <tr>
-                <td className="p-8 text-center text-slate-500" colSpan={8}>
-                  Cargando radicados…
-                </td>
-              </tr>
-            )}
-            {isError && (
-              <tr>
-                <td className="p-8 text-center text-destructive" colSpan={8}>
-                  No fue posible cargar los radicados.
-                </td>
-              </tr>
-            )}
-            {!isLoading && !isError && rows.length === 0 && (
-              <tr>
-                <td className="p-10 text-center text-slate-500" colSpan={8}>
-                  <FileText className="mx-auto mb-2 text-slate-400" />
-                  No hay radicados con los filtros seleccionados.
-                </td>
-              </tr>
-            )}
+            {isLoading && <TableSkeleton columns={6} />}
             {rows.map((item) => (
-              <tr className="border-t border-slate-100 hover:bg-slate-50" key={item.id}>
-                <td className="p-4 font-semibold text-slate-900">{item.numero}</td>
-                <td>{item.fecha}</td>
-                <td>{item.tipo}</td>
+              <tr key={item.id}>
                 <td>
-                  <Link
-                    className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-                    to={`/expedientes/${item.expedienteId}`}
-                  >
-                    {item.expedienteId.slice(0, 8)}
-                    <ExternalLink size={13} />
-                  </Link>
+                  <p className="font-semibold text-slate-900">{item.numero}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(item.fecha)}</p>
                 </td>
-                <td>{item.solicitante || '—'}</td>
+                <td>
+                  <Badge variant={typeVariants[item.tipo] ?? 'default'}>{item.tipo}</Badge>
+                </td>
+                <td>
+                  <Link className="link" to={`/expedientes/${item.expedienteId}`}>
+                    {expedientLabel(item)}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">{item.estado}</p>
+                </td>
+                <td className="max-w-48 truncate">{item.solicitante || '—'}</td>
                 <td>{item.responsable || 'Sin asignar'}</td>
-                <td>{item.estado}</td>
                 <td>
                   {item.documentoUrl ? (
                     <a
                       href={item.documentoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                      className="link inline-flex max-w-48 items-center gap-1"
                     >
-                      {item.documentoNombre || 'Abrir escaneo'}
-                      <ExternalLink size={13} />
+                      <span className="truncate">{item.documentoNombre || 'Abrir escaneo'}</span>
+                      <ExternalLink size={13} className="shrink-0" />
                     </a>
                   ) : (
-                    <span className="text-slate-400">Sin soporte</span>
+                    <span className="text-muted-foreground">Sin soporte</span>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-      </Card>
+        {isError && (
+          <p className="px-5 py-10 text-center text-sm text-destructive">
+            No fue posible cargar los radicados.
+          </p>
+        )}
+        {!isLoading && !isError && !rows.length && (
+          <EmptyState
+            icon={Stamp}
+            title="No hay radicados para mostrar"
+            description="Los radicados se registran al completar los pasos del flujo de un expediente."
+          />
+        )}
+      </div>
     </section>
   )
 }

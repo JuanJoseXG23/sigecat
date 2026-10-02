@@ -1,163 +1,360 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus } from 'lucide-react'
+import { FileCog, Pencil, Plus, PowerOff, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Dialog } from '@/components/ui/dialog'
+import { Alert, EmptyState, ErrorAlert } from '@/components/ui/feedback'
+import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { deactivateProcedureType, saveProcedureType } from '@/services/procedure-type.service'
+import { PageHeader } from '@/components/ui/page-header'
+import { Select } from '@/components/ui/select'
+import { useToast } from '@/components/ui/toast-context'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
-import type { ProcedureType, ProcedureTypeInput } from '@/types/procedure-type'
+import { normalizeSearch } from '@/lib/format'
+import { deactivateProcedureType, saveProcedureType } from '@/services/procedure-type.service'
+import {
+  FINAL_DISPOSITIONS,
+  type ProcedureType,
+  type ProcedureTypeInput,
+} from '@/types/procedure-type'
+
+const optionalYears = z.preprocess(
+  (value) => (value === '' || value === null || Number.isNaN(value) ? undefined : Number(value)),
+  z.number().int().min(0, 'No puede ser negativo.').max(100).optional(),
+)
 
 const schema = z.object({
   nombre: z.string().trim().min(1, 'Ingresa el nombre.'),
   descripcion: z.string().trim().optional(),
-  diasRespuesta: z.coerce.number().int().min(1, 'Indica los días hábiles.'),
+  diasRespuesta: z.coerce
+    .number({ invalid_type_error: 'Indica los días hábiles.' })
+    .int()
+    .min(1, 'Indica los días hábiles.')
+    .max(120),
   requiereVisita: z.boolean(),
   requiereRevisionJuridica: z.boolean(),
+  codigoTRD: z.string().trim().optional(),
+  serie: z.string().trim().optional(),
+  subserie: z.string().trim().optional(),
+  retencionGestion: optionalYears,
+  retencionCentral: optionalYears,
+  disposicionFinal: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.enum(FINAL_DISPOSITIONS).optional(),
+  ),
 })
-const empty: ProcedureTypeInput = {
+type FormInput = z.input<typeof schema>
+
+const empty: FormInput = {
   nombre: '',
   descripcion: '',
-  diasRespuesta: 0,
+  diasRespuesta: 15,
   requiereVisita: false,
   requiereRevisionJuridica: false,
+  codigoTRD: '',
+  serie: '',
+  subserie: '',
+  retencionGestion: '',
+  retencionCentral: '',
+  disposicionFinal: '',
 }
+
+const LEGAL_TERMS = [
+  ['15', 'Petición general o particular'],
+  ['10', 'Solicitud de documentos e información'],
+  ['30', 'Consulta a la autoridad'],
+] as const
+
 export function ProcedureTypesPage() {
-  const { data = [] } = useProcedureTypes()
+  const { data = [], isLoading } = useProcedureTypes()
   const client = useQueryClient()
+  const toast = useToast()
   const [search, setSearch] = useState('')
+  const [formOpen, setFormOpen] = useState(false)
   const [editing, setEditing] = useState<ProcedureType>()
-  const form = useForm<ProcedureTypeInput>({ resolver: zodResolver(schema), defaultValues: empty })
+  const [deactivating, setDeactivating] = useState<ProcedureType>()
+  const form = useForm<FormInput, unknown, ProcedureTypeInput>({
+    resolver: zodResolver(schema),
+    defaultValues: empty,
+  })
+  const errors = form.formState.errors
   const refresh = () => client.invalidateQueries({ queryKey: ['procedure-types'] })
+  const close = () => {
+    setFormOpen(false)
+    setEditing(undefined)
+    form.reset(empty)
+  }
   const save = useMutation({
     mutationFn: (values: ProcedureTypeInput) => saveProcedureType(values, editing?.id),
-    onSuccess: () => {
-      void refresh()
-      setEditing(undefined)
-      form.reset(empty)
+    onSuccess: async (_, values) => {
+      await refresh()
+      close()
+      toast({ title: `Trámite “${values.nombre}” guardado` })
     },
   })
-  const remove = useMutation({ mutationFn: deactivateProcedureType, onSuccess: refresh })
+  const remove = useMutation({
+    mutationFn: deactivateProcedureType,
+    onSuccess: async () => {
+      await refresh()
+      setDeactivating(undefined)
+      toast({ title: 'Trámite desactivado', description: 'Ya no se ofrece al radicar.' })
+    },
+  })
   const rows = useMemo(
-    () => data.filter((item) => item.nombre.toLowerCase().includes(search.toLowerCase())),
+    () => data.filter((item) => normalizeSearch(item.nombre).includes(normalizeSearch(search))),
     [data, search],
   )
-  const edit = (item: ProcedureType) => {
+  const openForm = (item?: ProcedureType) => {
     setEditing(item)
-    form.reset({
-      nombre: item.nombre,
-      descripcion: item.descripcion ?? '',
-      diasRespuesta: item.diasRespuesta,
-      requiereVisita: item.requiereVisita,
-      requiereRevisionJuridica: item.requiereRevisionJuridica,
-    })
+    form.reset(
+      item
+        ? {
+            nombre: item.nombre,
+            descripcion: item.descripcion ?? '',
+            diasRespuesta: item.diasRespuesta,
+            requiereVisita: item.requiereVisita,
+            requiereRevisionJuridica: item.requiereRevisionJuridica,
+            codigoTRD: item.codigoTRD ?? '',
+            serie: item.serie ?? '',
+            subserie: item.subserie ?? '',
+            retencionGestion: item.retencionGestion ?? '',
+            retencionCentral: item.retencionCentral ?? '',
+            disposicionFinal: item.disposicionFinal ?? '',
+          }
+        : empty,
+    )
+    setFormOpen(true)
   }
+
   return (
     <section className="mx-auto max-w-6xl space-y-6">
-      <div className="flex items-end justify-between">
-        <div>
-          <p className="text-sm font-medium text-primary">Configuración</p>
-          <h1 className="text-2xl font-semibold">Tipos de trámite</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Registra cada trámite real y sus días hábiles. El flujo institucional se aplica
-            automáticamente.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setEditing(undefined)
-            form.reset(empty)
-          }}
-        >
-          <Plus size={16} /> Nuevo trámite
-        </Button>
-      </div>
-      <Card className="p-4">
+      <PageHeader
+        kicker="Administración"
+        title="Tipos de trámite y TRD"
+        description="Cada trámite define su término en días hábiles y su clasificación en la Tabla de Retención Documental."
+        actions={
+          <Button onClick={() => openForm()}>
+            <Plus size={16} /> Nuevo trámite
+          </Button>
+        }
+      />
+      <ErrorAlert error={remove.error} fallback="No fue posible desactivar el trámite." />
+
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
         <Input
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Buscar trámite"
+          className="pl-9"
+          aria-label="Buscar trámite"
         />
-      </Card>
-      <Card className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-left">
+      </div>
+
+      <div className="table-shell overflow-x-auto">
+        <table className="data-table min-w-[820px]">
+          <thead>
             <tr>
-              <th className="p-4">Trámite</th>
-              <th>Días hábiles</th>
-              <th>Visita</th>
-              <th>Jurídica</th>
-              <th />
+              <th>Trámite</th>
+              <th>Término</th>
+              <th>Serie documental (TRD)</th>
+              <th>Retención</th>
+              <th>Requisitos</th>
+              <th>
+                <span className="sr-only">Acciones</span>
+              </th>
             </tr>
           </thead>
           <tbody>
-            {rows.length ? (
-              rows.map((item) => (
-                <tr className="border-t" key={item.id}>
-                  <td className="p-4 font-medium">
-                    {item.nombre}
-                    <small className="block text-slate-500">{item.descripcion}</small>
-                  </td>
-                  <td>{item.diasRespuesta}</td>
-                  <td>{item.requiereVisita ? 'Sí' : 'No'}</td>
-                  <td>{item.requiereRevisionJuridica ? 'Sí' : 'No'}</td>
-                  <td>
-                    <Button variant="ghost" size="sm" onClick={() => edit(item)}>
-                      Editar
+            {rows.map((item) => (
+              <tr key={item.id}>
+                <td>
+                  <p className="font-semibold text-slate-900">{item.nombre}</p>
+                  {item.descripcion && (
+                    <p className="max-w-64 truncate text-xs text-muted-foreground">
+                      {item.descripcion}
+                    </p>
+                  )}
+                </td>
+                <td className="whitespace-nowrap">{item.diasRespuesta} días hábiles</td>
+                <td>
+                  {item.serie ? (
+                    <>
+                      <p>{item.serie}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {[item.codigoTRD, item.subserie].filter(Boolean).join(' · ')}
+                      </p>
+                    </>
+                  ) : (
+                    <Badge variant="warning">Sin TRD</Badge>
+                  )}
+                </td>
+                <td className="whitespace-nowrap">
+                  {item.retencionGestion !== undefined ? (
+                    <>
+                      <p>
+                        {item.retencionGestion} AG · {item.retencionCentral ?? 0} AC
+                      </p>
+                      <p className="text-xs text-muted-foreground">{item.disposicionFinal ?? ''}</p>
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+                <td>
+                  <div className="flex flex-wrap gap-1">
+                    {item.requiereVisita && <Badge variant="info">Visita</Badge>}
+                    {item.requiereRevisionJuridica && <Badge variant="violet">Jurídica</Badge>}
+                    {!item.requiereVisita && !item.requiereRevisionJuridica && (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </div>
+                </td>
+                <td>
+                  <div className="flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openForm(item)}
+                      aria-label={`Editar ${item.nombre}`}
+                    >
+                      <Pencil size={16} />
                     </Button>
-                    <Button variant="ghost" size="sm" onClick={() => remove.mutate(item.id)}>
-                      Desactivar
+                    <Button
+                      variant="ghost-destructive"
+                      size="icon"
+                      onClick={() => setDeactivating(item)}
+                      aria-label={`Desactivar ${item.nombre}`}
+                    >
+                      <PowerOff size={16} />
                     </Button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td className="p-8 text-center text-slate-500" colSpan={5}>
-                  No hay tipos registrados. Crea el primero con sus días hábiles.
+                  </div>
                 </td>
               </tr>
-            )}
+            ))}
           </tbody>
         </table>
-      </Card>
-      <Card className="p-5">
-        <h2 className="font-semibold">{editing ? 'Editar trámite' : 'Crear trámite'}</h2>
-        <form className="mt-4" onSubmit={form.handleSubmit((values) => save.mutate(values))}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Input {...form.register('nombre')} placeholder="Nombre del trámite" />
-            <Input
-              type="number"
-              min="1"
-              {...form.register('diasRespuesta')}
-              placeholder="Días hábiles de respuesta"
-            />
-            <Input
-              className="sm:col-span-2"
-              {...form.register('descripcion')}
-              placeholder="Descripción"
-            />
-            <label>
-              <input type="checkbox" {...form.register('requiereVisita')} /> Requiere visita
+        {!isLoading && !rows.length && (
+          <EmptyState
+            icon={FileCog}
+            title={search ? 'Sin resultados' : 'No hay tipos de trámite'}
+            description="Crea el primero con sus días hábiles y su serie documental."
+          />
+        )}
+      </div>
+
+      <Dialog
+        open={formOpen}
+        onClose={close}
+        size="lg"
+        busy={save.isPending}
+        title={editing ? 'Editar trámite' : 'Nuevo trámite'}
+        description="El flujo institucional se aplica automáticamente a todos los trámites."
+      >
+        <form
+          className="space-y-6"
+          onSubmit={form.handleSubmit((values) => save.mutate(values))}
+          noValidate
+        >
+          <ErrorAlert error={save.error} fallback="No fue posible guardar el trámite." />
+          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_11rem]">
+            <Field label="Nombre del trámite" required error={errors.nombre?.message}>
+              <Input {...form.register('nombre')} placeholder="Ej. Rectificación de área" />
+            </Field>
+            <Field label="Días hábiles" required error={errors.diasRespuesta?.message}>
+              <Input type="number" min={1} {...form.register('diasRespuesta')} />
+            </Field>
+            <Field label="Descripción" className="sm:col-span-2">
+              <Input {...form.register('descripcion')} />
+            </Field>
+          </div>
+          <Alert tone="info" title="Términos de la Ley 1755 de 2015">
+            <ul className="mt-1 grid gap-x-4 sm:grid-cols-3">
+              {LEGAL_TERMS.map(([days, label]) => (
+                <li key={label}>
+                  <b>{days} días</b> · {label}
+                </li>
+              ))}
+            </ul>
+          </Alert>
+          <div className="flex flex-wrap gap-6 text-sm">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" className="size-4" {...form.register('requiereVisita')} />
+              Requiere visita técnica
             </label>
-            <label>
-              <input type="checkbox" {...form.register('requiereRevisionJuridica')} /> Requiere
-              revisión jurídica
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="size-4"
+                {...form.register('requiereRevisionJuridica')}
+              />
+              Requiere revisión jurídica
             </label>
           </div>
-          {form.formState.errors.diasRespuesta && (
-            <p className="mt-2 text-sm text-destructive">
-              {form.formState.errors.diasRespuesta.message}
+
+          <fieldset className="space-y-4 rounded-xl border border-border p-4">
+            <legend className="px-1 text-sm font-semibold text-slate-900">
+              Tabla de Retención Documental
+            </legend>
+            <p className="text-xs text-muted-foreground">
+              Se copia a cada expediente nuevo de este trámite. AG: años en archivo de gestión; AC:
+              años en archivo central, contados desde el cierre.
             </p>
-          )}
-          <Button className="mt-4" type="submit">
-            Guardar trámite
-          </Button>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Código">
+                <Input {...form.register('codigoTRD')} placeholder="Ej. 210.42.03" />
+              </Field>
+              <Field label="Serie" className="sm:col-span-2">
+                <Input {...form.register('serie')} placeholder="Ej. Trámites catastrales" />
+              </Field>
+              <Field label="Subserie" className="sm:col-span-3">
+                <Input {...form.register('subserie')} placeholder="Ej. Rectificaciones" />
+              </Field>
+              <Field label="Años AG" error={errors.retencionGestion?.message}>
+                <Input type="number" min={0} {...form.register('retencionGestion')} />
+              </Field>
+              <Field label="Años AC" error={errors.retencionCentral?.message}>
+                <Input type="number" min={0} {...form.register('retencionCentral')} />
+              </Field>
+              <Field label="Disposición final">
+                <Select {...form.register('disposicionFinal')}>
+                  <option value="">Sin definir</option>
+                  {FINAL_DISPOSITIONS.map((value) => (
+                    <option key={value}>{value}</option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+          </fieldset>
+
+          <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
+            <Button variant="outline" onClick={close} disabled={save.isPending}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={save.isPending}>
+              {save.isPending ? 'Guardando…' : 'Guardar trámite'}
+            </Button>
+          </div>
         </form>
-      </Card>
+      </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(deactivating)}
+        title="Desactivar trámite"
+        confirmLabel="Desactivar"
+        tone="destructive"
+        pending={remove.isPending}
+        onCancel={() => setDeactivating(undefined)}
+        onConfirm={() => deactivating && remove.mutate(deactivating.id)}
+      >
+        “{deactivating?.nombre}” dejará de ofrecerse al radicar. Los expedientes existentes
+        conservan su término y su clasificación.
+      </ConfirmDialog>
     </section>
   )
 }

@@ -19,6 +19,7 @@ import {
   getDeadlineStatus,
   registerExpedientHistory,
 } from '@/services/business-rules.service'
+import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
 import { toDateKey } from '@/lib/expedient-deadline'
 import type { Actuation } from '@/lib/expedient-workflow'
 import { firestore } from '@/services/firebase'
@@ -28,6 +29,7 @@ import { queueAssignmentEmail } from '@/services/assignment-email.service'
 import type {
   ActuationFields,
   AssignedOfficial,
+  DeadlineExtension,
   Expedient,
   ExpedientFormData,
   ExpedientHistoryEntry,
@@ -35,7 +37,8 @@ import type {
   WorkflowDocument,
   WorkflowDocumentPayload,
 } from '@/types/expedient'
-import { isFinalizedExpedient } from '@/types/expedient'
+import { isFinalizedExpedient, type DocumentClassification } from '@/types/expedient'
+import type { ProcedureType } from '@/types/procedure-type'
 
 const EXPEDIENTS_COLLECTION = 'expedientes'
 
@@ -48,6 +51,12 @@ function removeEmptyFields<T extends object>(data: T): Partial<T> {
   return Object.fromEntries(
     Object.entries(data).filter(([, value]) => value !== undefined && value !== ''),
   ) as Partial<T>
+}
+
+function newDocumentId(): string {
+  return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `doc_${Math.random().toString(36).slice(2, 10)}`
 }
 
 function expedientReference(id: string) {
@@ -75,9 +84,14 @@ async function ensureUniqueFilingNumber(number: string, currentId?: string): Pro
   }
 }
 
+/**
+ * Datos del formulario listos para Firestore. `extensionDays` son los días ya ampliados, que
+ * la fecha límite conserva aunque se edite el expediente.
+ */
 async function toExpedientData(
   values: ExpedientFormData,
   assignedOfficial?: AssignedOfficial,
+  extensionDays = 0,
 ): Promise<Record<string, unknown>> {
   const [procedureType, configuration] = await Promise.all([
     getActiveProcedureType(values.tipoTramiteId),
@@ -87,7 +101,7 @@ async function toExpedientData(
   const responseDays = procedureType.diasRespuesta
   const fechaLimite = calculateDeadline(
     values.fechaRadicado,
-    responseDays,
+    responseDays + extensionDays,
     configuration.diasFestivos,
   )
   const timeline = getDeadlineStatus(
@@ -103,6 +117,10 @@ async function toExpedientData(
     medioIngreso: values.medioIngreso?.trim(),
     tipoTramiteId: procedureType?.id,
     tipoTramite: procedureType?.nombre ?? values.tipoTramite?.trim(),
+    asunto: values.asunto?.trim(),
+    nivelAcceso: values.nivelAcceso,
+    diasTermino: responseDays,
+    clasificacionDocumental: toClassification(procedureType),
     solicitantes: values.solicitantes.map((applicant) => removeEmptyFields(applicant)),
     predios: values.predios.map((property) => removeEmptyFields(property)),
     funcionarioAsignado: assignedOfficial,
@@ -113,6 +131,18 @@ async function toExpedientData(
     estadoTermino: timeline.estadoTermino,
     observacionesIniciales: values.observacionesIniciales?.trim(),
   })
+}
+
+function toClassification(type: ProcedureType): DocumentClassification | undefined {
+  const classification = removeEmptyFields({
+    codigo: type.codigoTRD,
+    serie: type.serie,
+    subserie: type.subserie,
+    retencionGestion: type.retencionGestion,
+    retencionCentral: type.retencionCentral,
+    disposicionFinal: type.disposicionFinal,
+  })
+  return Object.keys(classification).length ? classification : undefined
 }
 
 async function withDeadlineStatus(items: Expedient[]): Promise<Expedient[]> {
@@ -210,7 +240,7 @@ export async function updateExpedient(
   assignedOfficial?: AssignedOfficial,
 ): Promise<void> {
   const current = await getExpedient(id)
-  const data = await toExpedientData(values, assignedOfficial)
+  const data = await toExpedientData(values, assignedOfficial, current?.diasAmpliacion ?? 0)
   if (current?.numeroRadicado !== data.numeroRadicado) {
     await ensureUniqueFilingNumber(data.numeroRadicado as string, id)
   }
@@ -219,6 +249,9 @@ export async function updateExpedient(
     ...data,
     fechaRecibido: values.fechaRecibido ? toTimestamp(values.fechaRecibido) : deleteField(),
     medioIngreso: values.medioIngreso?.trim() || deleteField(),
+    asunto: values.asunto?.trim() || deleteField(),
+    nivelAcceso: values.nivelAcceso ?? deleteField(),
+    clasificacionDocumental: data.clasificacionDocumental ?? deleteField(),
     funcionarioAsignado: assignedOfficial ?? deleteField(),
     prioridad: values.prioridad ?? deleteField(),
     observacionesIniciales: values.observacionesIniciales?.trim() || deleteField(),
@@ -244,14 +277,16 @@ export async function updateExpedient(
   await commit(batch)
 }
 
-export async function archiveExpedient(id: string, userId: string): Promise<void> {
+export async function archiveExpedient(id: string, userId: string, reason: string): Promise<void> {
+  if (!reason.trim()) throw new Error('Indica el motivo del archivo.')
   const batch = writeBatch(firestore)
   batch.update(expedientReference(id), {
     activo: false,
     estado: 'Archivado',
+    fechaCierre: serverTimestamp(),
     fechaActualizacion: serverTimestamp(),
   })
-  registerExpedientHistory(batch, id, userId, 'Archivo del expediente')
+  registerExpedientHistory(batch, id, userId, 'Archivo del expediente', reason.trim())
   await commit(batch)
 }
 
@@ -295,10 +330,7 @@ export async function addExpedientWorkflowDocument(
 ): Promise<void> {
   const expedient = await getExpedient(expedientId)
   if (!expedient) throw new Error('No se encontró el expediente relacionado.')
-  const documentId =
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : `doc_${Math.random().toString(36).slice(2, 10)}`
+  const documentId = newDocumentId()
 
   const radicadoFechaTimestamp = document.radicadoFecha
     ? toTimestamp(document.radicadoFecha)
@@ -311,6 +343,7 @@ export async function addExpedientWorkflowDocument(
     url: document.url,
     usuario: userName,
     fecha: Timestamp.fromDate(new Date()),
+    ...(document.folios ? { folios: document.folios } : {}),
     ...(document.radicadoNumero ? { radicadoNumero: document.radicadoNumero } : {}),
     ...(radicadoFechaTimestamp ? { radicadoFecha: radicadoFechaTimestamp } : {}),
   }
@@ -380,7 +413,7 @@ export async function completeRequiredActuation(
   batch.update(expedientReference(id), {
     ...fields,
     estado: nextStatus,
-    ...(finalized ? { activo: false } : {}),
+    ...(finalized ? { activo: false, fechaCierre: serverTimestamp() } : {}),
     fechaActualizacion: serverTimestamp(),
   })
   registerExpedientHistory(batch, id, userId, action, detail)
@@ -396,6 +429,7 @@ export async function completeRequiredActuation(
       fecha: fields.fechaRadicadoActuacion ?? toDateKey(new Date()),
       tipo: action.includes('traslado') ? 'Traslado' : 'Salida',
       expedienteId: current.id,
+      expedienteRadicado: current.numeroRadicado,
       solicitante: current.solicitantes[0]?.nombre ?? '',
       responsable: current.funcionarioAsignado?.nombreCompleto ?? current.responsableExterno ?? '',
       estado: nextStatus,
@@ -415,6 +449,100 @@ export async function completeRequiredActuation(
       'El expediente fue archivado y enviado al Histórico.',
     )
   await commit(batch)
+}
+
+/**
+ * Amplía el término de respuesta. En un mismo lote guarda la nueva fecha límite, el detalle
+ * de la ampliación, el radicado escaneado como documento del expediente, el radicado en el
+ * libro de radicación y el historial.
+ */
+export async function extendExpedientDeadline(
+  id: string,
+  input: ExtensionInput,
+  userId: string,
+  userName: string,
+): Promise<Date> {
+  const [current, configuration] = await Promise.all([getExpedient(id), getBusinessConfiguration()])
+  if (!current) throw new Error('Expediente no encontrado.')
+  if (isFinalizedExpedient(current)) throw new Error('El expediente ya está cerrado.')
+  if (!current.fechaLimite) throw new Error('El expediente no tiene fecha límite calculada.')
+  const responseDays =
+    current.diasTermino ?? (await getActiveProcedureType(current.tipoTramiteId))?.diasRespuesta
+  if (!responseDays) throw new Error('No se conoce el término inicial del tipo de trámite.')
+
+  const plan = planExtension(input, {
+    entryDate: toDateKey(current.fechaRadicado.toDate()),
+    currentDeadline: current.fechaLimite.toDate(),
+    responseDays,
+    previousExtensionDays: current.diasAmpliacion ?? 0,
+    holidays: configuration.diasFestivos,
+  })
+  const filingNumber = input.filingNumber.trim()
+  if ((await getDoc(getFilingReference(current.id, filingNumber))).exists()) {
+    throw new Error(`El radicado ${filingNumber} ya está registrado para este expediente.`)
+  }
+
+  const now = Timestamp.now()
+  const newDeadline = Timestamp.fromDate(plan.newDeadline)
+  const reason = input.reason.trim()
+  const documentName = input.documentName.trim()
+  const documentUrl = input.documentUrl.trim()
+  const extension: DeadlineExtension = {
+    numeroRadicado: filingNumber,
+    fechaRadicado: input.filingDate,
+    diasSolicitados: input.requestedDays,
+    motivo: reason,
+    documentoNombre: documentName,
+    documentoUrl: documentUrl,
+    fechaLimiteAnterior: current.fechaLimite,
+    fechaLimiteNueva: newDeadline,
+    usuario: userName,
+    fecha: now,
+  }
+  const supportingDocument: WorkflowDocument = {
+    id: newDocumentId(),
+    tipo: 'AMPLIACION_PLAZO',
+    nombre: documentName,
+    url: documentUrl,
+    usuario: userName,
+    fecha: now,
+    radicadoNumero: filingNumber,
+    radicadoFecha: toTimestamp(input.filingDate)!,
+  }
+  const formattedDeadline = plan.newDeadline.toLocaleDateString('es-CO')
+
+  const batch = writeBatch(firestore)
+  batch.update(expedientReference(id), {
+    fechaLimite: newDeadline,
+    diasTermino: responseDays,
+    diasAmpliacion: plan.totalExtensionDays,
+    ampliacionesPlazo: arrayUnion(extension),
+    documentosWorkflow: arrayUnion(supportingDocument),
+    fechaActualizacion: serverTimestamp(),
+  })
+  registerExpedientHistory(
+    batch,
+    id,
+    userId,
+    'Amplió el plazo de respuesta',
+    `${input.requestedDays} días hábiles con el radicado ${filingNumber}. Nueva fecha límite: ${formattedDeadline}. Motivo: ${reason}`,
+  )
+  registerFiling(batch, {
+    numero: filingNumber,
+    fecha: input.filingDate,
+    tipo: 'Ampliación de plazo',
+    expedienteId: current.id,
+    expedienteRadicado: current.numeroRadicado,
+    solicitante: current.solicitantes[0]?.nombre ?? '',
+    responsable: current.funcionarioAsignado?.nombreCompleto ?? current.responsableExterno ?? '',
+    estado: current.estado,
+    municipio: current.predios[0]?.municipio ?? '',
+    observaciones: reason,
+    documentoUrl: documentUrl,
+    documentoNombre: documentName,
+  })
+  await commit(batch)
+  return plan.newDeadline
 }
 
 /** Guarda la actuación que produjo planActuation para el paso actual. */

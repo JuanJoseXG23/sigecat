@@ -1,414 +1,296 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowDownUp, Edit3, ExternalLink, FilePlus2, Search, Trash2, X } from 'lucide-react'
+import { Archive, FilePlus2, FolderOpen, Pencil, Search, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { Badge } from '@/components/ui/badge'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Dialog } from '@/components/ui/dialog'
+import { EmptyState, ErrorAlert } from '@/components/ui/feedback'
+import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/components/ui/toast-context'
 import { ExpedientForm } from '@/features/expedients/components/expedient-form'
+import { ExpedientTable } from '@/features/expedients/components/expedient-table'
+import { byUrgency, matchesExpedientSearch } from '@/features/expedients/expedient-filters'
 import { useAuth } from '@/hooks/use-auth'
 import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useExpedients } from '@/hooks/use-expedients'
 import { canManageExpedient, isSupervisor } from '@/lib/permissions'
 import { archiveExpedient, createExpedient, updateExpedient } from '@/services/expedient.service'
-import type { Expedient, ExpedientFormData, ExpedientPriority } from '@/types/expedient'
+import type { Expedient, ExpedientFormData } from '@/types/expedient'
 import { EXPEDIENT_PRIORITIES, EXPEDIENT_STATUSES } from '@/types/expedient'
 
-const PAGE_SIZE = 10
-
-function formatDate(value?: { toDate: () => Date }): string {
-  return value
-    ? new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' }).format(value.toDate())
-    : '—'
-}
-
-function priorityVariant(
-  priority?: ExpedientPriority,
-): 'destructive' | 'warning' | 'success' | 'default' {
-  if (priority === 'Alta') return 'destructive'
-  if (priority === 'Media') return 'warning'
-  if (priority === 'Baja') return 'success'
-  return 'default'
-}
+const AFFECTED_QUERIES = ['expedients', 'work-tray', 'historical-expedients', 'expedient']
 
 export function ExpedientsPage() {
   const { user, profile, hasRole } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
   const queryClient = useQueryClient()
+  const [params, setParams] = useSearchParams()
   const { data: expedients = [], isLoading, isError } = useExpedients()
   const { data: officials = [] } = useAssignableOfficials()
-  const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
   const [priority, setPriority] = useState('')
-  const [sortDescending, setSortDescending] = useState(true)
-  const [page, setPage] = useState(1)
-  const [formOpen, setFormOpen] = useState(false)
-  const [selectedExpedient, setSelectedExpedient] = useState<Expedient | undefined>()
-  const [operationError, setOperationError] = useState('')
-  const [operationNotice, setOperationNotice] = useState('')
+  const [editing, setEditing] = useState<Expedient | undefined>()
+  const [archiving, setArchiving] = useState<Expedient | undefined>()
+  const [archiveReason, setArchiveReason] = useState('')
   const canCreate = hasRole(['Administrador', 'Coordinador', 'Funcionario'])
   const canArchive = isSupervisor(profile)
 
-  const refresh = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['expedients'] })
+  const search = params.get('q') ?? ''
+  const creating = params.get('nuevo') === '1' && canCreate
+  const formOpen = creating || Boolean(editing)
+
+  const updateParams = (changes: Record<string, string | null>) => {
+    const next = new URLSearchParams(params)
+    for (const [key, value] of Object.entries(changes)) {
+      if (value) next.set(key, value)
+      else next.delete(key)
+    }
+    setParams(next, { replace: true })
+  }
+
+  const refresh = () =>
+    Promise.all(AFFECTED_QUERIES.map((key) => queryClient.invalidateQueries({ queryKey: [key] })))
+
+  const closeForm = () => {
+    setEditing(undefined)
+    if (creating) updateParams({ nuevo: null })
   }
 
   const saveMutation = useMutation({
     mutationFn: async (values: ExpedientFormData) => {
-      setOperationError('')
-      setOperationNotice('')
+      if (!user) throw new Error('La sesión expiró. Vuelve a iniciar sesión.')
       const official = officials.find((item) => item.uid === values.funcionarioAsignadoUid)
       const assignedOfficial = official
         ? { uid: official.uid, nombreCompleto: official.nombreCompleto }
-        : selectedExpedient?.funcionarioAsignado
-      if (selectedExpedient) {
-        await updateExpedient(selectedExpedient.id, values, user!.uid, assignedOfficial)
-        return { assignedOfficialName: assignedOfficial?.nombreCompleto }
-      } else if (user) {
-        const id = await createExpedient(values, user.uid, assignedOfficial)
-        return { id, assignedOfficialName: assignedOfficial?.nombreCompleto }
+        : editing?.funcionarioAsignado
+      if (editing) {
+        await updateExpedient(editing.id, values, user.uid, assignedOfficial)
+        return { id: undefined, assignedOfficialName: assignedOfficial?.nombreCompleto }
       }
-      return { assignedOfficialName: assignedOfficial?.nombreCompleto }
+      const id = await createExpedient(values, user.uid, assignedOfficial)
+      return { id, assignedOfficialName: assignedOfficial?.nombreCompleto }
     },
-    onSuccess: async (result) => {
+    onSuccess: async (result, values) => {
       await refresh()
-      setFormOpen(false)
-      setSelectedExpedient(undefined)
-      if (result?.assignedOfficialName)
-        setOperationNotice(
-          `Expediente asignado a ${result.assignedOfficialName}. Enviando correo de notificación; llegará en máximo cinco minutos.`,
-        )
-      if (result?.id) navigate(`/expedientes/${result.id}`)
-    },
-    onError: (error) => {
-      setOperationError(
-        error instanceof Error ? error.message : 'No fue posible guardar el expediente.',
-      )
+      closeForm()
+      toast({
+        title: result.id ? `Expediente ${values.numeroRadicado} radicado` : 'Cambios guardados',
+        description: result.assignedOfficialName
+          ? `Se notificará por correo a ${result.assignedOfficialName} en máximo cinco minutos.`
+          : result.id
+            ? 'Continúa con la confirmación de recepción.'
+            : undefined,
+      })
+      if (result.id) navigate(`/expedientes/${result.id}`)
     },
   })
 
   const archiveMutation = useMutation({
-    mutationFn: (id: string) => {
-      setOperationError('')
-      return archiveExpedient(id, user!.uid)
-    },
-    onSuccess: refresh,
-    onError: (error) => {
-      setOperationError(
-        error instanceof Error ? error.message : 'No fue posible archivar el expediente.',
-      )
+    mutationFn: (item: Expedient) => archiveExpedient(item.id, user!.uid, archiveReason.trim()),
+    onSuccess: async (_, item) => {
+      await refresh()
+      setArchiving(undefined)
+      setArchiveReason('')
+      toast({
+        title: `Expediente ${item.numeroRadicado} archivado`,
+        description: 'Lo encuentras en Histórico y retención.',
+      })
     },
   })
 
-  const filteredExpedients = useMemo(() => {
-    const normalizedSearch = search.trim().toLocaleLowerCase('es-CO')
-    return expedients
-      .filter((item) => {
-        const firstApplicant = item.solicitantes[0]?.nombre ?? ''
-        const matchesSearch =
-          !normalizedSearch ||
-          [item.numeroRadicado, firstApplicant, item.tipoTramite ?? ''].some((value) =>
-            value.toLocaleLowerCase('es-CO').includes(normalizedSearch),
-          )
-        return (
-          matchesSearch &&
-          (!status || item.estado === status) &&
-          (!priority || item.prioridad === priority)
+  const rows = useMemo(
+    () =>
+      expedients
+        .filter(
+          (item) =>
+            matchesExpedientSearch(item, search) &&
+            (!status || item.estado === status) &&
+            (!priority || item.prioridad === priority),
         )
-      })
-      .sort((first, second) => {
-        const difference = first.fechaRadicado.toMillis() - second.fechaRadicado.toMillis()
-        return sortDescending ? -difference : difference
-      })
-  }, [expedients, priority, search, sortDescending, status])
-
-  const totalPages = Math.max(1, Math.ceil(filteredExpedients.length / PAGE_SIZE))
-  const currentPage = Math.min(page, totalPages)
-  const paginatedExpedients = filteredExpedients.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
+        .sort(byUrgency),
+    [expedients, priority, search, status],
   )
-
-  const updateFilter = (setter: (value: string) => void, value: string) => {
-    setter(value)
-    setPage(1)
-  }
-
-  const openNew = () => {
-    setSelectedExpedient(undefined)
-    setFormOpen(true)
-  }
-
-  const openEdit = (expedient: Expedient) => {
-    setSelectedExpedient(expedient)
-    setFormOpen(true)
-  }
-
-  const archive = (expedient: Expedient) => {
-    if (
-      window.confirm(
-        `¿Archivar el expediente ${expedient.numeroRadicado}? Podrás conservar su trazabilidad.`,
-      )
-    ) {
-      archiveMutation.mutate(expedient.id)
-    }
-  }
+  const hasFilters = Boolean(search || status || priority)
 
   return (
-    <section className="mx-auto max-w-7xl space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-sm font-medium text-primary">Gestión documental</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Expedientes</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Consulta, registra y administra los expedientes documentales.
-          </p>
+    <section className="mx-auto max-w-[1400px] space-y-6">
+      <PageHeader
+        kicker="Gestión documental"
+        title="Expedientes"
+        description="Expedientes activos, ordenados por urgencia del término de respuesta."
+        actions={
+          canCreate && (
+            <Button onClick={() => updateParams({ nuevo: '1' })}>
+              <FilePlus2 size={17} /> Radicar expediente
+            </Button>
+          )
+        }
+      />
+
+      <ErrorAlert error={archiveMutation.error} fallback="No fue posible archivar el expediente." />
+
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:flex-row">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(event) => updateParams({ q: event.target.value || null })}
+            className="pl-9"
+            placeholder="Radicado, solicitante, documento, número predial, matrícula o asunto"
+            aria-label="Buscar expedientes"
+          />
         </div>
-        {canCreate && (
-          <Button onClick={openNew}>
-            <FilePlus2 size={17} /> Nuevo expediente
+        <Select
+          className="md:w-56"
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+          aria-label="Estado"
+        >
+          <option value="">Todos los estados</option>
+          {EXPEDIENT_STATUSES.slice(0, -2).map((item) => (
+            <option key={item}>{item}</option>
+          ))}
+        </Select>
+        <Select
+          className="md:w-44"
+          value={priority}
+          onChange={(event) => setPriority(event.target.value)}
+          aria-label="Prioridad"
+        >
+          <option value="">Toda prioridad</option>
+          {EXPEDIENT_PRIORITIES.map((item) => (
+            <option key={item}>{item}</option>
+          ))}
+        </Select>
+        {hasFilters && (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              updateParams({ q: null })
+              setStatus('')
+              setPriority('')
+            }}
+          >
+            <X size={16} /> Limpiar
           </Button>
         )}
       </div>
 
-      {operationError && (
-        <p
-          role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
-        >
-          {operationError}
-        </p>
-      )}
-      {operationNotice && (
-        <p
-          role="status"
-          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
-        >
-          {operationNotice}
-        </p>
-      )}
-
-      <Card className="p-4">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_12rem_10rem_auto]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={search}
-              onChange={(event) => updateFilter(setSearch, event.target.value)}
-              className="pl-9"
-              placeholder="Buscar por radicado, solicitante o trámite"
+      <ExpedientTable
+        key={`${search}|${status}|${priority}`}
+        rows={rows}
+        isLoading={isLoading}
+        isError={isError}
+        empty={
+          hasFilters ? (
+            <EmptyState
+              icon={Search}
+              title="No hay expedientes activos que coincidan"
+              description={
+                <>
+                  Si el expediente ya fue cerrado, búscalo en{' '}
+                  <Link to="/historico" className="link">
+                    Histórico y retención
+                  </Link>
+                  .
+                </>
+              }
             />
-          </div>
-          <Select value={status} onChange={(event) => updateFilter(setStatus, event.target.value)}>
-            <option value="">Todos los estados</option>
-            {EXPEDIENT_STATUSES.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </Select>
-          <Select
-            value={priority}
-            onChange={(event) => updateFilter(setPriority, event.target.value)}
-          >
-            <option value="">Toda prioridad</option>
-            {EXPEDIENT_PRIORITIES.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </Select>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => setSortDescending((value) => !value)}
-          >
-            <ArrowDownUp size={16} /> Fecha
-          </Button>
-        </div>
-      </Card>
-
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-5 py-3 font-medium">Número radicado</th>
-                <th className="px-5 py-3 font-medium">Primer solicitante</th>
-                <th className="px-5 py-3 font-medium">Solicitantes</th>
-                <th className="px-5 py-3 font-medium">Municipio</th>
-                <th className="px-5 py-3 font-medium">Tipo de trámite</th>
-                <th className="px-5 py-3 font-medium">Funcionario</th>
-                <th className="px-5 py-3 font-medium">Estado</th>
-                <th className="px-5 py-3 font-medium">Prioridad</th>
-                <th className="px-5 py-3 font-medium">Fecha límite</th>
-                <th className="px-5 py-3 font-medium">
-                  <span className="sr-only">Acciones</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {isLoading && (
-                <tr>
-                  <td colSpan={10} className="px-5 py-12 text-center text-slate-500">
-                    Cargando expedientes…
-                  </td>
-                </tr>
-              )}
-              {isError && (
-                <tr>
-                  <td colSpan={10} className="px-5 py-12 text-center text-destructive">
-                    No fue posible cargar los expedientes.
-                  </td>
-                </tr>
-              )}
-              {!isLoading && !isError && paginatedExpedients.length === 0 && (
-                <tr>
-                  <td colSpan={10} className="px-5 py-12 text-center text-slate-500">
-                    No hay expedientes que coincidan con los filtros.
-                  </td>
-                </tr>
-              )}
-              {paginatedExpedients.map((item) => (
-                <tr key={item.id} className="text-slate-700 hover:bg-slate-50/80">
-                  <td className="px-5 py-4 font-medium text-slate-900">{item.numeroRadicado}</td>
-                  <td className="px-5 py-4">{item.solicitantes[0]?.nombre || 'Sin registrar'}</td>
-                  <td className="px-5 py-4">{item.solicitantes.length}</td>
-                  <td className="px-5 py-4">{item.predios[0]?.municipio || '—'}</td>
-                  <td className="px-5 py-4">{item.tipoTramite || '—'}</td>
-                  <td className="px-5 py-4">
-                    {item.funcionarioAsignado?.nombreCompleto || 'Sin asignar'}
-                  </td>
-                  <td className="px-5 py-4">
-                    <Badge variant="info">{item.estado}</Badge>
-                  </td>
-                  <td className="px-5 py-4">
-                    <Badge variant={priorityVariant(item.prioridad)}>
-                      {item.prioridad || 'Sin prioridad'}
-                    </Badge>
-                  </td>
-                  <td className="px-5 py-4">
-                    <p>{formatDate(item.fechaLimite)}</p>
-                    {item.diasRestantes !== undefined && (
-                      <p className="mt-0.5 text-xs text-slate-500">
-                        {item.diasRestantes} días hábiles
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center justify-end gap-1">
-                      <Link
-                        className="inline-flex size-9 items-center justify-center rounded-md hover:bg-accent"
-                        to={`/expedientes/${item.id}`}
-                        aria-label={`Abrir ${item.numeroRadicado}`}
-                      >
-                        <ExternalLink size={16} />
-                      </Link>
-                      {canManageExpedient(profile, item) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          type="button"
-                          onClick={() => openEdit(item)}
-                          aria-label={`Editar ${item.numeroRadicado}`}
-                        >
-                          <Edit3 size={16} />
-                        </Button>
-                      )}
-                      {canArchive && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          type="button"
-                          onClick={() => archive(item)}
-                          aria-label={`Archivar ${item.numeroRadicado}`}
-                          disabled={archiveMutation.isPending}
-                        >
-                          <Trash2 size={16} className="text-destructive" />
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>
-            {filteredExpedients.length} expediente{filteredExpedients.length === 1 ? '' : 's'}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              disabled={currentPage === 1}
-              onClick={() => setPage((value) => value - 1)}
-            >
-              Anterior
-            </Button>
-            <span>
-              Página {currentPage} de {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              disabled={currentPage === totalPages}
-              onClick={() => setPage((value) => value + 1)}
-            >
-              Siguiente
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {formOpen && (
-        <div
-          className="fixed inset-0 z-[60] flex items-end bg-slate-950/40 p-0 sm:items-center sm:justify-center sm:p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="expedient-form-title"
-        >
-          <Card className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-b-none p-5 shadow-2xl sm:rounded-xl sm:p-7">
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <h2 id="expedient-form-title" className="text-xl font-semibold text-slate-900">
-                  {selectedExpedient ? 'Editar expediente' : 'Nuevo expediente'}
-                </h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Solo el número y fecha de radicado son obligatorios.
-                </p>
-              </div>
+          ) : (
+            <EmptyState
+              icon={FolderOpen}
+              title="Aún no hay expedientes activos"
+              description="Radica el primero para empezar a controlar sus términos."
+              action={
+                canCreate && (
+                  <Button onClick={() => updateParams({ nuevo: '1' })}>
+                    <FilePlus2 size={17} /> Radicar expediente
+                  </Button>
+                )
+              }
+            />
+          )
+        }
+        actions={(item) => (
+          <>
+            {canManageExpedient(profile, item) && (
               <Button
                 variant="ghost"
-                size="sm"
-                type="button"
-                onClick={() => setFormOpen(false)}
-                aria-label="Cerrar formulario"
+                size="icon"
+                onClick={() => setEditing(item)}
+                aria-label={`Editar ${item.numeroRadicado}`}
+                title="Editar datos"
               >
-                <X size={18} />
+                <Pencil size={16} />
               </Button>
-            </div>
-            <ExpedientForm
-              expedient={selectedExpedient}
-              isSaving={saveMutation.isPending}
-              onCancel={() => setFormOpen(false)}
-              onSubmit={async (values) => {
-                await saveMutation.mutateAsync(values)
-              }}
-            />
-            {saveMutation.isError && (
-              <p className="mt-4 text-sm text-destructive">
-                {operationError || 'No fue posible guardar el expediente. Intenta nuevamente.'}
-              </p>
             )}
-          </Card>
-        </div>
-      )}
+            {canArchive && (
+              <Button
+                variant="ghost-destructive"
+                size="icon"
+                onClick={() => setArchiving(item)}
+                aria-label={`Archivar ${item.numeroRadicado}`}
+                title="Archivar fuera del flujo"
+              >
+                <Archive size={16} />
+              </Button>
+            )}
+          </>
+        )}
+      />
+
+      <Dialog
+        open={formOpen}
+        onClose={closeForm}
+        size="xl"
+        busy={saveMutation.isPending}
+        kicker={editing ? `Radicado ${editing.numeroRadicado}` : 'Ventanilla de radicación'}
+        title={editing ? 'Editar expediente' : 'Radicar nuevo expediente'}
+        description="Los campos marcados con * son obligatorios. El término se calcula en días hábiles."
+      >
+        <ErrorAlert error={saveMutation.error} fallback="No fue posible guardar el expediente." />
+        <ExpedientForm
+          expedient={editing}
+          isSaving={saveMutation.isPending}
+          onCancel={closeForm}
+          onSubmit={async (values) => {
+            await saveMutation.mutateAsync(values).catch(() => undefined)
+          }}
+        />
+      </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(archiving)}
+        title={`Archivar expediente ${archiving?.numeroRadicado ?? ''}`}
+        confirmLabel="Archivar"
+        tone="destructive"
+        pending={archiveMutation.isPending}
+        disabled={!archiveReason.trim()}
+        onCancel={() => {
+          setArchiving(undefined)
+          setArchiveReason('')
+        }}
+        onConfirm={() => archiving && archiveMutation.mutate(archiving)}
+      >
+        <p>
+          El expediente sale de la bandeja sin completar el flujo y pasa al Histórico. Su historial
+          y documentos se conservan.
+        </p>
+        <Field label="Motivo del archivo" required className="mt-4" hint="Queda en el historial.">
+          <Textarea
+            value={archiveReason}
+            onChange={(event) => setArchiveReason(event.target.value)}
+            placeholder="Ej. Desistimiento expreso del peticionario"
+            className="min-h-20"
+          />
+        </Field>
+      </ConfirmDialog>
     </section>
   )
 }

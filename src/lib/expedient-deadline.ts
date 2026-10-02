@@ -1,15 +1,28 @@
+import { isColombianHoliday } from './colombian-holidays'
+
 function startOfDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
 
-function isBusinessDay(date: Date, holidays: Set<string>): boolean {
+/**
+ * Día hábil: de lunes a viernes, sin festivos nacionales (que se calculan solos) ni los días
+ * adicionales sin atención que el Administrador registra en Configuración.
+ */
+export function isBusinessDay(date: Date, extraHolidays: ReadonlySet<string> = new Set()) {
   const day = date.getDay()
-  return day !== 0 && day !== 6 && !holidays.has(toDateKey(date))
+  const key = toDateKey(date)
+  return day !== 0 && day !== 6 && !isColombianHoliday(key) && !extraHolidays.has(key)
 }
 
 /** Fecha local en formato yyyy-mm-dd; a diferencia de toISOString, no se desplaza a UTC. */
 export function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+/** Convierte yyyy-mm-dd en una fecha local a medianoche. */
+export function fromDateKey(value: string): Date {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(year, month - 1, day)
 }
 
 function addDays(date: Date, days: number): Date {
@@ -19,12 +32,13 @@ function addDays(date: Date, days: number): Date {
 }
 
 export function addBusinessDays(startDate: Date, days: number, holidays: string[] = []): Date {
+  const extra = new Set(holidays)
   let result = startOfDay(startDate)
   let addedDays = 0
 
   while (addedDays < days) {
     result = addDays(result, 1)
-    if (isBusinessDay(result, new Set(holidays))) addedDays += 1
+    if (isBusinessDay(result, extra)) addedDays += 1
   }
 
   return result
@@ -35,6 +49,7 @@ export function getRemainingBusinessDays(
   today = new Date(),
   holidays: string[] = [],
 ): number {
+  const extra = new Set(holidays)
   const target = startOfDay(deadline)
   let cursor = startOfDay(today)
   const direction = target >= cursor ? 1 : -1
@@ -42,7 +57,7 @@ export function getRemainingBusinessDays(
 
   while (cursor.getTime() !== target.getTime()) {
     cursor = addDays(cursor, direction)
-    if (isBusinessDay(cursor, new Set(holidays))) remainingDays += direction
+    if (isBusinessDay(cursor, extra)) remainingDays += direction
   }
 
   return remainingDays
@@ -54,9 +69,6 @@ export function calculateExpedientTimeline(
   today = new Date(),
   holidays: string[] = [],
 ) {
-  const [year, month, day] = filingDate.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  const fechaLimite = addBusinessDays(date, responseDays, holidays)
-
+  const fechaLimite = addBusinessDays(fromDateKey(filingDate), responseDays, holidays)
   return { fechaLimite, diasRestantes: getRemainingBusinessDays(fechaLimite, today, holidays) }
 }

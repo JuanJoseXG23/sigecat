@@ -14,6 +14,10 @@ export const BUSINESS_RULES = { dueSoonDays: 3 } as const
 export type DeadlineStatus = 'En plazo' | 'Próximo a vencer' | 'Vencido'
 
 export interface BusinessConfiguration {
+  /**
+   * Días adicionales sin atención (cierres, jornadas especiales). Los festivos nacionales no se
+   * guardan aquí: src/lib/colombian-holidays.ts los calcula para cualquier año.
+   */
   diasFestivos?: string[]
   umbralProximoVencer?: number
   alertasCorreoHabilitadas?: boolean

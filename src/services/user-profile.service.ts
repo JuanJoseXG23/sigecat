@@ -54,12 +54,14 @@ function byName(first: DirectoryEntry, second: DirectoryEntry): number {
   return first.nombreCompleto.localeCompare(second.nombreCompleto)
 }
 
-export async function listAssignableOfficials(): Promise<DirectoryEntry[]> {
+/** Todo el directorio, activos e inactivos: sirve para mostrar nombres en el historial. */
+export async function listDirectory(): Promise<DirectoryEntry[]> {
   const snapshot = await getDocs(collection(firestore, DIRECTORY_COLLECTION))
-  return snapshot.docs
-    .map((item) => item.data() as DirectoryEntry)
-    .filter(isAssignable)
-    .sort(byName)
+  return snapshot.docs.map((item) => item.data() as DirectoryEntry).sort(byName)
+}
+
+export async function listAssignableOfficials(): Promise<DirectoryEntry[]> {
+  return (await listDirectory()).filter(isAssignable)
 }
 
 export async function listUsers(): Promise<UserProfile[]> {

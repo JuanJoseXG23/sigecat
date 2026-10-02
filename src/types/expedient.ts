@@ -24,7 +24,11 @@ export const APPLICANT_TYPES = [
   'Otro',
 ] as const
 
+/** Clasificación de la información según la Ley 1712 de 2014 (transparencia). */
+export const ACCESS_LEVELS = ['Pública', 'Pública clasificada', 'Pública reservada'] as const
+
 export type ExpedientStatus = (typeof EXPEDIENT_STATUSES)[number]
+export type AccessLevel = (typeof ACCESS_LEVELS)[number]
 export type ExpedientPriority = (typeof EXPEDIENT_PRIORITIES)[number]
 export type ApplicantType = (typeof APPLICANT_TYPES)[number]
 
@@ -48,7 +52,14 @@ export interface AssignedOfficial {
   nombreCompleto: string
 }
 
-export type WorkflowDocumentType = 'RECIBIDO' | 'RADICADO_SALIDA' | 'TRASLADO'
+export type WorkflowDocumentType = 'RECIBIDO' | 'RADICADO_SALIDA' | 'TRASLADO' | 'AMPLIACION_PLAZO'
+
+export const WORKFLOW_DOCUMENT_LABELS: Record<WorkflowDocumentType, string> = {
+  RECIBIDO: 'Documento recibido',
+  RADICADO_SALIDA: 'Respuesta radicada',
+  TRASLADO: 'Documento de traslado',
+  AMPLIACION_PLAZO: 'Ampliación de plazo',
+}
 
 export interface WorkflowDocument {
   id: string
@@ -57,6 +68,8 @@ export interface WorkflowDocument {
   url: string
   usuario: string
   fecha: Timestamp
+  /** Número de folios (páginas) del documento, para la hoja de control. */
+  folios?: number
   // Opcional: información de radicado asociada a este documento
   radicadoNumero?: string
   radicadoFecha?: Timestamp
@@ -66,7 +79,31 @@ export type WorkflowDocumentPayload = Omit<WorkflowDocument, 'id' | 'fecha' | 'r
   radicadoFecha?: string
 }
 
-export interface Expedient {
+/** Ampliación del término de respuesta, comunicada al peticionario con un radicado. */
+export interface DeadlineExtension {
+  numeroRadicado: string
+  fechaRadicado: string
+  diasSolicitados: number
+  motivo: string
+  documentoNombre: string
+  documentoUrl: string
+  fechaLimiteAnterior: Timestamp
+  fechaLimiteNueva: Timestamp
+  usuario: string
+  fecha: Timestamp
+}
+
+/** Copia de la Tabla de Retención Documental del tipo de trámite al crear el expediente. */
+export interface DocumentClassification {
+  codigo?: string
+  serie?: string
+  subserie?: string
+  retencionGestion?: number
+  retencionCentral?: number
+  disposicionFinal?: string
+}
+
+export interface Expedient extends ActuationFields {
   id: string
   numeroRadicado: string
   fechaRadicado: Timestamp
@@ -74,6 +111,14 @@ export interface Expedient {
   medioIngreso?: string
   tipoTramiteId?: string
   tipoTramite?: string
+  asunto?: string
+  nivelAcceso?: AccessLevel
+  /** Término inicial del tipo de trámite al momento de guardar, en días hábiles. */
+  diasTermino?: number
+  /** Suma de días hábiles ampliados; la fecha límite los incluye. */
+  diasAmpliacion?: number
+  ampliacionesPlazo?: DeadlineExtension[]
+  clasificacionDocumental?: DocumentClassification
   solicitantes: Applicant[]
   predios: Property[]
   funcionarioAsignado?: AssignedOfficial
@@ -95,6 +140,8 @@ export interface Expedient {
   documentosWorkflow?: WorkflowDocument[]
   fechaCreacion: Timestamp
   fechaActualizacion: Timestamp
+  /** Fecha en que se finalizó o archivó; inicia el tiempo de retención documental. */
+  fechaCierre?: Timestamp
   creadoPor: string
   activo: boolean
 }
@@ -105,6 +152,11 @@ export interface ActuationFields {
   /** Radicado de salida o de traslado; nunca reemplaza el radicado de entrada. */
   numeroRadicadoActuacion?: string
   fechaRadicadoActuacion?: string
+}
+
+/** Fecha de cierre; los expedientes anteriores a este campo usan su última actualización. */
+export function getClosingDate(item: Pick<Expedient, 'fechaCierre' | 'fechaActualizacion'>): Date {
+  return (item.fechaCierre ?? item.fechaActualizacion).toDate()
 }
 
 export function isFinalizedExpedient(item: Pick<Expedient, 'estado' | 'activo'>): boolean {
@@ -118,6 +170,8 @@ export interface ExpedientFormData {
   medioIngreso?: string
   tipoTramiteId?: string
   tipoTramite?: string
+  asunto?: string
+  nivelAcceso?: AccessLevel
   solicitantes: Applicant[]
   predios: Property[]
   funcionarioAsignadoUid?: string

@@ -32,10 +32,12 @@ src/
   layouts/      Marco de la aplicación (barra lateral, encabezado)
   pages/        Una página por ruta
   features/     Piezas propias de un módulo (auth, formulario de expedientes)
-  components/   Componentes compartidos; ui/ contiene los básicos
+  components/   Componentes compartidos; ui/ contiene los básicos (botón, diálogo, campos,
+                avisos, toasts) con la paleta institucional de globals.css
   hooks/        Hooks de TanStack Query que envuelven los servicios
   services/     Único lugar que accede a Firestore
-  lib/          Lógica pura y probada: días hábiles, permisos, enlaces
+  lib/          Lógica pura y probada: días hábiles y festivos, ampliación de plazo, retención,
+                permisos, enlaces, CSV y formatos de fecha
   types/        Modelos de datos
 scripts/        Tareas administrativas con firebase-admin (crear usuarios, seed)
 google-apps-script/  Proceso de correos que se pega en script.google.com
@@ -59,6 +61,11 @@ google-apps-script/  Proceso de correos que se pega en script.google.com
 - **Carga diferida.** Cada página se descarga al visitarla (`src/routes/router.tsx`); React y
   Firebase van en archivos aparte que el navegador conserva entre publicaciones.
 - **Nada se borra.** Los expedientes se finalizan o archivan, y el historial es de solo escritura.
+- **Interfaz.** Las ventanas usan `Dialog` (Escape, foco atrapado, hoja inferior en celular), las
+  confirmaciones `ConfirmDialog` (nunca `window.confirm`) y los avisos de éxito `useToast`. Los
+  colores salen de los tokens de `src/styles/globals.css` (paleta de la Alcaldía de Girardota).
+- **Exportaciones.** `src/lib/csv.ts` genera CSV con `;` y BOM para que Excel en español muestre
+  bien columnas y tildes.
 - **Formato.** Prettier y ESLint; los finales de línea son LF (`.gitattributes`).
 
 ## Calidad y publicación

@@ -7,8 +7,6 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Poppins', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        display: ['Playfair Display', 'ui-serif', 'Georgia', 'serif'],
-        accent: ['Anton', 'ui-sans-serif', 'sans-serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -41,6 +39,8 @@ export default {
           foreground: 'hsl(var(--destructive-foreground))',
         },
         info: { DEFAULT: 'hsl(var(--info))', foreground: 'hsl(var(--info-foreground))' },
+        warning: 'hsl(var(--warning))',
+        sidebar: 'hsl(var(--sidebar))',
         card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
       },
     },

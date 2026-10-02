@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { LockKeyhole, Mail } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Alert } from '@/components/ui/feedback'
+import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/hooks/use-auth'
 
@@ -18,11 +19,12 @@ type LoginForm = z.infer<typeof loginSchema>
 export function LoginPage() {
   const { signInWithCredentials } = useAuth()
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [showPassword, setShowPassword] = useState(false)
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema), mode: 'onChange' })
+  } = useForm<LoginForm>({ resolver: zodResolver(loginSchema), mode: 'onTouched' })
 
   const onSubmit = async (values: LoginForm) => {
     setSubmitError(null)
@@ -35,46 +37,58 @@ export function LoginPage() {
   }
 
   return (
-    <div className="animate-fade-up">
-      <Card className="p-6 sm:p-8">
-        <h2 className="text-lg font-semibold text-slate-900">Bienvenido</h2>
-        <p className="mt-1 text-sm text-slate-500">Ingresa tus credenciales para continuar.</p>
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
-          <label className="block">
-            <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-slate-700">
-              <Mail size={15} />
-              Correo electrónico
-            </span>
+    <div className="animate-fade-up rounded-2xl border border-border bg-card p-6 shadow-xl shadow-emerald-950/5 sm:p-8">
+      <h2 className="text-xl font-bold text-slate-900">Iniciar sesión</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        Usa tu correo institucional de la Alcaldía.
+      </p>
+      <form className="mt-6 space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate>
+        <Field label="Correo electrónico" error={errors.email?.message}>
+          <div className="relative">
+            <Mail
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
             <Input
               type="email"
               autoComplete="email"
-              placeholder="nombre@entidad.gov.co"
+              autoFocus
+              placeholder="nombre@girardota.gov.co"
+              className="h-11 pl-9"
               {...register('email')}
             />
-            {errors.email && (
-              <span className="mt-1 block text-xs text-red-600">{errors.email.message}</span>
-            )}
-          </label>
-          <label className="block">
-            <span className="mb-1.5 flex items-center gap-2 text-sm font-medium text-slate-700">
-              <LockKeyhole size={15} />
-              Contraseña
-            </span>
-            <Input type="password" autoComplete="current-password" {...register('password')} />
-            {errors.password && (
-              <span className="mt-1 block text-xs text-red-600">{errors.password.message}</span>
-            )}
-          </label>
-          {submitError && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
-              {submitError}
-            </p>
-          )}
-          <Button className="mt-2 w-full" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Validando acceso…' : 'Iniciar sesión'}
-          </Button>
-        </form>
-      </Card>
+          </div>
+        </Field>
+        <Field label="Contraseña" error={errors.password?.message}>
+          <div className="relative">
+            <LockKeyhole
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              className="h-11 px-9"
+              {...register('password')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-md text-slate-400 hover:text-slate-700"
+              aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            >
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </Field>
+        {submitError && <Alert tone="error">{submitError}</Alert>}
+        <Button className="w-full" size="lg" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Validando acceso…' : 'Ingresar'}
+        </Button>
+      </form>
+      <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">
+        ¿Olvidaste tu contraseña o no tienes cuenta? Solicítala al administrador de SIGECAT.
+      </p>
     </div>
   )
 }

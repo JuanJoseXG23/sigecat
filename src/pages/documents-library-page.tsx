@@ -1,200 +1,166 @@
-import { useState, useMemo } from 'react'
-import {
-  Link,
-  FileText,
-  ExternalLink,
-  Search,
-  ChevronDown,
-  ChevronUp,
-  FolderOpen,
-} from 'lucide-react'
-import { Link as RouterLink } from 'react-router-dom'
-import { Input } from '@/components/ui/input'
-import { Card } from '@/components/ui/card'
+import { ChevronDown, ExternalLink, FileText, FolderOpen, Library, Search } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { EmptyState, LoadingState } from '@/components/ui/feedback'
+import { Input } from '@/components/ui/input'
+import { PageHeader } from '@/components/ui/page-header'
+import { StatusBadge } from '@/features/expedients/components/expedient-badges'
 import { useDocumentsLibrary } from '@/hooks/use-documents-library'
+import { formatDate, normalizeSearch } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 export function DocumentsLibraryPage() {
   const { data: expedients = [], isLoading, isError, refetch } = useDocumentsLibrary()
   const [searchTerm, setSearchTerm] = useState('')
-  const [expandedExpedient, setExpandedExpedient] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<string | null>(null)
 
-  const filteredExpedients = useMemo(() => {
-    if (!searchTerm) return expedients
-
-    const term = searchTerm.toLowerCase()
+  const filtered = useMemo(() => {
+    const term = normalizeSearch(searchTerm)
+    if (!term) return expedients
+    const matches = (value?: string) => Boolean(value && normalizeSearch(value).includes(term))
     return expedients
-      .map((exp) => ({
-        ...exp,
-        documentos: exp.documentos.filter(
-          (doc) =>
-            doc.radicado?.toLowerCase().includes(term) ||
-            doc.tipo.toLowerCase().includes(term) ||
-            doc.nombre.toLowerCase().includes(term) ||
-            exp.numeroRadicado.toLowerCase().includes(term),
-        ),
-      }))
-      .filter((exp) => exp.numeroRadicado.toLowerCase().includes(term) || exp.documentos.length > 0)
+      .map((expedient) => {
+        const expedientMatches =
+          matches(expedient.numeroRadicado) || matches(expedient.solicitantes[0]?.nombre)
+        return {
+          ...expedient,
+          documentos: expedientMatches
+            ? expedient.documentos
+            : expedient.documentos.filter(
+                (document) =>
+                  matches(document.radicado) || matches(document.tipo) || matches(document.nombre),
+              ),
+        }
+      })
+      .filter((expedient) => expedient.documentos.length > 0)
   }, [expedients, searchTerm])
 
-  const totalDocuments = filteredExpedients.reduce((sum, exp) => sum + exp.documentos.length, 0)
-
-  const getDocumentTypeIcon = (type: string) => {
-    switch (type) {
-      case 'Documento recibido':
-        return '📥'
-      case 'Respuesta radicada':
-        return '📤'
-      case 'Documento de traslado':
-        return '🔄'
-      default:
-        return '📄'
-    }
-  }
+  const totalDocuments = filtered.reduce((sum, expedient) => sum + expedient.documentos.length, 0)
 
   return (
-    <section className="mx-auto max-w-7xl space-y-6">
-      <div>
-        <p className="text-sm font-medium text-primary">Gestor de Documentos</p>
-        <h1 className="text-2xl font-semibold">Biblioteca de Documentos</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Accede a todos los documentos escaneados organizados por expediente.
+    <section className="mx-auto max-w-[1200px] space-y-6">
+      <PageHeader
+        kicker="Archivo"
+        title="Biblioteca de documentos"
+        description="Documentos escaneados en OneDrive, agrupados por expediente."
+      />
+
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Buscar por radicado, solicitante, nombre o tipo de documento"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="pl-9"
+            aria-label="Buscar documentos"
+          />
+        </div>
+        <p className="shrink-0 px-2 text-sm text-muted-foreground">
+          <b className="text-slate-800">{filtered.length}</b> expedientes ·{' '}
+          <b className="text-slate-800">{totalDocuments}</b> documentos
         </p>
       </div>
 
-      <Card className="p-4">
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-3 text-slate-400" size={18} />
-            <Input
-              placeholder="Buscar por expediente, radicado, nombre o tipo de documento..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-lg">
-            <FileText size={18} className="text-slate-600" />
-            <span className="text-sm font-medium text-slate-700">
-              {filteredExpedients.length} expedientes
-            </span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-lg">
-            <Link size={18} className="text-slate-600" />
-            <span className="text-sm font-medium text-slate-700">{totalDocuments} documentos</span>
-          </div>
-        </div>
-      </Card>
-
       {isLoading ? (
-        <Card className="p-8 text-center">
-          <p className="text-slate-500">Cargando documentos...</p>
-        </Card>
+        <LoadingState label="Cargando documentos…" />
       ) : isError ? (
-        <Card className="p-8 text-center">
-          <FileText className="mx-auto mb-2 text-red-400" size={32} />
-          <p className="text-slate-700">No fue posible cargar los documentos.</p>
-          <Button className="mt-4" variant="outline" onClick={() => refetch()}>
-            Reintentar
-          </Button>
-        </Card>
-      ) : filteredExpedients.length === 0 ? (
-        <Card className="p-8 text-center">
-          <FileText className="mx-auto text-slate-400 mb-2" size={32} />
-          <p className="text-slate-500">
-            {searchTerm
-              ? 'No se encontraron documentos para tu búsqueda.'
-              : 'No hay documentos escaneados.'}
-          </p>
-        </Card>
+        <EmptyState
+          icon={FileText}
+          title="No fue posible cargar los documentos"
+          action={
+            <Button variant="outline" onClick={() => refetch()}>
+              Reintentar
+            </Button>
+          }
+        />
+      ) : filtered.length === 0 ? (
+        <div className="table-shell">
+          <EmptyState
+            icon={Library}
+            title={searchTerm ? 'Sin resultados' : 'Aún no hay documentos'}
+            description={
+              searchTerm
+                ? 'Prueba con otro número de radicado o nombre.'
+                : 'Los documentos aparecen al asociarlos en el flujo de cada expediente.'
+            }
+          />
+        </div>
       ) : (
         <div className="space-y-3">
-          {filteredExpedients.map((expedient) => (
-            <Card key={expedient.id} className="overflow-hidden transition-all hover:shadow-md">
-              <button
-                onClick={() =>
-                  setExpandedExpedient(expandedExpedient === expedient.id ? null : expedient.id)
-                }
-                className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
-              >
-                <div className="flex items-center gap-4 flex-1 text-left">
-                  <div className="flex-shrink-0">
-                    {expandedExpedient === expedient.id ? (
-                      <ChevronUp className="text-slate-600" size={20} />
-                    ) : (
-                      <ChevronDown className="text-slate-600" size={20} />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-slate-900">
-                      Radicado: {expedient.numeroRadicado}
-                    </p>
-                    <p className="text-sm text-slate-500 mt-1">
-                      {expedient.solicitantes[0]?.nombre ?? 'Sin solicitante'} •{' '}
-                      {expedient.predios[0]?.municipio ?? 'Sin municipio'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="info">{expedient.documentos.length} documentos</Badge>
-                    <Badge
-                      variant={expedient.estado === 'Archivo (Finalizado)' ? 'success' : 'info'}
-                    >
-                      {expedient.estado}
-                    </Badge>
-                  </div>
-                </div>
-              </button>
+          {filtered.map((expedient) => {
+            const open = expanded === expedient.id || Boolean(searchTerm)
+            return (
+              <div key={expedient.id} className="table-shell">
+                <button
+                  type="button"
+                  onClick={() => setExpanded(expanded === expedient.id ? null : expedient.id)}
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-4 p-4 text-left transition-colors hover:bg-muted/40"
+                >
+                  <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <FolderOpen size={20} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-slate-900">
+                      Radicado {expedient.numeroRadicado}
+                    </span>
+                    <span className="block truncate text-sm text-muted-foreground">
+                      {expedient.solicitantes[0]?.nombre ?? 'Sin solicitante'} ·{' '}
+                      {expedient.tipoTramite ?? 'Sin tipo'}
+                    </span>
+                  </span>
+                  <span className="hidden items-center gap-2 sm:flex">
+                    <Badge variant="default">{expedient.documentos.length} doc.</Badge>
+                    <StatusBadge status={expedient.estado} />
+                  </span>
+                  <ChevronDown
+                    size={18}
+                    className={cn('shrink-0 text-slate-400 transition', open && 'rotate-180')}
+                  />
+                </button>
 
-              {expandedExpedient === expedient.id && (
-                <div className="border-t bg-slate-50 p-4">
-                  <div className="mb-3 flex justify-end">
-                    <RouterLink
-                      to={`/expedientes/${expedient.id}`}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                {open && (
+                  <div className="border-t border-border bg-muted/30 p-3">
+                    <ul className="space-y-2">
+                      {expedient.documentos.map((document) => (
+                        <li key={document.id}>
+                          <a
+                            href={document.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="group flex items-center gap-3 rounded-lg border border-border bg-white p-3 transition hover:border-primary/50"
+                          >
+                            <FileText size={18} className="shrink-0 text-primary" />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium text-slate-900 group-hover:text-primary">
+                                {document.nombre}
+                              </span>
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {document.tipo}
+                                {document.radicado ? ` · Radicado ${document.radicado}` : ''}
+                                {document.folios ? ` · ${document.folios} folios` : ''} ·{' '}
+                                {formatDate(document.fecha, 'Sin fecha')}
+                              </span>
+                            </span>
+                            <ExternalLink size={15} className="shrink-0 text-slate-400" />
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      to={`/expedientes/${expedient.id}?tab=documentos`}
+                      className="link mt-3 inline-flex items-center gap-1.5 px-1 text-sm"
                     >
-                      <FolderOpen size={16} />
-                      Abrir expediente
-                    </RouterLink>
+                      Ver índice y hoja de control del expediente
+                    </Link>
                   </div>
-                  <div className="space-y-2">
-                    {expedient.documentos.map((doc) => (
-                      <a
-                        key={doc.id}
-                        href={doc.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 bg-white rounded-lg border hover:border-primary hover:bg-primary/5 transition-colors group"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <span className="text-xl flex-shrink-0">
-                            {getDocumentTypeIcon(doc.tipo)}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-medium text-sm text-slate-900 group-hover:text-primary transition-colors">
-                              {doc.nombre}
-                            </p>
-                            <p className="text-xs text-slate-500 truncate">
-                              {doc.tipo}
-                              {doc.radicado ? ` • Radicado: ${doc.radicado}` : ''}
-                              {' • '}
-                              {doc.fecha?.toDate().toLocaleDateString('es-CO') ?? 'Sin fecha'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <ExternalLink
-                            size={16}
-                            className="text-slate-400 group-hover:text-primary transition-colors"
-                          />
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </Card>
-          ))}
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </section>

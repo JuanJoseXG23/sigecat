@@ -17,6 +17,8 @@ export interface FilingRecord {
   fecha: string
   tipo: string
   expedienteId: string
+  /** Radicado de entrada del expediente; los registros antiguos no lo tienen. */
+  expedienteRadicado?: string
   solicitante: string
   responsable: string
   estado: string
