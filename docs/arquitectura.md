@@ -52,6 +52,12 @@ google-apps-script/  Proceso de correos que se pega en script.google.com
   nada.
 - **Permisos duplicados a propósito.** `src/lib/permissions.ts` decide qué botones ve el usuario y
   `firestore.rules` hace cumplir lo mismo en el servidor. Si cambia uno, debe cambiar el otro.
+- **Lecturas acotadas.** Cada pantalla consulta solo lo que muestra (activos, finalizados, lo
+  asignado al Funcionario, los radicados de un expediente). TanStack Query conserva los
+  resultados un minuto y las acciones invalidan lo que modifican; la configuración de términos se
+  guarda cinco minutos en memoria.
+- **Carga diferida.** Cada página se descarga al visitarla (`src/routes/router.tsx`); React y
+  Firebase van en archivos aparte que el navegador conserva entre publicaciones.
 - **Nada se borra.** Los expedientes se finalizan o archivan, y el historial es de solo escritura.
 - **Formato.** Prettier y ESLint; los finales de línea son LF (`.gitattributes`).
 

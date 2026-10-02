@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import shield from '@/img/Escudo_de_Girardota.webp'
 
@@ -18,7 +19,9 @@ export function AuthLayout() {
             Sistema Integral de Gestión Catastral Documental
           </p>
         </div>
-        <Outlet />
+        <Suspense>
+          <Outlet />
+        </Suspense>
         <p className="mt-6 text-center text-xs text-slate-400">
           Municipio de Girardota · Secretaría de Hacienda y Desarrollo Económico
         </p>

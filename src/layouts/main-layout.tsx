@@ -1,6 +1,5 @@
-import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, LogOut, Menu, X } from 'lucide-react'
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -106,43 +105,39 @@ export function MainLayout() {
         </div>
       </aside>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <>
-            <motion.button
+      {/* Siempre montado para animar con CSS; `inert` lo saca del foco cuando está cerrado. */}
+      <div className={cn('lg:hidden', !mobileOpen && 'pointer-events-none')} inert={!mobileOpen}>
+        <button
+          type="button"
+          aria-label="Cerrar navegación"
+          className={cn(
+            'fixed inset-0 z-40 bg-slate-950/35 transition-opacity duration-200',
+            mobileOpen ? 'opacity-100' : 'opacity-0',
+          )}
+          onClick={() => setMobileOpen(false)}
+        />
+        <aside
+          className={cn(
+            'fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-200 bg-white shadow-xl transition-transform duration-200',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          )}
+        >
+          <div className="flex items-center justify-between">
+            <Brand />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mr-3"
               type="button"
-              aria-label="Cerrar navegación"
-              className="fixed inset-0 z-40 bg-slate-950/35 lg:hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
               onClick={() => setMobileOpen(false)}
-            />
-            <motion.aside
-              className="fixed inset-y-0 left-0 z-50 w-72 border-r border-slate-200 bg-white shadow-xl lg:hidden"
-              initial={{ x: -288 }}
-              animate={{ x: 0 }}
-              exit={{ x: -288 }}
-              transition={{ duration: 0.2 }}
+              aria-label="Cerrar navegación"
             >
-              <div className="flex items-center justify-between">
-                <Brand />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mr-3"
-                  type="button"
-                  onClick={() => setMobileOpen(false)}
-                  aria-label="Cerrar navegación"
-                >
-                  <X size={18} />
-                </Button>
-              </div>
-              <SideNavigation onNavigate={() => setMobileOpen(false)} />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+              <X size={18} />
+            </Button>
+          </div>
+          <SideNavigation onNavigate={() => setMobileOpen(false)} />
+        </aside>
+      </div>
 
       <div className={cn('transition-[padding] duration-200', collapsed ? 'lg:pl-20' : 'lg:pl-64')}>
         <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6 lg:px-8">
@@ -207,7 +202,9 @@ export function MainLayout() {
           </details>
         </header>
         <main className="p-4 sm:p-6 lg:p-8">
-          <Outlet />
+          <Suspense fallback={<p className="text-sm text-slate-500">Cargando…</p>}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

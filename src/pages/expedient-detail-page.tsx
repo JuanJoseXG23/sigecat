@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
 import { getFlow } from '@/lib/expedient-workflow'
 import { canManageExpedient } from '@/lib/permissions'
-import { listFilings } from '@/services/filing.service'
+import { listExpedientFilings } from '@/services/filing.service'
 import { isFinalizedExpedient } from '@/types/expedient'
 
 type Tab = 'Información' | 'Historial' | 'Documentos'
@@ -23,20 +23,20 @@ export function ExpedientDetailPage() {
   const { profile } = useAuth()
   const { data: item, isLoading } = useExpedientDetail(id)
   const { data: history = [] } = useExpedientHistory(id)
-  const { data: filings = [] } = useQuery({ queryKey: ['filings'], queryFn: listFilings })
+  const { data: filings = [] } = useQuery({
+    queryKey: ['filings', id],
+    queryFn: () => listExpedientFilings(id!),
+    enabled: Boolean(id),
+  })
   const [tab, setTab] = useState<Tab>('Información')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const associatedFilings = useMemo(
     () =>
       Array.from(
-        new Map(
-          filings
-            .filter((filing) => filing.expedienteId === id)
-            .map((filing) => [`${filing.numero}-${filing.fecha}`, filing]),
-        ).values(),
+        new Map(filings.map((filing) => [`${filing.numero}-${filing.fecha}`, filing])).values(),
       ),
-    [filings, id],
+    [filings],
   )
 
   if (isLoading) return <p className="text-sm text-slate-500">Cargando expediente…</p>

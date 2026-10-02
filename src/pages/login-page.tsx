@@ -1,5 +1,4 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { motion } from 'framer-motion'
 import { LockKeyhole, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -36,11 +35,7 @@ export function LoginPage() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-    >
+    <div className="animate-fade-up">
       <Card className="p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-slate-900">Bienvenido</h2>
         <p className="mt-1 text-sm text-slate-500">Ingresa tus credenciales para continuar.</p>
@@ -80,6 +75,6 @@ export function LoginPage() {
           </Button>
         </form>
       </Card>
-    </motion.div>
+    </div>
   )
 }

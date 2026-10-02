@@ -123,6 +123,14 @@ async function seedInitialUser(seedUser: SeedUser): Promise<void> {
     profileStatus = 'creado'
   }
 
+  const profile = (await userDocument.get()).data()!
+  await firestore.collection('directorioUsuarios').doc(uid).set({
+    uid,
+    nombreCompleto: profile.nombreCompleto,
+    rol: profile.rol,
+    activo: profile.activo,
+  })
+
   console.log(
     `✅ ${seedUser.correo} -> Authentication: ${authStatus} | Firestore: ${profileStatus}`,
   )

@@ -65,20 +65,26 @@ const user = await auth.createUser({
   displayName: nombreCompleto,
 })
 try {
-  await firestore
-    .collection('usuarios')
-    .doc(user.uid)
-    .set({
-      uid: user.uid,
-      nombreCompleto,
-      correo,
-      cargo,
-      ...(dependencia ? { dependencia } : {}),
-      rol,
-      activo: true,
-      fechaCreacion: FieldValue.serverTimestamp(),
-      ultimoIngreso: null,
-    })
+  const batch = firestore.batch()
+  batch.set(firestore.collection('usuarios').doc(user.uid), {
+    uid: user.uid,
+    nombreCompleto,
+    correo,
+    cargo,
+    ...(dependencia ? { dependencia } : {}),
+    rol,
+    activo: true,
+    fechaCreacion: FieldValue.serverTimestamp(),
+    ultimoIngreso: null,
+  })
+  // Copia mínima que el resto de usuarios usa para elegir responsable.
+  batch.set(firestore.collection('directorioUsuarios').doc(user.uid), {
+    uid: user.uid,
+    nombreCompleto,
+    rol,
+    activo: true,
+  })
+  await batch.commit()
 } catch (error) {
   // Sin perfil la cuenta no podría entrar; se revierte para no dejarla a medias.
   await auth.deleteUser(user.uid)

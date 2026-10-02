@@ -84,3 +84,16 @@
     @apply px-5 py-12 text-center text-sm text-slate-500;
   }
 }
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fade-up 350ms ease-out both;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}

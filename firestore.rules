@@ -53,14 +53,23 @@ service cloud.firestore {
     match /usuarios/{userId} {
       allow get: if signedInWithActiveProfile() &&
         (request.auth.uid == userId || isAdministrator());
-      // Operational users need this query solely to select an assignee. Split this
-      // data into a minimal public directory before allowing the Consulta role.
-      allow list: if isOperationalUser();
+      // Everyone else reads directorioUsuarios, which omits email and job details.
+      allow list: if isAdministrator();
       allow create, delete: if isAdministrator();
       allow update: if isAdministrator() ||
         (signedInWithActiveProfile() && request.auth.uid == userId &&
           request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['ultimoIngreso']));
+    }
+
+    // Minimal copy of each profile (uid, name, role, active) used to pick and filter
+    // assignees. Administrators write it in the same batch as the full profile.
+    match /directorioUsuarios/{userId} {
+      allow get, list: if signedInWithActiveProfile();
+      allow create, update: if isAdministrator() &&
+        request.resource.data.keys().hasOnly(['uid', 'nombreCompleto', 'rol', 'activo']) &&
+        request.resource.data.uid == userId;
+      allow delete: if isAdministrator();
     }
 
     match /expedientes/{expedientId} {

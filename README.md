@@ -52,6 +52,13 @@ npm run user:create -- --nombre "Ana Pérez" --correo ana.perez@girardota.gov.co
 
 Roles válidos: `Administrador`, `Coordinador`, `Funcionario`, `Consulta`.
 
+Si un perfil se modifica desde la consola de Firebase en vez de la página Usuarios, resincroniza
+el directorio que usan los demás para elegir responsables:
+
+```powershell
+npm run users:sync-directory
+```
+
 ## Reglas de Firebase
 
 `firestore.rules` exige un perfil activo para acceder a datos y aplica los permisos por rol

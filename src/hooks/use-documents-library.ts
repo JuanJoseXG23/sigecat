@@ -5,7 +5,5 @@ export function useDocumentsLibrary() {
   return useQuery({
     queryKey: ['documents-library'],
     queryFn: getExpedientsWithDocuments,
-    staleTime: 0,
-    refetchOnMount: 'always',
   })
 }

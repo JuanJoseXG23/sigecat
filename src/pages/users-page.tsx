@@ -15,9 +15,15 @@ export function UsersPage() {
   const [role, setRole] = useState('')
   const [active, setActive] = useState('')
   const [editing, setEditing] = useState<UserProfile | null>(null)
-  const refresh = () => client.invalidateQueries({ queryKey: ['users'] })
+  const refresh = () =>
+    Promise.all(
+      ['users', 'assignable-officials', 'alert-recipients'].map((key) =>
+        client.invalidateQueries({ queryKey: [key] }),
+      ),
+    )
   const toggle = useMutation({
-    mutationFn: ({ uid, value }: { uid: string; value: boolean }) => setUserActive(uid, value),
+    mutationFn: ({ user, value }: { user: UserProfile; value: boolean }) =>
+      setUserActive(user, value),
     onSuccess: refresh,
   })
   const save = useMutation({
@@ -97,7 +103,7 @@ export function UsersPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => toggle.mutate({ uid: item.uid, value: !item.activo })}
+                    onClick={() => toggle.mutate({ user: item, value: !item.activo })}
                   >
                     {item.activo ? 'Desactivar' : 'Activar'}
                   </Button>

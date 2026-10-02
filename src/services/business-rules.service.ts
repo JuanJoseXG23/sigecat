@@ -33,9 +33,10 @@ export async function saveBusinessConfiguration(
     },
     { merge: true },
   )
+  cachedConfiguration = null
 }
 
-export async function getBusinessConfiguration(): Promise<Required<BusinessConfiguration>> {
+async function readBusinessConfiguration(): Promise<Required<BusinessConfiguration>> {
   const snapshot = await getDoc(doc(firestore, 'configuracion', 'reglasNegocio'))
   const data = snapshot.data() as BusinessConfiguration | undefined
   return {
@@ -43,6 +44,27 @@ export async function getBusinessConfiguration(): Promise<Required<BusinessConfi
     umbralProximoVencer: data?.umbralProximoVencer ?? BUSINESS_RULES.dueSoonDays,
     alertasCorreoHabilitadas: data?.alertasCorreoHabilitadas ?? false,
   }
+}
+
+const CONFIGURATION_TTL_MS = 5 * 60_000
+let cachedConfiguration: {
+  value: Promise<Required<BusinessConfiguration>>
+  expiresAt: number
+} | null = null
+
+/**
+ * Casi todas las lecturas de expedientes necesitan festivos y umbral; se guardan unos minutos
+ * para no leer el mismo documento en cada consulta.
+ */
+export function getBusinessConfiguration(): Promise<Required<BusinessConfiguration>> {
+  if (!cachedConfiguration || cachedConfiguration.expiresAt < Date.now()) {
+    const value = readBusinessConfiguration()
+    value.catch(() => {
+      cachedConfiguration = null
+    })
+    cachedConfiguration = { value, expiresAt: Date.now() + CONFIGURATION_TTL_MS }
+  }
+  return cachedConfiguration.value
 }
 
 export function calculateDeadline(

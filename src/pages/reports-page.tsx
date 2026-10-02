@@ -31,7 +31,7 @@ function csvCell(value: string): string {
 }
 
 export function ReportsPage() {
-  const active = useQuery({ queryKey: ['expedients'], queryFn: listExpedients })
+  const active = useQuery({ queryKey: ['expedients'], queryFn: () => listExpedients() })
   const closed = useQuery({
     queryKey: ['historical-expedients'],
     queryFn: listHistoricalExpedients,

@@ -12,7 +12,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useBusinessConfiguration } from '@/hooks/use-business-configuration'
 import { saveBusinessConfiguration } from '@/services/business-rules.service'
 import { getEmailTestRequest, requestEmailTest } from '@/services/email-test.service'
-import { listAssignableOfficials, setDeadlineEmailAlerts } from '@/services/user-profile.service'
+import { listAlertRecipients, setDeadlineEmailAlerts } from '@/services/user-profile.service'
 
 const deadlineSchema = z.object({ umbralProximoVencer: z.coerce.number().int().min(1).max(30) })
 
@@ -21,8 +21,8 @@ export function SettingsPage() {
   const { profile } = useAuth()
   const { data, isLoading } = useBusinessConfiguration()
   const { data: officials = [] } = useQuery({
-    queryKey: ['assignable-officials'],
-    queryFn: listAssignableOfficials,
+    queryKey: ['alert-recipients'],
+    queryFn: listAlertRecipients,
   })
   const [open, setOpen] = useState(false)
   const [recipientUid, setRecipientUid] = useState('')
@@ -84,7 +84,7 @@ export function SettingsPage() {
   const setReceiver = useMutation({
     mutationFn: ({ uid, enabled }: { uid: string; enabled: boolean }) =>
       setDeadlineEmailAlerts(uid, enabled),
-    onSuccess: () => client.invalidateQueries({ queryKey: ['assignable-officials'] }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ['alert-recipients'] }),
   })
   const sendTest = useMutation({
     mutationFn: async () => {

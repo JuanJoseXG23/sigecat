@@ -16,6 +16,15 @@ El id del documento es el uid de Firebase Authentication.
 | `fechaCreacion`, `ultimoIngreso`                    | Fechas                                                     |
 
 Escriben: el Administrador; cada usuario solo actualiza su propio `ultimoIngreso`.
+Leen: el Administrador; cada usuario lee solo su propio perfil.
+
+## `directorioUsuarios/{uid}`
+
+Copia mínima de cada perfil (`uid`, `nombreCompleto`, `rol`, `activo`) que cualquier sesión
+activa puede leer para elegir o filtrar responsables, sin exponer correos ni cargos. El
+Administrador la escribe en el mismo lote que el perfil; los scripts `user:create` y `seed`
+también la actualizan. Si se edita un perfil desde la consola de Firebase, se resincroniza con
+`npm run users:sync-directory`.
 
 ## `expedientes/{id}`
 

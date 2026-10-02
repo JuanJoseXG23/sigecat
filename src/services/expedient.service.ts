@@ -115,43 +115,50 @@ async function toExpedientData(
   })
 }
 
-export async function listExpedients(): Promise<Expedient[]> {
-  const snapshot = await getDocs(
-    query(collection(firestore, EXPEDIENTS_COLLECTION), where('activo', '==', true)),
-  )
+async function withDeadlineStatus(items: Expedient[]): Promise<Expedient[]> {
   const configuration = await getBusinessConfiguration()
-  return snapshot.docs
-    .map((item) => {
-      const data = item.data() as Expedient
-      return { ...data, id: item.id }
-    })
-    .filter((item) => item.activo && !isFinalizedExpedient(item))
-    .map((item) =>
-      item.fechaLimite
-        ? {
-            ...item,
-            ...getDeadlineStatus(
-              item.fechaLimite,
-              configuration.diasFestivos,
-              configuration.umbralProximoVencer,
-            ),
-          }
-        : item,
-    )
-    .sort(
-      (first, second) => second.fechaActualizacion.toMillis() - first.fechaActualizacion.toMillis(),
-    )
+  return items.map((item) =>
+    item.fechaLimite
+      ? {
+          ...item,
+          ...getDeadlineStatus(
+            item.fechaLimite,
+            configuration.diasFestivos,
+            configuration.umbralProximoVencer,
+          ),
+        }
+      : item,
+  )
 }
 
+function byLastUpdate(first: Expedient, second: Expedient): number {
+  return second.fechaActualizacion.toMillis() - first.fechaActualizacion.toMillis()
+}
+
+/**
+ * Expedientes activos. Con assigneeUid solo trae los de ese responsable, filtrando en
+ * Firestore para no descargar los de todo el equipo.
+ */
+export async function listExpedients(assigneeUid?: string): Promise<Expedient[]> {
+  const constraints = [where('activo', '==', true)]
+  if (assigneeUid) constraints.push(where('funcionarioAsignado.uid', '==', assigneeUid))
+  const snapshot = await getDocs(
+    query(collection(firestore, EXPEDIENTS_COLLECTION), ...constraints),
+  )
+  const items = snapshot.docs
+    .map((item) => ({ ...(item.data() as Expedient), id: item.id }))
+    .filter((item) => !isFinalizedExpedient(item))
+  return (await withDeadlineStatus(items)).sort(byLastUpdate)
+}
+
+/** Al finalizar o archivar, `activo` pasa a false; por eso basta con ese filtro. */
 export async function listHistoricalExpedients(): Promise<Expedient[]> {
-  const snapshot = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION))
+  const snapshot = await getDocs(
+    query(collection(firestore, EXPEDIENTS_COLLECTION), where('activo', '==', false)),
+  )
   return snapshot.docs
-    .map((item) => {
-      const data = item.data() as Expedient
-      return { ...data, id: item.id }
-    })
-    .filter(isFinalizedExpedient)
-    .sort((a, b) => b.fechaActualizacion.toMillis() - a.fechaActualizacion.toMillis())
+    .map((item) => ({ ...(item.data() as Expedient), id: item.id }))
+    .sort(byLastUpdate)
 }
 
 export async function getExpedient(id: string): Promise<Expedient | null> {
