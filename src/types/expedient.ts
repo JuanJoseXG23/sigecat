@@ -99,23 +99,13 @@ export interface Expedient {
   activo: boolean
 }
 
-export const STANDARD_FLOW: ExpedientStatus[] = [
-  'Recibido',
-  'Asignado',
-  'En respuesta',
-  'Radicado de salida',
-  'Archivo (Finalizado)',
-]
-export const TRANSFER_FLOW: ExpedientStatus[] = [
-  'Recibido',
-  'Asignado',
-  'En respuesta',
-  'Traslado por competencia',
-  'Generar radicado de traslado',
-  'Generar respuesta al ciudadano',
-  'Radicar respuesta',
-  'Archivo (Finalizado)',
-]
+/** Campos opcionales que una actuación del flujo puede guardar en el expediente. */
+export interface ActuationFields {
+  formatoFisicoFirmado?: boolean
+  /** Radicado de salida o de traslado; nunca reemplaza el radicado de entrada. */
+  numeroRadicadoActuacion?: string
+  fechaRadicadoActuacion?: string
+}
 
 export function isFinalizedExpedient(item: Pick<Expedient, 'estado' | 'activo'>): boolean {
   return !item.activo || item.estado === 'Archivo (Finalizado)' || item.estado === 'Archivado'

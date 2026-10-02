@@ -20,11 +20,13 @@ import {
   registerExpedientHistory,
 } from '@/services/business-rules.service'
 import { toDateKey } from '@/lib/expedient-deadline'
+import type { Actuation } from '@/lib/expedient-workflow'
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
 import { getFilingReference, registerFiling } from '@/services/filing.service'
 import { queueAssignmentEmail } from '@/services/assignment-email.service'
 import type {
+  ActuationFields,
   AssignedOfficial,
   Expedient,
   ExpedientFormData,
@@ -36,14 +38,6 @@ import type {
 import { isFinalizedExpedient } from '@/types/expedient'
 
 const EXPEDIENTS_COLLECTION = 'expedientes'
-
-/** Campos opcionales que una actuación del flujo puede guardar en el expediente. */
-export interface ActuationFields {
-  formatoFisicoFirmado?: boolean
-  /** Radicado de salida o de traslado; nunca reemplaza el radicado de entrada. */
-  numeroRadicadoActuacion?: string
-  fechaRadicadoActuacion?: string
-}
 
 function toTimestamp(value?: string): Timestamp | undefined {
   if (!value) return undefined
@@ -414,6 +408,29 @@ export async function completeRequiredActuation(
       'El expediente fue archivado y enviado al Histórico.',
     )
   await commit(batch)
+}
+
+/** Guarda la actuación que produjo planActuation para el paso actual. */
+export function applyActuation(
+  expedientId: string,
+  actuation: Actuation,
+  userId: string,
+): Promise<void> {
+  switch (actuation.kind) {
+    case 'assign':
+      return assignExpedient(expedientId, actuation.assignee, userId, actuation.advanceTo)
+    case 'transfer':
+      return transferByCompetence(expedientId, actuation.destination, actuation.reason, userId)
+    case 'complete':
+      return completeRequiredActuation(
+        expedientId,
+        userId,
+        actuation.action,
+        actuation.detail,
+        actuation.nextStatus,
+        actuation.fields,
+      )
+  }
 }
 
 export async function listExpedientHistory(id: string): Promise<ExpedientHistoryEntry[]> {

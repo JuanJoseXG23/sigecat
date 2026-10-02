@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore'
 import { firestore } from '@/services/firebase'
 import type { ProcedureType, ProcedureTypeInput } from '@/types/procedure-type'
-import { STANDARD_FLOW } from '@/types/expedient'
+import { STANDARD_FLOW } from '@/lib/expedient-workflow'
 
 const COLLECTION = 'tiposTramite'
 

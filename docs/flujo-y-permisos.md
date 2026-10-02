@@ -55,6 +55,10 @@ Cada número de radicado registrado en el flujo crea un documento en `radicados`
 radicado de entrada. El radicado de entrada (`numeroRadicado`) no puede repetirse entre
 expedientes.
 
+Estas reglas están en `src/lib/expedient-workflow.ts`, con una prueba por paso en
+`expedient-workflow.test.ts`; el diálogo de actuación solo las muestra. Para cambiar el flujo se
+modifica ese módulo y su prueba, y se actualiza esta tabla.
+
 ## Términos y semáforo
 
 - `fechaLimite` = fecha de radicado + `diasRespuesta` del tipo de trámite, contando solo días
