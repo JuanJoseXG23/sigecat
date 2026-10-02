@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function profile() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
+    }
+
+    function signedInWithActiveProfile() {
+      return request.auth != null && profile().activo == true;
+    }
+
+    function hasRole(roles) {
+      return signedInWithActiveProfile() && profile().rol in roles;
+    }
+
+    function isAdministrator() {
+      return hasRole(['Administrador']);
+    }
+
+    function isSupervisor() {
+      return hasRole(['Administrador', 'Coordinador']);
+    }
+
+    function isOperationalUser() {
+      return hasRole(['Administrador', 'Coordinador', 'Funcionario']);
+    }
+
+    function expedientPath(expedientId) {
+      return /databases/$(database)/documents/expedientes/$(expedientId);
+    }
+
+    // Mirrors canManageExpedient in src/lib/permissions.ts; keep both in sync.
+    // A Funcionario only handles expedients that are unassigned or assigned to
+    // them, and finalized expedients can only be changed by an Administrador.
+    function canManageExpedient(expedient) {
+      return expedient.get('activo', false) == true
+        ? isSupervisor() ||
+          (isOperationalUser() &&
+            (expedient.get('funcionarioAsignado', null) == null ||
+             expedient.funcionarioAsignado.uid == request.auth.uid))
+        : isAdministrator();
+    }
+
+    // Closing an expedient through the workflow is part of the Funcionario's job;
+    // archiving it outside the workflow is reserved for supervisors.
+    function isAllowedActivoChange() {
+      return request.resource.data.activo == resource.data.activo ||
+        isAdministrator() ||
+        (request.resource.data.activo == false &&
+          (isSupervisor() || request.resource.data.estado == 'Archivo (Finalizado)'));
+    }
+
+    match /usuarios/{userId} {
+      allow get: if signedInWithActiveProfile() &&
+        (request.auth.uid == userId || isAdministrator());
+      // Operational users need this query solely to select an assignee. Split this
+      // data into a minimal public directory before allowing the Consulta role.
+      allow list: if isOperationalUser();
+      allow create, delete: if isAdministrator();
+      allow update: if isAdministrator() ||
+        (signedInWithActiveProfile() && request.auth.uid == userId &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['ultimoIngreso']));
+    }
+
+    match /expedientes/{expedientId} {
+      allow get, list: if signedInWithActiveProfile();
+      allow create: if isOperationalUser() &&
+        request.resource.data.id == expedientId &&
+        request.resource.data.creadoPor == request.auth.uid &&
+        request.resource.data.activo == true &&
+        request.resource.data.estado == 'Recibido' &&
+        request.resource.data.numeroRadicado is string &&
+        request.resource.data.numeroRadicado.size() > 0;
+      // ultimaAlertaVencimiento is written only by Apps Script, which uses IAM
+      // credentials and is therefore not subject to these rules.
+      allow update: if canManageExpedient(resource.data) &&
+        !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['id', 'creadoPor', 'fechaCreacion', 'ultimaAlertaVencimiento']) &&
+        isAllowedActivoChange();
+      allow delete: if false;
+
+      match /historial/{historyId} {
+        allow get, list: if signedInWithActiveProfile();
+        allow create: if isOperationalUser() &&
+          request.resource.data.usuario == request.auth.uid &&
+          existsAfter(expedientPath(expedientId));
+        allow update, delete: if false;
+      }
+
+      match /observaciones/{observationId} {
+        allow get, list: if signedInWithActiveProfile();
+        allow create: if isOperationalUser() &&
+          request.resource.data.creadoPor == request.auth.uid &&
+          existsAfter(expedientPath(expedientId));
+        allow update, delete: if false;
+      }
+    }
+
+    // Legacy document records, kept read-only while they remain in the library.
+    match /documentosEscaneados/{documentId} {
+      allow get, list: if signedInWithActiveProfile();
+      allow create, update: if false;
+      allow delete: if isAdministrator();
+    }
+
+    match /tiposTramite/{typeId} {
+      allow get, list: if signedInWithActiveProfile();
+      allow create, update: if isAdministrator();
+      allow delete: if false;
+    }
+
+    match /configuracion/{configurationId} {
+      allow get, list: if signedInWithActiveProfile();
+      allow create, update: if isAdministrator();
+      allow delete: if false;
+    }
+
+    match /radicados/{filingId} {
+      allow get, list: if signedInWithActiveProfile();
+      allow create: if isOperationalUser() &&
+        request.resource.data.expedienteId is string &&
+        existsAfter(expedientPath(request.resource.data.expedienteId));
+      allow update: if false;
+      allow delete: if isAdministrator();
+    }
+
+    match /solicitudesPruebaCorreo/{requestId} {
+      allow get, list: if isAdministrator();
+      allow create: if isAdministrator();
+      allow update, delete: if false;
+    }
+
+    // Only identifiers are stored: Apps Script reads the recipient's address and
+    // the message content from Firestore, so a client cannot choose either. The
+    // recipient must be the expedient's assignee once the batch is applied.
+    match /notificacionesAsignacion/{notificationId} {
+      allow create: if isOperationalUser() &&
+        request.resource.data.keys().hasOnly(
+          ['expedienteId', 'destinatarioUid', 'solicitadoPor', 'estado', 'fechaSolicitud']) &&
+        request.resource.data.solicitadoPor == request.auth.uid &&
+        request.resource.data.estado == 'Pendiente' &&
+        request.resource.data.fechaSolicitud == request.time &&
+        getAfter(expedientPath(request.resource.data.expedienteId))
+          .data.funcionarioAsignado.uid == request.resource.data.destinatarioUid;
+      allow get, list, update, delete: if false;
+    }
+
+    match /tareas/{taskId} {
+      allow get: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;
+      allow list: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;
+      allow create: if signedInWithActiveProfile() &&
+        request.resource.data.responsableId == request.auth.uid;
+      allow update: if signedInWithActiveProfile() &&
+        resource.data.responsableId == request.auth.uid &&
+        request.resource.data.responsableId == resource.data.responsableId;
+      allow delete: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;
+    }
+  }
+}

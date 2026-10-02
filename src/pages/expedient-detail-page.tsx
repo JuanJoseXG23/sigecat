@@ -1,0 +1,665 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { ArrowRight, Check, X } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { OneDriveDocumentSelector } from '@/components/one-drive-document-selector'
+import { TimeElapsedButton } from '@/components/time-elapsed-button'
+import { useAuth } from '@/hooks/use-auth'
+import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
+import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
+import { useAddExpedientWorkflowDocument } from '@/hooks/use-expedient-workflow-documents'
+import { canManageExpedient } from '@/lib/permissions'
+import {
+  assignExpedient,
+  completeRequiredActuation,
+  transferByCompetence,
+} from '@/services/expedient.service'
+import { listFilings } from '@/services/filing.service'
+import {
+  isFinalizedExpedient,
+  STANDARD_FLOW,
+  TRANSFER_FLOW,
+  type ExpedientStatus,
+} from '@/types/expedient'
+
+type Tab = 'Información' | 'Historial' | 'Documentos'
+const tabs: Tab[] = ['Información', 'Historial', 'Documentos']
+function requiresFiling(status: ExpedientStatus) {
+  return ['Radicado de salida', 'Generar radicado de traslado', 'Radicar respuesta'].includes(
+    status,
+  )
+}
+
+function getWorkflowDocumentRequirement(status: ExpedientStatus) {
+  if (status === 'Recibido') {
+    return {
+      required: true,
+      documentType: 'RECIBIDO' as const,
+      title: 'Se requiere escanear el documento recibido y asociarlo en OneDrive.',
+      description: 'Este documento será obligatorio antes de continuar con el trámite.',
+    }
+  }
+  if (status === 'Radicado de salida') {
+    return {
+      required: true,
+      documentType: 'RADICADO_SALIDA' as const,
+      title: 'Se requiere escanear la respuesta radicada en OneDrive.',
+      description: 'Antes de finalizar, asocia el documento de respuesta radicada.',
+    }
+  }
+  if (status === 'Radicar respuesta') {
+    return {
+      required: true,
+      documentType: 'RADICADO_SALIDA' as const,
+      title: 'Se requiere escanear la respuesta radicada en OneDrive.',
+      description: 'Asocia la respuesta radicada antes de finalizar el expediente.',
+    }
+  }
+  if (status === 'Generar radicado de traslado') {
+    return {
+      required: true,
+      documentType: 'TRASLADO' as const,
+      title: 'Se requiere escanear el documento del traslado realizado.',
+      description: 'Asocia el documento de traslado en OneDrive antes de continuar.',
+    }
+  }
+  return null
+}
+
+export function ExpedientDetailPage() {
+  const { id } = useParams()
+  const { user, profile } = useAuth()
+  const client = useQueryClient()
+  const { data: item, isLoading } = useExpedientDetail(id)
+  const { data: history = [] } = useExpedientHistory(id)
+  const { data: officials = [] } = useAssignableOfficials()
+  const { data: filings = [] } = useQuery({ queryKey: ['filings'], queryFn: listFilings })
+  const workflowDocuments = item?.documentosWorkflow ?? []
+  const associatedRadicados = item
+    ? Array.from(
+        new Map(
+          filings
+            .filter((filing) => filing.expedienteId === item.id)
+            .map((filing) => [`${filing.numero}-${filing.fecha}`, filing]),
+        ).values(),
+      )
+    : []
+  const addWorkflowDocument = useAddExpedientWorkflowDocument()
+  const [tab, setTab] = useState<Tab>('Información')
+  const [dialog, setDialog] = useState(false)
+  const [signed, setSigned] = useState(false)
+  const [choice, setChoice] = useState<'response' | 'transfer' | 'change'>('response')
+  const [responsible, setResponsible] = useState('')
+  const [destination, setDestination] = useState('')
+  const [reason, setReason] = useState('')
+  const [number, setNumber] = useState('')
+  const [date, setDate] = useState('')
+  const [notes, setNotes] = useState('')
+  const [actionError, setActionError] = useState('')
+  const [actionNotice, setActionNotice] = useState('')
+  const refresh = () =>
+    Promise.all(
+      [
+        'expedient',
+        'expedient-history',
+        'expedients',
+        'work-tray',
+        'historical-expedients',
+        'filings',
+      ].map((key) => client.invalidateQueries({ queryKey: [key] })),
+    )
+  const execute = useMutation({
+    mutationFn: async () => {
+      setActionError('')
+      setActionNotice('')
+      if (!item || !user) return
+      const flow = item.trasladoPorCompetencia ? TRANSFER_FLOW : STANDARD_FLOW
+      const index = flow.indexOf(item.estado)
+      const next = flow[index + 1]
+      if (item.estado === 'Recibido')
+        return completeRequiredActuation(
+          item.id,
+          user.uid,
+          'Confirmó firma del formato físico',
+          notes || 'Formato físico firmado.',
+          'Asignado',
+          { formatoFisicoFirmado: true },
+        )
+      if (item.estado === 'Asignado' || (item.estado === 'En respuesta' && choice === 'change')) {
+        const selected = officials.find((entry) => entry.uid === responsible)
+        if (!selected) throw new Error('Selecciona el responsable.')
+        const reassignment = item.estado === 'En respuesta'
+        await assignExpedient(
+          item.id,
+          { uid: selected.uid, nombreCompleto: selected.nombreCompleto },
+          user.uid,
+          reassignment ? undefined : 'En respuesta',
+        )
+        setActionNotice(
+          `Expediente ${reassignment ? 'reasignado' : 'asignado'} a ${selected.nombreCompleto}. Enviando correo de notificación; llegará en máximo cinco minutos.`,
+        )
+        return
+      }
+      if (item.estado === 'En respuesta') {
+        if (choice === 'transfer')
+          return transferByCompetence(item.id, destination, reason, user.uid)
+        return completeRequiredActuation(
+          item.id,
+          user.uid,
+          'Seleccionó respuesta a usuario',
+          notes || 'Se inició la respuesta al ciudadano.',
+          'Radicado de salida',
+        )
+      }
+      if (!next) return
+      const filingAction =
+        item.estado === 'Generar radicado de traslado'
+          ? 'Registró radicado de traslado'
+          : item.estado === 'Radicar respuesta'
+            ? 'Radicó respuesta al ciudadano'
+            : 'Registró radicado de salida'
+      return completeRequiredActuation(
+        item.id,
+        user.uid,
+        requiresFiling(item.estado) ? filingAction : 'Generó actuación del trámite',
+        number ? `Radicado ${number}. ${notes}` : notes || 'Actuación completada.',
+        next,
+        number ? { numeroRadicadoActuacion: number, fechaRadicadoActuacion: date } : {},
+      )
+    },
+    onSuccess: async () => {
+      setDialog(false)
+      setSigned(false)
+      setNumber('')
+      setNotes('')
+      await refresh()
+    },
+    onError: (error) => {
+      setActionError(
+        error instanceof Error ? error.message : 'No fue posible guardar la actuación.',
+      )
+    },
+  })
+  if (isLoading) return <p className="text-sm text-slate-500">Cargando expediente…</p>
+  if (!item) return <p className="text-sm text-slate-500">No se encontró el expediente.</p>
+  const finalized = isFinalizedExpedient(item)
+  const canManage = canManageExpedient(profile, item)
+  const flow = item.trasladoPorCompetencia ? TRANSFER_FLOW : STANDARD_FLOW
+  const current = Math.max(0, flow.indexOf(item.estado))
+  const currentStatus = flow[current]
+  const workflowRequirement = getWorkflowDocumentRequirement(currentStatus)
+  const hasRequiredWorkflowDocument =
+    !workflowRequirement ||
+    workflowDocuments.some((document) => document.tipo === workflowRequirement.documentType)
+  return (
+    <section className="mx-auto max-w-7xl space-y-5">
+      {actionNotice && (
+        <p
+          role="status"
+          className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          {actionNotice}
+        </p>
+      )}
+      <div className="flex justify-between items-start">
+        <div>
+          <Link to="/dashboard" className="text-sm text-slate-500">
+            ← Volver a la bandeja
+          </Link>
+          <p className="mt-3 text-sm font-medium text-primary">Expediente {item.numeroRadicado}</p>
+          <h1 className="text-2xl font-semibold">Gestión del trámite</h1>
+        </div>
+        <div className="flex gap-2 items-start">
+          <Badge variant={finalized ? 'success' : 'info'}>
+            {finalized ? 'Solo consulta' : item.estado}
+          </Badge>
+        </div>
+      </div>
+      <Card className="overflow-x-auto p-4">
+        <div className="flex min-w-[700px] gap-2">
+          {flow.map((value, index) => (
+            <div key={value} className="flex flex-1 items-center gap-2">
+              <div
+                className={`w-full rounded-lg border p-3 ${index === current ? 'border-primary bg-primary text-primary-foreground' : index < current ? 'border-emerald-200 bg-emerald-50' : 'bg-white'}`}
+              >
+                <span className="block text-xs">
+                  {index < current ? <Check size={14} /> : index + 1}
+                </span>
+                <b className="text-sm">{value}</b>
+                {index === current && !finalized && canManage && (
+                  <Button
+                    className="mt-2 w-full"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setDialog(true)}
+                  >
+                    Continuar
+                  </Button>
+                )}
+              </div>
+              {index < flow.length - 1 && <span>→</span>}
+            </div>
+          ))}
+        </div>
+      </Card>
+      <div className="flex gap-1 border-b" role="tablist" aria-label="Secciones del expediente">
+        {tabs.map((value) => (
+          <button
+            key={value}
+            type="button"
+            role="tab"
+            aria-selected={tab === value}
+            onClick={() => setTab(value)}
+            className={`border-b-2 px-4 py-3 text-sm ${tab === value ? 'border-primary text-primary' : 'border-transparent text-slate-500'}`}
+          >
+            {value}
+          </button>
+        ))}
+      </div>
+      <Card className="p-5">
+        {tab === 'Información' && (
+          <div className="space-y-6">
+            <div className="grid gap-5 md:grid-cols-3">
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Radicación
+                </p>
+                <p className="mt-2 font-semibold">{item.numeroRadicado}</p>
+                <p className="mt-1 text-sm text-slate-600">
+                  {item.fechaRadicado.toDate().toLocaleDateString('es-CO')}
+                </p>
+                <p className="text-sm text-slate-600">
+                  Recibido:{' '}
+                  {item.fechaRecibido?.toDate().toLocaleDateString('es-CO') ?? 'No registrado'}
+                </p>
+                <div className="mt-4 rounded-2xl bg-white p-3 text-sm text-slate-700 shadow-sm">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Radicados asociados
+                  </p>
+                  {associatedRadicados.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {associatedRadicados.map((filing) => (
+                        <div
+                          key={filing.id}
+                          className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                        >
+                          <p className="font-semibold text-slate-900">{filing.numero}</p>
+                          <p className="text-sm text-slate-500">
+                            {new Date(`${filing.fecha}T00:00:00`).toLocaleDateString('es-CO')}
+                          </p>
+                          <p className="text-xs text-slate-500">{filing.tipo}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm text-slate-500">
+                      No hay radicados asociados todavía.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Trámite y término
+                </p>
+                <p className="mt-2 font-semibold">{item.tipoTramite ?? 'Sin tipo'}</p>
+                <p className="text-sm text-slate-600">
+                  Límite: {item.fechaLimite?.toDate().toLocaleDateString('es-CO') ?? 'No calculada'}
+                </p>
+                <div className="mt-3">
+                  {item.fechaRadicado && item.fechaLimite && (
+                    <TimeElapsedButton
+                      diasTranscurridos={Math.floor(
+                        (new Date().getTime() - item.fechaRadicado.toDate().getTime()) /
+                          (1000 * 60 * 60 * 24),
+                      )}
+                      diasRestantes={item.diasRestantes}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Gestión
+                </p>
+                <p className="mt-2 font-semibold">
+                  {item.funcionarioAsignado?.nombreCompleto ??
+                    item.responsableExterno ??
+                    'Sin asignar'}
+                </p>
+                <p className="text-sm text-slate-600">
+                  Prioridad: {item.prioridad ?? 'Sin prioridad'}
+                </p>
+                <p className="text-sm text-slate-600">
+                  Ingreso: {item.medioIngreso ?? 'No registrado'}
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2">
+              <div>
+                <h2 className="font-semibold">Solicitantes</h2>
+                <div className="mt-3 space-y-2">
+                  {item.solicitantes.map((applicant, index) => (
+                    <div
+                      key={`${applicant.documento}-${index}`}
+                      className="rounded-md border p-3 text-sm"
+                    >
+                      <b>{applicant.nombre ?? 'Sin nombre'}</b>
+                      <p>
+                        {applicant.documento ?? 'Sin documento'} ·{' '}
+                        {applicant.telefono ?? 'Sin teléfono'}
+                      </p>
+                      <p className="text-slate-500">
+                        {applicant.correo ?? 'Sin correo'} ·{' '}
+                        {applicant.tipoSolicitante ?? 'Sin tipo'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h2 className="font-semibold">Predios</h2>
+                <div className="mt-3 space-y-2">
+                  {item.predios.map((property, index) => (
+                    <div
+                      key={`${property.numeroPredial}-${index}`}
+                      className="rounded-md border p-3 text-sm"
+                    >
+                      <b>{property.municipio ?? 'Sin municipio'}</b>
+                      <p>{property.direccion ?? 'Sin dirección'}</p>
+                      <p className="text-slate-500">
+                        Predial: {property.numeroPredial ?? '—'} · Matrícula:{' '}
+                        {property.matriculaInmobiliaria ?? '—'}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div>
+              <h2 className="font-semibold">Observaciones iniciales</h2>
+              <p className="mt-2 whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
+                {item.observacionesIniciales ?? 'Sin observaciones iniciales.'}
+              </p>
+            </div>
+          </div>
+        )}
+        {tab === 'Historial' &&
+          history.map((entry) => (
+            <article key={entry.id} className="mb-4 border-l-2 border-primary/30 pl-4">
+              <b className="text-sm">{entry.accion}</b>
+              <p className="text-sm">{entry.detalle}</p>
+              <small>{entry.fecha?.toDate().toLocaleString('es-CO')}</small>
+            </article>
+          ))}
+        {tab === 'Documentos' && (
+          <div>
+            <Card className="p-4">
+              <h3 className="font-semibold mb-3">Documentos asociados</h3>
+              {workflowDocuments.length > 0 ? (
+                <div className="space-y-3">
+                  {workflowDocuments.map((document) => (
+                    <div key={document.id} className="rounded-xl border p-4 bg-white shadow-sm">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm font-semibold">{document.nombre}</p>
+                          <p className="text-xs text-slate-500">
+                            {document.tipo.replace('_', ' ')}
+                          </p>
+                          {document.radicadoNumero && (
+                            <p className="text-xs text-slate-500 mt-1">
+                              Radicado: {document.radicadoNumero}
+                              {document.radicadoFecha
+                                ? ` • ${document.radicadoFecha.toDate().toLocaleDateString('es-CO')}`
+                                : ''}
+                            </p>
+                          )}
+                        </div>
+                        <a
+                          href={document.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-primary"
+                        >
+                          Ver enlace
+                        </a>
+                      </div>
+                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
+                        <span>{document.usuario}</span>
+                        <span>{document.fecha?.toDate().toLocaleString('es-CO')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-600">
+                  No hay documentos de workflow asociados todavía.
+                </p>
+              )}
+            </Card>
+          </div>
+        )}
+      </Card>
+      {dialog && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/45 p-4 backdrop-blur-sm">
+          <Card className="w-full max-w-4xl overflow-hidden border-slate-200 bg-white shadow-2xl">
+            <header className="flex items-center justify-between border-b border-slate-100 px-6 py-5 sm:px-8">
+              <div>
+                <p className="text-sm font-medium text-primary">{currentStatus}</p>
+                <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-900">
+                  {currentStatus === 'Recibido'
+                    ? 'Confirmación de recepción'
+                    : currentStatus === 'Asignado'
+                      ? 'Asignar expediente'
+                      : currentStatus === 'En respuesta'
+                        ? 'Definir actuación'
+                        : 'Completar actuación'}
+                </h2>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="size-10 rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                onClick={() => setDialog(false)}
+                aria-label="Cerrar ventana"
+              >
+                <X size={22} />
+              </Button>
+            </header>
+            <div className="max-h-[70vh] space-y-5 overflow-y-auto px-6 py-6 sm:px-8">
+              {actionError && (
+                <p
+                  role="alert"
+                  className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                >
+                  {actionError}
+                </p>
+              )}
+              {currentStatus === 'Recibido' && (
+                <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={signed}
+                    onChange={(event) => setSigned(event.target.checked)}
+                    className="size-5 rounded border-slate-300 text-primary focus:ring-primary"
+                  />{' '}
+                  Confirmo que el formato físico fue firmado.
+                </label>
+              )}
+              {currentStatus === 'Asignado' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Responsable *</label>
+                  <Select
+                    value={responsible}
+                    onChange={(event) => setResponsible(event.target.value)}
+                  >
+                    <option value="">Selecciona responsable de Catastro</option>
+                    {officials.map((entry) => (
+                      <option key={entry.uid} value={entry.uid}>
+                        {entry.nombreCompleto}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              )}
+              {currentStatus === 'En respuesta' && (
+                <div className="mt-4 space-y-2">
+                  <Select
+                    value={choice}
+                    onChange={(event) => setChoice(event.target.value as typeof choice)}
+                  >
+                    <option value="response">Respuesta a usuario</option>
+                    <option value="transfer">Traslado por competencia</option>
+                    <option value="change">Cambio de responsable</option>
+                  </Select>
+                  {choice === 'transfer' && (
+                    <>
+                      <Input
+                        value={destination}
+                        onChange={(event) => setDestination(event.target.value)}
+                        placeholder="Dependencia destino *"
+                      />
+                      <Textarea
+                        value={reason}
+                        onChange={(event) => setReason(event.target.value)}
+                        placeholder="Motivo del traslado *"
+                      />
+                    </>
+                  )}
+                  {choice === 'change' && (
+                    <Select
+                      value={responsible}
+                      onChange={(event) => setResponsible(event.target.value)}
+                    >
+                      <option value="">Selecciona responsable</option>
+                      {officials.map((entry) => (
+                        <option key={entry.uid} value={entry.uid}>
+                          {entry.nombreCompleto}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                </div>
+              )}
+              {workflowRequirement?.required && (
+                <div className="mt-4">
+                  <OneDriveDocumentSelector
+                    folderUrl={item.carpetaOneDrive}
+                    documents={workflowDocuments}
+                    description={workflowRequirement.description}
+                    requiredDocumentType={workflowRequirement.documentType}
+                    onAddDocument={(documentData) => {
+                      if (!item || !user) return
+                      addWorkflowDocument.mutate({
+                        expedientId: item.id,
+                        documentData: {
+                          ...documentData,
+                          tipo: workflowRequirement.documentType,
+                          usuario: user.displayName ?? user.email ?? 'Usuario',
+                        },
+                        userId: user.uid,
+                        userName: user.displayName ?? user.email ?? 'Usuario',
+                      })
+                    }}
+                    isLoading={addWorkflowDocument.isPending}
+                  />
+                </div>
+              )}
+              {requiresFiling(currentStatus) && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">
+                      Número de radicado *
+                    </label>
+                    <Input
+                      value={number}
+                      onChange={(event) => setNumber(event.target.value)}
+                      placeholder="Ingresa el número de radicado"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">
+                      Fecha de radicado *
+                    </label>
+                    <Input
+                      type="date"
+                      value={date}
+                      onChange={(event) => setDate(event.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Observaciones</label>
+                <Textarea
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Escribe observaciones adicionales (opcional)"
+                  className="min-h-28 resize-y"
+                />
+              </div>
+            </div>
+            <footer className="flex flex-col-reverse gap-3 border-t border-slate-100 bg-slate-50/70 px-6 py-5 sm:flex-row sm:justify-end sm:px-8">
+              <Button variant="outline" onClick={() => setDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={
+                  execute.isPending ||
+                  (currentStatus === 'Recibido' && !signed) ||
+                  (currentStatus === 'Asignado' && !responsible) ||
+                  (currentStatus === 'En respuesta' &&
+                    ((choice === 'transfer' && (!destination || !reason)) ||
+                      (choice === 'change' && !responsible))) ||
+                  (requiresFiling(currentStatus) && (!number || !date)) ||
+                  (workflowRequirement?.required && !hasRequiredWorkflowDocument)
+                }
+                onClick={() => execute.mutate()}
+                className="gap-2 bg-emerald-600 px-6 text-white hover:bg-emerald-700"
+              >
+                Guardar y continuar
+                <ArrowRight size={18} />
+              </Button>
+            </footer>
+          </Card>
+        </div>
+      )}
+
+      {/*
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/40 p-4">
+          <Card className="w-full max-w-lg p-6">
+            <h2 className="text-lg font-semibold">Eliminar expediente</h2>
+            <p className="mt-3 text-sm text-slate-600">
+              ¿Estás seguro de que deseas eliminar permanentemente este expediente{' '}
+              <strong>({item.numeroRadicado})</strong>? Esta acción no se puede deshacer y se
+              eliminarán todos los documentos, observaciones e historial asociados.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteDialogOpen(false)}
+                disabled={deleteExpedientMutation.isPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => deleteExpedientMutation.mutate()}
+                disabled={deleteExpedientMutation.isPending}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleteExpedientMutation.isPending ? 'Eliminando...' : 'Eliminar permanentemente'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      */}
+    </section>
+  )
+}

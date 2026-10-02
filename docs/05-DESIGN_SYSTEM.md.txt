@@ -1,0 +1,77 @@
+# Design System
+
+## Estilo
+
+Minimalista
+
+Profesional
+
+Moderno
+
+Institucional
+
+---
+
+## Componentes
+
+Button
+
+Card
+
+Badge
+
+Modal
+
+Dialog
+
+Table
+
+Input
+
+Textarea
+
+Select
+
+Avatar
+
+Timeline
+
+Search
+
+---
+
+## Colores
+
+Primario
+
+Azul
+
+Secundario
+
+Gris
+
+Éxito
+
+Verde
+
+Advertencia
+
+Amarillo
+
+Error
+
+Rojo
+
+---
+
+## Iconos
+
+Lucide React
+
+---
+
+## Animaciones
+
+Framer Motion
+
+Solo animaciones suaves.

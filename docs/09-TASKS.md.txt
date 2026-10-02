@@ -1,0 +1,53 @@
+# Backlog
+
+## Sprint 1
+
+- Configurar React
+
+- Configurar Firebase
+
+- Login
+
+- Layout
+
+- Dashboard
+
+---
+
+## Sprint 2
+
+- CRUD Usuarios
+
+- Roles
+
+- Permisos
+
+---
+
+## Sprint 3
+
+- CRUD Expedientes
+
+- Historial
+
+- Observaciones
+
+---
+
+## Sprint 4
+
+- Reportes
+
+- Auditoría
+
+- Configuración
+
+---
+
+## Sprint 5
+
+- Optimización
+
+- Pruebas
+
+- Despliegue

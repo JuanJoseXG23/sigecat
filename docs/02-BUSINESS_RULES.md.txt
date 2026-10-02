@@ -1,0 +1,77 @@
+# Reglas del Negocio
+
+## Fechas
+
+Fecha Radicado
+
+Es la fecha oficial para calcular términos.
+
+Fecha Recibido
+
+Es únicamente informativa.
+
+---
+
+## Expedientes
+
+Cada expediente tendrá:
+
+- Radicado
+- Tipo
+- Estado
+- Responsable
+- Historial
+- Observaciones
+
+---
+
+## Estados
+
+- Nuevo
+- Asignado
+- En trámite
+- Pendiente
+- Respondido
+- Radicado
+- Cerrado
+
+---
+
+## Historial
+
+Toda acción deberá generar un registro automático.
+
+Ejemplos
+
+- creación
+- edición
+- asignación
+- cambio de estado
+- cierre
+
+---
+
+## Términos
+
+Los términos se calcularán en días hábiles.
+
+Cada tipo documental tendrá un término configurable.
+
+---
+
+## Auditoría
+
+Nunca se eliminarán registros.
+
+Solo cambiará el estado.
+
+---
+
+## Notificaciones
+
+Se notificará cuando:
+
+- asignen expediente
+- cambie el responsable
+- esté próximo el vencimiento
+- expediente vencido

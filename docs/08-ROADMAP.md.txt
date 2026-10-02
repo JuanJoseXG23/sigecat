@@ -1,0 +1,49 @@
+# Roadmap
+
+## Fase 1
+
+Infraestructura
+
+Firebase
+
+Autenticación
+
+Layout
+
+---
+
+## Fase 2
+
+Usuarios
+
+Roles
+
+Permisos
+
+---
+
+## Fase 3
+
+Expedientes
+
+Historial
+
+Observaciones
+
+---
+
+## Fase 4
+
+Dashboard
+
+Notificaciones
+
+Reportes
+
+---
+
+## Fase 5
+
+Optimización
+
+Producción
