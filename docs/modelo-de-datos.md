@@ -7,13 +7,13 @@ colección y quién puede escribir en ella según `firestore.rules`.
 
 El id del documento es el uid de Firebase Authentication.
 
-| Campo                                               | Descripción                                                |
-| --------------------------------------------------- | ---------------------------------------------------------- |
-| `nombreCompleto`, `correo`, `cargo`, `dependencia?` | Datos de la persona                                        |
-| `rol`                                               | `Administrador`, `Coordinador`, `Funcionario` o `Consulta` |
-| `activo`                                            | Si es `false`, la sesión se cierra al entrar               |
-| `recibeAlertasVencimiento?`                         | Recibe alertas diarias de vencimiento                      |
-| `fechaCreacion`, `ultimoIngreso`                    | Fechas                                                     |
+| Campo                                               | Descripción                                                             |
+| --------------------------------------------------- | ----------------------------------------------------------------------- |
+| `nombreCompleto`, `correo`, `cargo`, `dependencia?` | Datos de la persona                                                     |
+| `rol`                                               | `Administrador`, `Coordinador`, `Funcionario`, `Directivo` o `Consulta` |
+| `activo`                                            | Si es `false`, la sesión se cierra al entrar                            |
+| `recibeAlertasVencimiento?`                         | Recibe alertas diarias de vencimiento                                   |
+| `fechaCreacion`, `ultimoIngreso`                    | Fechas                                                                  |
 
 Escriben: el Administrador; cada usuario solo actualiza su propio `ultimoIngreso`.
 Leen: el Administrador; cada usuario lee solo su propio perfil.
@@ -89,4 +89,8 @@ Las crea la aplicación y las procesa Apps Script, que marca `estado` como `Envi
 
 - **`notificacionesAsignacion`**: `expedienteId`, `destinatarioUid`, `solicitadoPor`, `estado`,
   `fechaSolicitud`. Las reglas exigen que el destinatario sea el responsable del expediente.
+- **`consultasDireccion`**: `expedienteId`, `expedienteRadicado`, `destinatarioUid`,
+  `destinatarioNombre`, `solicitadoPor`, `pregunta`, `estado`, `fechaSolicitud`. Las reglas
+  exigen que el destinatario sea el responsable del expediente y que quien pregunta sea
+  Directivo, Coordinador o Administrador; cada quien lee solo sus preguntas.
 - **`solicitudesPruebaCorreo`**: correo de prueba; solo administradores.

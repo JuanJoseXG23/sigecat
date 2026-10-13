@@ -50,7 +50,11 @@ de un solo uso para que la persona defina la suya.
 npm run user:create -- --nombre "Ana Pérez" --correo ana.perez@girardota.gov.co --cargo "Técnico Administrativo" --rol Funcionario --dependencia "Catastro"
 ```
 
-Roles válidos: `Administrador`, `Coordinador`, `Funcionario`, `Consulta`.
+Roles válidos: `Administrador`, `Coordinador`, `Funcionario`, `Directivo`, `Consulta`.
+
+Si se necesita una contraseña inicial conocida (por ejemplo, para entregar la cuenta en
+persona), agregue `--clave "..."` (mínimo 8 caracteres): no se imprime enlace. Entréguela solo a
+la persona y no la guarde en archivos ni en el repositorio.
 
 Si un perfil se modifica desde la consola de Firebase en vez de la página Usuarios, resincroniza
 el directorio que usan los demás para elegir responsables:
@@ -87,7 +91,8 @@ el administrador haya habilitado en **Configuración → Alertas por correo**.
 3. En Google Cloud Console, otorgue a esa misma cuenta institucional el rol **Cloud Datastore User**
    en el proyecto `sigecat-7c6ec`. Así el script puede leer usuarios y expedientes y registrar que
    el aviso fue enviado; no se necesita una cuenta de servicio ni una llave privada.
-4. En el editor de Apps Script, seleccione y ejecute `setupDailyDeadlineAlerts`. Google pedirá
+4. En el editor de Apps Script, seleccione y ejecute `setupDailyDeadlineAlerts` (crea también los
+   disparadores de cada 5 minutos para avisos de asignación y preguntas de la dirección). Google pedirá
    autorización para consultar Firestore, crear el disparador y enviar correo. El disparador se
    ejecutará aproximadamente entre las 08:00 y 09:00, hora de Colombia.
 5. En SIGECAT, un administrador activa **Alertas por correo** y marca los funcionarios que deben

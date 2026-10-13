@@ -1,6 +1,16 @@
 import type { Timestamp } from 'firebase/firestore'
 
-export const USER_ROLES = ['Administrador', 'Coordinador', 'Funcionario', 'Consulta'] as const
+/**
+ * Directivo: la jefatura. Ve todo y el Panel de dirección, y pregunta por correo a los
+ * responsables, pero no modifica expedientes.
+ */
+export const USER_ROLES = [
+  'Administrador',
+  'Coordinador',
+  'Funcionario',
+  'Directivo',
+  'Consulta',
+] as const
 
 export type UserRole = (typeof USER_ROLES)[number]
 

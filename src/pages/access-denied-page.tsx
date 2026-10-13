@@ -12,7 +12,7 @@ export function AccessDeniedPage() {
           title="No tienes permiso para ver esta página"
           description="Tu rol no incluye esta sección. Si crees que es un error, comunícate con el administrador de SIGECAT."
           action={
-            <Link className={buttonVariants()} to="/dashboard">
+            <Link className={buttonVariants()} to="/">
               Volver a la bandeja
             </Link>
           }

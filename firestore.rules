@@ -147,6 +147,28 @@ service cloud.firestore {
       allow get, list, update, delete: if false;
     }
 
+    // Questions from management (Directivo, and supervisors) to an expedient's assignee.
+    // Only identifiers and the question are stored; Apps Script reads the recipient's
+    // address from Firestore and sends the email, so a client cannot choose it.
+    // Mirrors canAskAboutExpedients in src/lib/permissions.ts.
+    match /consultasDireccion/{inquiryId} {
+      allow create: if hasRole(['Administrador', 'Coordinador', 'Directivo']) &&
+        request.resource.data.keys().hasOnly(['expedienteId', 'expedienteRadicado',
+          'destinatarioUid', 'destinatarioNombre', 'solicitadoPor', 'pregunta', 'estado',
+          'fechaSolicitud']) &&
+        request.resource.data.solicitadoPor == request.auth.uid &&
+        request.resource.data.estado == 'Pendiente' &&
+        request.resource.data.fechaSolicitud == request.time &&
+        request.resource.data.pregunta is string &&
+        request.resource.data.pregunta.size() >= 5 &&
+        request.resource.data.pregunta.size() <= 1000 &&
+        get(expedientPath(request.resource.data.expedienteId))
+          .data.funcionarioAsignado.uid == request.resource.data.destinatarioUid;
+      allow get, list: if signedInWithActiveProfile() &&
+        resource.data.solicitadoPor == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     match /tareas/{taskId} {
       allow get: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;
       allow list: if signedInWithActiveProfile() && resource.data.responsableId == request.auth.uid;

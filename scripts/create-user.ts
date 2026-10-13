@@ -12,8 +12,11 @@ import { USER_ROLES, type UserRole } from '../src/types/user.js'
  * crea con una clave aleatoria que no se muestra y se imprime un enlace para que
  * la persona defina la suya.
  *
+ * Con --clave se usa esa contraseña inicial (mínimo 8 caracteres) y no se imprime el
+ * enlace. Entrégala solo a la persona; nunca la guardes en archivos.
+ *
  * npm run user:create -- --nombre "Ana Pérez" --correo ana@girardota.gov.co \
- *   --cargo "Técnico" --rol Funcionario [--dependencia "Catastro"]
+ *   --cargo "Técnico" --rol Funcionario [--dependencia "Catastro"] [--clave "..."]
  */
 const { values } = parseArgs({
   options: {
@@ -22,6 +25,7 @@ const { values } = parseArgs({
     cargo: { type: 'string' },
     rol: { type: 'string' },
     dependencia: { type: 'string' },
+    clave: { type: 'string' },
   },
 })
 
@@ -30,6 +34,7 @@ const correo = values.correo?.trim().toLowerCase()
 const cargo = values.cargo?.trim()
 const rol = values.rol?.trim() as UserRole | undefined
 const dependencia = values.dependencia?.trim()
+const initialPassword = values.clave
 
 if (!nombreCompleto || !correo || !cargo || !rol) {
   throw new Error('Faltan datos: --nombre, --correo, --cargo y --rol son obligatorios.')
@@ -39,6 +44,9 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
 }
 if (!USER_ROLES.includes(rol)) {
   throw new Error(`Rol inválido. Usa uno de: ${USER_ROLES.join(', ')}.`)
+}
+if (initialPassword !== undefined && initialPassword.length < 8) {
+  throw new Error('La clave inicial debe tener al menos 8 caracteres.')
 }
 
 const serviceAccountPath = path.resolve(
@@ -61,7 +69,7 @@ if (existing) {
 
 const user = await auth.createUser({
   email: correo,
-  password: randomBytes(24).toString('base64url'),
+  password: initialPassword ?? randomBytes(24).toString('base64url'),
   displayName: nombreCompleto,
 })
 try {
@@ -91,6 +99,13 @@ try {
   throw error
 }
 
+if (initialPassword) {
+  process.stdout.write(
+    `Usuario creado: ${nombreCompleto} <${correo}> · ${rol} · uid ${user.uid}\n` +
+      'Puede entrar con la clave inicial indicada; conviene que la cambie.\n',
+  )
+  process.exit(0)
+}
 const link = await auth.generatePasswordResetLink(correo)
 process.stdout.write(
   `Usuario creado: ${nombreCompleto} <${correo}> · ${rol} · uid ${user.uid}\n\n` +

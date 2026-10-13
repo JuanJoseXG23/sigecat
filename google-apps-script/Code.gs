@@ -8,6 +8,7 @@ function setupDailyDeadlineAlerts() {
   ScriptApp.newTrigger('sendDeadlineAlerts').timeBased().everyDays(1).atHour(8).create()
   ScriptApp.newTrigger('processEmailTestRequests').timeBased().everyMinutes(5).create()
   ScriptApp.newTrigger('processAssignmentNotifications').timeBased().everyMinutes(5).create()
+  ScriptApp.newTrigger('processManagementInquiries').timeBased().everyMinutes(5).create()
   Logger.log('Alerta diaria creada correctamente.')
 }
 
@@ -40,7 +41,8 @@ function deleteDeadlineAlertTriggers_() {
     if (
       triggers[i].getHandlerFunction() === 'sendDeadlineAlerts' ||
       triggers[i].getHandlerFunction() === 'processEmailTestRequests' ||
-      triggers[i].getHandlerFunction() === 'processAssignmentNotifications'
+      triggers[i].getHandlerFunction() === 'processAssignmentNotifications' ||
+      triggers[i].getHandlerFunction() === 'processManagementInquiries'
     ) {
       ScriptApp.deleteTrigger(triggers[i])
     }
@@ -141,6 +143,127 @@ function processAssignmentNotifications() {
       })
     }
   }
+}
+
+/* Preguntas de la jefatura al responsable de un expediente (colección consultasDireccion).
+   La solicitud solo trae identificadores y el texto: el correo del destinatario y de quien
+   pregunta se leen de Firestore. La respuesta llega directo a quien preguntó (replyTo). */
+function processManagementInquiries() {
+  var inquiries = queryPending_('consultasDireccion')
+  var appUrl =
+    PropertiesService.getScriptProperties().getProperty('APP_URL') ||
+    'https://juanjosexg23.github.io/sigecat/'
+  for (var i = 0; i < inquiries.length; i = i + 1) {
+    var inquiry = inquiries[i]
+    var data = inquiry.data
+    var path = 'consultasDireccion/' + inquiry.id
+    try {
+      if (!data.expedienteId || !data.destinatarioUid || !data.solicitadoPor)
+        throw new Error('Solicitud incompleta.')
+      var expedient = getDocument_('expedientes/' + data.expedienteId)
+      if (!expedient) throw new Error('El expediente no existe.')
+      if (
+        !expedient.funcionarioAsignado ||
+        expedient.funcionarioAsignado.uid !== data.destinatarioUid
+      ) {
+        patchFields_(path, {
+          estado: 'Omitido',
+          detalleError: 'El expediente ya no está asignado a este destinatario.',
+          fechaProcesamiento: new Date(),
+        })
+        continue
+      }
+      var recipient = getDocument_('usuarios/' + data.destinatarioUid)
+      if (!recipient || recipient.activo !== true || !recipient.correo)
+        throw new Error('El destinatario no está activo o no tiene correo.')
+      var requester = getDocument_('usuarios/' + data.solicitadoPor)
+      if (!requester || requester.activo !== true || !requester.correo)
+        throw new Error('Quien pregunta no está activo o no tiene correo.')
+
+      var filing = expedient.numeroRadicado || data.expedienteId
+      var applicant =
+        expedient.solicitantes && expedient.solicitantes[0] ? expedient.solicitantes[0].nombre : ''
+      var deadline = expedient.fechaLimite
+        ? Utilities.formatDate(new Date(expedient.fechaLimite), TIME_ZONE, 'dd/MM/yyyy')
+        : 'No registrada'
+      var link = appUrl + '#/expedientes/' + data.expedienteId
+      var question = String(data.pregunta || '')
+      var body =
+        'Hola ' +
+        (recipient.nombreCompleto || '') +
+        ',\n\n' +
+        (requester.nombreCompleto || 'La dirección') +
+        (requester.cargo ? ' (' + requester.cargo + ')' : '') +
+        ' pregunta por el expediente ' +
+        filing +
+        ':\n\n"' +
+        question +
+        '"\n\nEstado actual: ' +
+        (expedient.estado || 'Sin estado') +
+        '\nTrámite: ' +
+        (expedient.tipoTramite || 'No registrado') +
+        '\nSolicitante: ' +
+        (applicant || 'No registrado') +
+        '\nFecha límite de respuesta: ' +
+        deadline +
+        '\n\nResponde a este correo para contestarle directamente.\nVer el expediente: ' +
+        link
+      MailApp.sendEmail({
+        to: recipient.correo,
+        cc: requester.correo,
+        replyTo: requester.correo,
+        name: 'SIGECAT',
+        subject:
+          'SIGECAT: ' +
+          (requester.nombreCompleto || 'La dirección') +
+          ' pregunta por el radicado ' +
+          filing,
+        body: body,
+      })
+      // Deja la pregunta en el historial del expediente para que el equipo la vea.
+      firestoreRequest_('/documents/expedientes/' + data.expedienteId + '/historial', 'post', {
+        fields: {
+          usuario: encodeValue_(data.solicitadoPor),
+          accion: encodeValue_('Pregunta de la dirección'),
+          detalle: encodeValue_('A ' + (recipient.nombreCompleto || '') + ': ' + question),
+          fecha: encodeValue_(new Date()),
+        },
+      })
+      patchFields_(path, { estado: 'Enviado', fechaProcesamiento: new Date() })
+    } catch (error) {
+      patchFields_(path, {
+        estado: 'Error',
+        detalleError: String(error),
+        fechaProcesamiento: new Date(),
+      })
+    }
+  }
+}
+
+function queryPending_(collectionId) {
+  var response = firestoreRequest_('/documents:runQuery', 'post', {
+    structuredQuery: {
+      from: [{ collectionId: collectionId }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'estado' },
+          op: 'EQUAL',
+          value: { stringValue: 'Pendiente' },
+        },
+      },
+    },
+  })
+  var results = []
+  for (var i = 0; i < response.length; i = i + 1) {
+    if (response[i].document) {
+      var document = response[i].document
+      results.push({
+        id: document.name.split('/').pop(),
+        data: decodeFields_(document.fields || {}),
+      })
+    }
+  }
+  return results
 }
 
 function sendDeadlineAlerts() {

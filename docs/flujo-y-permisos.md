@@ -7,6 +7,7 @@
 | Administrador | Todo: usuarios, tipos de trámite, configuración, reportes; corregir expedientes cerrados, radicados y documentos |
 | Coordinador   | Gestionar y archivar cualquier expediente; corregir expedientes cerrados, radicados y documentos; ver reportes   |
 | Funcionario   | Crear expedientes y gestionar los que no tienen responsable o le están asignados                                 |
+| Directivo     | La jefatura: Panel de dirección, ver todo y preguntar por correo a los responsables; no modifica expedientes     |
 | Consulta      | Ver dashboard, expedientes, biblioteca e histórico; no modifica nada                                             |
 
 Menú por rol (definido en `src/routes/navigation.ts`):
@@ -20,6 +21,25 @@ Menú por rol (definido en `src/routes/navigation.ts`):
 
 Los usuarios se crean con `npm run user:create` (ver README); la página Usuarios permite editar
 datos, rol y activar o desactivar cuentas.
+
+## Panel de dirección
+
+Para la jefatura (rol **Directivo**; también lo ven Administrador y Coordinador). Es la página de
+inicio del Directivo (`#/direccion`) y se actualiza sola cada minuto.
+
+- **Indicadores:** en trámite, vencidos, próximos a vencer, respondidos este mes y porcentaje de
+  respuesta oportuna del año (con la fecha real de la respuesta).
+- **Gráficas:** semáforo de términos, expedientes por paso del flujo, radicados y respondidos de
+  los últimos seis meses (con vista de datos) y carga por responsable. Tocar una barra, un
+  indicador o una persona filtra la lista de abajo.
+- **Expedientes en trámite:** del más urgente al menos urgente, con búsqueda y botón
+  **Preguntar**. Debajo, los respondidos recientemente y **Mis preguntas** con su estado.
+
+**Preguntar al responsable** (también desde el detalle del expediente): se elige una pregunta
+frecuente o se escribe (5 a 1000 caracteres). Se guarda en `consultasDireccion` y Apps Script la
+envía cada 5 minutos al correo del responsable, con copia y respuesta directa a quien preguntó,
+y la deja en el historial del expediente. Si el responsable cambió antes del envío, se omite.
+Reglas en `src/lib/management-panel.ts` e `src/lib/inquiry.ts`, con pruebas.
 
 ## Estados
 
@@ -158,10 +178,11 @@ registran los folios) e imprime la hoja de control del expediente.
 Los envía Google Apps Script desde la cuenta institucional. La aplicación nunca envía correos ni
 decide su destinatario o contenido: solo deja una solicitud con identificadores.
 
-| Correo                | Cuándo                                                                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Asignación            | Al asignar o reasignar un expediente; se procesa cada 5 minutos                                                                             |
-| Alerta de vencimiento | Diario a las 8 a. m., a responsables con alertas activas, cuando quedan entre 0 y el umbral de días; una vez por responsable y fecha límite |
-| Prueba                | Desde Configuración, solo administradores                                                                                                   |
+| Correo                   | Cuándo                                                                                                                                      |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Asignación               | Al asignar o reasignar un expediente; se procesa cada 5 minutos                                                                             |
+| Alerta de vencimiento    | Diario a las 8 a. m., a responsables con alertas activas, cuando quedan entre 0 y el umbral de días; una vez por responsable y fecha límite |
+| Pregunta de la dirección | Al preguntar desde el Panel de dirección o el detalle; se procesa cada 5 minutos. Responder el correo le llega a quien preguntó             |
+| Prueba                   | Desde Configuración, solo administradores                                                                                                   |
 
 La instalación del script está en el README.

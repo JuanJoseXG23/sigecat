@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { canCorrectRecords, canManageExpedient, isSupervisor } from './permissions'
+import {
+  canAskAboutExpedients,
+  getHomePath,
+  canCorrectRecords,
+  canManageExpedient,
+  isSupervisor,
+} from './permissions'
 
 const admin = { uid: 'a', rol: 'Administrador' } as const
 const coordinator = { uid: 'c', rol: 'Coordinador' } as const
@@ -49,4 +55,17 @@ test('solo administrador y coordinador corrigen radicados y documentos', () => {
   assert.equal(canCorrectRecords(coordinator), true)
   assert.equal(canCorrectRecords(official), false)
   assert.equal(canCorrectRecords(viewer), false)
+})
+
+test('la jefatura ve todo y pregunta, pero no gestiona expedientes', () => {
+  const director = { uid: 'd', rol: 'Directivo' as const }
+  assert.equal(canManageExpedient(director, { activo: true }), false)
+  assert.equal(canManageExpedient(director, { activo: false }), false)
+  assert.equal(canCorrectRecords(director), false)
+  assert.equal(canAskAboutExpedients(director), true)
+  assert.equal(canAskAboutExpedients(coordinator), true)
+  assert.equal(canAskAboutExpedients(official), false)
+  assert.equal(canAskAboutExpedients(viewer), false)
+  assert.equal(getHomePath(director), '/direccion')
+  assert.equal(getHomePath(official), '/dashboard')
 })

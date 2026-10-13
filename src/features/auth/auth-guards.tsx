@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/hooks/use-auth'
+import { getHomePath } from '@/lib/permissions'
 import type { UserRole } from '@/types/user'
 
 function FullPageLoader() {
@@ -21,10 +22,16 @@ export function ProtectedRoute() {
 }
 
 export function PublicOnlyRoute() {
-  const { status } = useAuth()
+  const { status, profile } = useAuth()
 
   if (status === 'loading') return <FullPageLoader />
-  return status === 'authenticated' ? <Navigate to="/dashboard" replace /> : <Outlet />
+  return status === 'authenticated' ? <Navigate to={getHomePath(profile)} replace /> : <Outlet />
+}
+
+/** Lleva a cada rol a su página de inicio. */
+export function HomeRedirect() {
+  const { profile } = useAuth()
+  return <Navigate to={getHomePath(profile)} replace />
 }
 
 export function RoleRoute({

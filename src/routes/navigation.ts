@@ -3,6 +3,7 @@ import {
   BarChart3,
   FileCog,
   FolderKanban,
+  Gauge,
   LayoutDashboard,
   Library,
   ListTodo,
@@ -23,17 +24,31 @@ export interface AppNavigationItem {
   group: NavigationGroup
 }
 
-const allRoles: readonly UserRole[] = ['Administrador', 'Coordinador', 'Funcionario', 'Consulta']
+const allRoles: readonly UserRole[] = [
+  'Administrador',
+  'Coordinador',
+  'Funcionario',
+  'Directivo',
+  'Consulta',
+]
 const operationalRoles: readonly UserRole[] = ['Administrador', 'Coordinador', 'Funcionario']
+const managementRoles: readonly UserRole[] = ['Administrador', 'Coordinador', 'Directivo']
 
 export const navigationGroups: readonly NavigationGroup[] = ['Gestión', 'Archivo', 'Administración']
 
 export const appNavigation: readonly AppNavigationItem[] = [
   {
+    label: 'Panel de dirección',
+    path: '/direccion',
+    icon: Gauge,
+    roles: managementRoles,
+    group: 'Gestión',
+  },
+  {
     label: 'Bandeja de trabajo',
     path: '/dashboard',
     icon: LayoutDashboard,
-    roles: allRoles,
+    roles: ['Administrador', 'Coordinador', 'Funcionario', 'Consulta'],
     group: 'Gestión',
   },
   {
@@ -47,7 +62,7 @@ export const appNavigation: readonly AppNavigationItem[] = [
     label: 'Radicación',
     path: '/radicacion',
     icon: Stamp,
-    roles: operationalRoles,
+    roles: [...operationalRoles, 'Directivo'],
     group: 'Gestión',
   },
   {
@@ -75,7 +90,7 @@ export const appNavigation: readonly AppNavigationItem[] = [
     label: 'Reportes',
     path: '/reportes',
     icon: BarChart3,
-    roles: ['Administrador', 'Coordinador'],
+    roles: managementRoles,
     group: 'Administración',
   },
   {

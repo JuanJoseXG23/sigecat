@@ -1,6 +1,11 @@
-import { createHashRouter, Navigate } from 'react-router-dom'
+import { createHashRouter } from 'react-router-dom'
 import { lazy, type ReactNode } from 'react'
-import { ProtectedRoute, PublicOnlyRoute, RoleRoute } from '@/features/auth/auth-guards'
+import {
+  HomeRedirect,
+  ProtectedRoute,
+  PublicOnlyRoute,
+  RoleRoute,
+} from '@/features/auth/auth-guards'
 import { AuthLayout } from '@/layouts/auth-layout'
 import { MainLayout } from '@/layouts/main-layout'
 import { appNavigation } from '@/routes/navigation'
@@ -10,6 +15,11 @@ import { AccessDeniedPage } from '@/pages/access-denied-page'
 // el formulario de login, y nadie descarga las páginas que su rol no puede ver.
 const LoginPage = lazy(() =>
   import('@/pages/login-page').then((module) => ({ default: module.LoginPage })),
+)
+const ManagementPanelPage = lazy(() =>
+  import('@/pages/management-panel-page').then((module) => ({
+    default: module.ManagementPanelPage,
+  })),
 )
 const DashboardPage = lazy(() =>
   import('@/pages/dashboard-page').then((module) => ({ default: module.DashboardPage })),
@@ -74,7 +84,8 @@ export const router = createHashRouter([
         path: '/',
         element: <MainLayout />,
         children: [
-          { index: true, element: <Navigate to="/dashboard" replace /> },
+          { index: true, element: <HomeRedirect /> },
+          { path: 'direccion', element: withRole('/direccion', <ManagementPanelPage />) },
           { path: 'dashboard', element: withRole('/dashboard', <DashboardPage />) },
           { path: 'agenda', element: withRole('/agenda', <AgendaPage />) },
           { path: 'expedientes', element: withRole('/expedientes', <ExpedientsPage />) },
@@ -87,7 +98,7 @@ export const router = createHashRouter([
           { path: 'tipos-tramite', element: withRole('/tipos-tramite', <ProcedureTypesPage />) },
           { path: 'configuracion', element: withRole('/configuracion', <SettingsPage />) },
           { path: 'acceso-denegado', element: <AccessDeniedPage /> },
-          { path: '*', element: <Navigate to="/dashboard" replace /> },
+          { path: '*', element: <HomeRedirect /> },
         ],
       },
     ],

@@ -26,6 +26,19 @@ export function canManageExpedient(
   )
 }
 
+/** Roles que ven el Panel de dirección y pueden preguntar a los responsables por correo. */
+export const MANAGEMENT_ROLES = ['Administrador', 'Coordinador', 'Directivo'] as const
+
+/** Refleja canAskAboutExpedient de firestore.rules. */
+export function canAskAboutExpedients(profile: Actor): boolean {
+  return MANAGEMENT_ROLES.some((role) => role === profile?.rol)
+}
+
+/** Página de inicio: la jefatura entra a su panel; los demás, a la bandeja de trabajo. */
+export function getHomePath(profile: Actor): string {
+  return profile?.rol === 'Directivo' ? '/direccion' : '/dashboard'
+}
+
 /** Corregir radicados y documentos ya registrados es tarea de Administrador y Coordinador. */
 export function canCorrectRecords(profile: Actor): boolean {
   return isSupervisor(profile)

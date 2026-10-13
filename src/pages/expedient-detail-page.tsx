@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, CalendarPlus, FileSearch, History, Pencil } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  CalendarPlus,
+  FileSearch,
+  History,
+  MessageCircleQuestion,
+  Pencil,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +26,7 @@ import { ExpedientDocuments } from '@/features/expedients/components/expedient-d
 import { ExpedientHistory } from '@/features/expedients/components/expedient-history'
 import { ExpedientSummary } from '@/features/expedients/components/expedient-summary'
 import { ExtensionDialog } from '@/features/expedients/components/extension-dialog'
+import { InquiryDialog } from '@/features/expedients/components/inquiry-dialog'
 import { LateRegistrationDialog } from '@/features/expedients/components/late-registration-dialog'
 import { WorkflowStepper } from '@/features/expedients/components/workflow-stepper'
 import { useAuth } from '@/hooks/use-auth'
@@ -26,7 +35,7 @@ import { hasReplacedEntryFiling, suggestEntryFiling } from '@/lib/entry-filing'
 import { getFlow, getStepDefinition, type Actuation } from '@/lib/expedient-workflow'
 import { describeRemainingDays, formatDate, formatLongDate } from '@/lib/format'
 import { getLateRegistrationScope, type LateRegistrationPlan } from '@/lib/late-registration'
-import { canCorrectRecords, canManageExpedient } from '@/lib/permissions'
+import { canAskAboutExpedients, canCorrectRecords, canManageExpedient } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { listExpedientFilings, type FilingRecord } from '@/services/filing.service'
 import { getClosingDate, isFinalizedExpedient, type WorkflowDocument } from '@/types/expedient'
@@ -84,9 +93,9 @@ export function ExpedientDetailPage() {
     queryFn: () => listExpedientFilings(id!),
     enabled: Boolean(id),
   })
-  const [dialog, setDialog] = useState<'actuation' | 'extension' | 'edit' | 'late' | null>(
-    params.get('registro') === 'tardio' ? 'late' : null,
-  )
+  const [dialog, setDialog] = useState<
+    'actuation' | 'extension' | 'edit' | 'late' | 'inquiry' | null
+  >(params.get('registro') === 'tardio' ? 'late' : null)
   const [editingFiling, setEditingFiling] = useState<FilingRecord | null>(null)
   const [editingDocument, setEditingDocument] = useState<WorkflowDocument | null>(null)
   const associatedFilings = useMemo(
@@ -132,7 +141,7 @@ export function ExpedientDetailPage() {
     historial: history.length,
   }
 
-  const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate('/dashboard'))
+  const goBack = () => (window.history.length > 1 ? navigate(-1) : navigate('/'))
 
   return (
     <section className="mx-auto max-w-[1400px] space-y-5">
@@ -219,6 +228,15 @@ export function ExpedientDetailPage() {
                   <p className="text-sm text-muted-foreground">
                     Gestiona: {item.funcionarioAsignado?.nombreCompleto ?? 'sin responsable'}
                   </p>
+                )}
+                {canAskAboutExpedients(profile) && item.funcionarioAsignado && (
+                  <Button
+                    variant="outline"
+                    className="no-print"
+                    onClick={() => setDialog('inquiry')}
+                  >
+                    <MessageCircleQuestion size={17} /> Preguntar al responsable
+                  </Button>
                 )}
               </>
             )}
@@ -325,6 +343,7 @@ export function ExpedientDetailPage() {
           }}
         />
       )}
+      {dialog === 'inquiry' && <InquiryDialog expedient={item} onClose={() => setDialog(null)} />}
       {dialog === 'late' && (
         <LateRegistrationDialog
           expedient={item}

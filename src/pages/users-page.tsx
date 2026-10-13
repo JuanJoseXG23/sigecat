@@ -21,6 +21,7 @@ const roleVariants: Record<UserRole, BadgeVariant> = {
   Administrador: 'violet',
   Coordinador: 'info',
   Funcionario: 'brand',
+  Directivo: 'accent',
   Consulta: 'default',
 }
 
