@@ -87,6 +87,9 @@ modifica ese módulo y su prueba, y se actualiza esta tabla.
   Colombia** (calculados para cualquier año en `src/lib/colombian-holidays.ts`: Ley 51 de 1983 y
   fechas que dependen de la Pascua) y los **días adicionales sin atención** de Configuración.
 - `diasRestantes` se recalcula cada vez que se consulta un expediente.
+- `fechaLimite` se guarda al crear o editar el expediente. Si cambian las reglas del término (por
+  ejemplo, los festivos), `npx tsx scripts/recalculate-deadlines.ts` lista los expedientes con una
+  fecha límite distinta a la que corresponde y `--apply` los corrige, dejando nota en el historial.
 - Semáforo (`estadoTermino`): **Vencido** si quedan menos de 0 días; **Próximo a vencer** si quedan
   hasta el umbral de **Configuración** (3 por defecto); **En plazo** en otro caso.
 - La fecha de recibido es informativa y no afecta el término.
