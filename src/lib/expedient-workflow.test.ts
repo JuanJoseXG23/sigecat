@@ -99,6 +99,32 @@ test('Radicado de salida exige radicado y finaliza sin tocar el radicado de entr
   })
 })
 
+test('el radicado guarda la fecha de envío y quién respondió si fue otro compañero', () => {
+  const colleague = { uid: 'f2', nombreCompleto: 'Luis Gómez' }
+  const salida = { ...standard('Radicado de salida'), funcionarioAsignado: official }
+  assert.equal(
+    getMissingRequirement('Radicado de salida', input({ ...filing, sentDate: '2026-10-01' }), [
+      { tipo: 'RADICADO_SALIDA' },
+    ]),
+    'La fecha de envío no puede ser anterior a la del radicado.',
+  )
+  const plan = planActuation(
+    salida,
+    input({ ...filing, sentDate: '2026-10-03', respondedBy: colleague }),
+  ) as { fields: object; respondedBy?: object }
+  assert.deepEqual(plan.fields, {
+    numeroRadicadoActuacion: 'S-100',
+    fechaRadicadoActuacion: '2026-10-02',
+    fechaEnvioActuacion: '2026-10-03',
+  })
+  assert.deepEqual(plan.respondedBy, colleague)
+  // Si quien respondió es el mismo responsable, no hay cambio.
+  assert.equal(
+    'respondedBy' in planActuation(salida, input({ ...filing, respondedBy: official })),
+    false,
+  )
+})
+
 test('el flujo de traslado recorre todos sus pasos', () => {
   const step = (status: ExpedientStatus, values: Partial<ActuationInput> = {}) =>
     planActuation(transfer(status), input(values)) as { action: string; nextStatus: string }

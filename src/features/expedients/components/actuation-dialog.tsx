@@ -61,13 +61,19 @@ export function ActuationDialog({ expedient, onClose, onCompleted }: ActuationDi
   const addDocument = useAddExpedientWorkflowDocument()
   const [values, setValues] = useState(EMPTY_ACTUATION_INPUT)
   const [responsibleUid, setResponsibleUid] = useState('')
+  const [respondedByUid, setRespondedByUid] = useState('')
   const status = expedient.estado
   const step = getStepDefinition(status)
   const documents = expedient.documentosWorkflow ?? []
   const responsible = officials.find((entry) => entry.uid === responsibleUid)
+  const respondedBy = officials.find((entry) => entry.uid === respondedByUid)
   const input: ActuationInput = {
     ...values,
     assignee: responsible && { uid: responsible.uid, nombreCompleto: responsible.nombreCompleto },
+    respondedBy: respondedBy && {
+      uid: respondedBy.uid,
+      nombreCompleto: respondedBy.nombreCompleto,
+    },
   }
   const missing = getMissingRequirement(status, input, documents)
   const update = (changes: Partial<ActuationInput>) => setValues({ ...values, ...changes })
@@ -229,21 +235,54 @@ export function ActuationDialog({ expedient, onClose, onCompleted }: ActuationDi
         )}
 
         {step.requiresFiling && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Número de radicado de salida" required>
-              <Input
-                value={values.filingNumber}
-                onChange={(event) => update({ filingNumber: event.target.value })}
-                placeholder="Ej. S-2026-00321"
-              />
-            </Field>
-            <Field label="Fecha de radicado" required>
-              <Input
-                type="date"
-                max={toDateKey(new Date())}
-                value={values.filingDate}
-                onChange={(event) => update({ filingDate: event.target.value })}
-              />
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Número de radicado de salida" required>
+                <Input
+                  value={values.filingNumber}
+                  onChange={(event) => update({ filingNumber: event.target.value })}
+                  placeholder="Ej. S-2026-00321"
+                />
+              </Field>
+              <Field label="Fecha de radicado" required>
+                <Input
+                  type="date"
+                  max={toDateKey(new Date())}
+                  value={values.filingDate}
+                  onChange={(event) => update({ filingDate: event.target.value })}
+                />
+              </Field>
+              <Field label="Fecha de envío" hint="Opcional. Correo o entrega.">
+                <Input
+                  type="date"
+                  min={values.filingDate || undefined}
+                  max={toDateKey(new Date())}
+                  value={values.sentDate}
+                  onChange={(event) => update({ sentDate: event.target.value })}
+                />
+              </Field>
+            </div>
+            <Field
+              label="¿Quién proyectó y firmó?"
+              hint="Si lo hizo otro compañero, el expediente quedará a su nombre."
+            >
+              <Select
+                value={respondedByUid}
+                onChange={(event) => setRespondedByUid(event.target.value)}
+              >
+                <option value="">
+                  {expedient.funcionarioAsignado
+                    ? `${expedient.funcionarioAsignado.nombreCompleto} (responsable)`
+                    : 'El responsable del trámite'}
+                </option>
+                {officials
+                  .filter((entry) => entry.uid !== expedient.funcionarioAsignado?.uid)
+                  .map((entry) => (
+                    <option key={entry.uid} value={entry.uid}>
+                      Otro compañero: {entry.nombreCompleto}
+                    </option>
+                  ))}
+              </Select>
             </Field>
           </div>
         )}

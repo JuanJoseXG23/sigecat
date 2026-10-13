@@ -60,22 +60,26 @@ export function FilingPage() {
       [
         'Radicado',
         'Fecha',
+        'Fecha de envío',
         'Tipo',
         'Expediente',
         'Solicitante',
         'Responsable',
         'Estado',
         'Soporte',
+        'Registro tardío',
       ],
       rows.map((item) => [
         item.numero,
         item.fecha,
+        item.fechaEnvio ?? '',
         item.tipo,
         expedientLabel(item),
         item.solicitante,
         item.responsable,
         item.estado,
         item.documentoUrl,
+        item.registroTardio ? 'Sí' : 'No',
       ]),
     )
 
@@ -164,10 +168,20 @@ export function FilingPage() {
               <tr key={item.id}>
                 <td>
                   <p className="font-semibold text-slate-900">{item.numero}</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(item.fecha)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(item.fecha)}
+                    {item.fechaEnvio && ` · enviado ${formatDate(item.fechaEnvio)}`}
+                  </p>
                 </td>
                 <td>
-                  <Badge variant={typeVariants[item.tipo] ?? 'default'}>{item.tipo}</Badge>
+                  <div className="flex flex-wrap gap-1">
+                    <Badge variant={typeVariants[item.tipo] ?? 'default'}>{item.tipo}</Badge>
+                    {item.registroTardio && (
+                      <Badge title="Se subió a la aplicación después de radicado">
+                        Registro tardío
+                      </Badge>
+                    )}
+                  </div>
                 </td>
                 <td>
                   <Link className="link" to={`/expedientes/${item.expedienteId}`}>

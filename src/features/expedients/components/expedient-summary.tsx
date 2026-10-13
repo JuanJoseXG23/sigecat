@@ -5,7 +5,12 @@ import { describeRemainingDays, formatDate, formatLongDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { FilingRecord } from '@/services/filing.service'
 import { Badge } from '@/components/ui/badge'
-import { getClosingDate, isFinalizedExpedient, type Expedient } from '@/types/expedient'
+import {
+  getClosingDate,
+  getResponseDate,
+  isFinalizedExpedient,
+  type Expedient,
+} from '@/types/expedient'
 
 interface ExpedientSummaryProps {
   expedient: Expedient
@@ -53,18 +58,26 @@ function DeadlinePanel({ item }: { item: Expedient }) {
       </Panel>
     )
   if (isFinalizedExpedient(item)) {
-    // Después del cierre no corren términos: solo importa si se cerró a tiempo.
+    // Después del cierre no corren términos: solo importa si se respondió a tiempo, según la
+    // fecha del radicado de respuesta y no la del día en que se registró.
     const closing = getClosingDate(item)
+    const response = getResponseDate(item)
     const deadline = item.fechaLimite.toDate()
     deadline.setHours(23, 59, 59, 999)
-    const onTime = closing <= deadline
+    const onTime = response <= deadline
     return (
       <Panel title="Término de respuesta">
         <Badge variant={onTime ? 'success' : 'destructive'} dot>
-          {onTime ? 'Cerrado dentro del término' : 'Cerrado fuera del término'}
+          {onTime ? 'Respondido dentro del término' : 'Respondido fuera del término'}
         </Badge>
         <dl className="mt-4 divide-y divide-border">
           <Detail label="Fecha límite">{formatDate(item.fechaLimite)}</Detail>
+          {item.fechaRadicadoActuacion && item.estado === 'Archivo (Finalizado)' && (
+            <Detail label="Respuesta radicada">{formatDate(item.fechaRadicadoActuacion)}</Detail>
+          )}
+          {item.fechaEnvioActuacion && item.estado === 'Archivo (Finalizado)' && (
+            <Detail label="Respuesta enviada">{formatDate(item.fechaEnvioActuacion)}</Detail>
+          )}
           <Detail label="Fecha de cierre">{formatDate(closing)}</Detail>
           {Boolean(item.diasAmpliacion) && (
             <Detail label="Ampliación">+{item.diasAmpliacion} días hábiles</Detail>

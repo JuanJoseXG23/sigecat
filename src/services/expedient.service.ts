@@ -21,9 +21,15 @@ import {
 } from '@/services/business-rules.service'
 import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
 import { getOutgoingFilingNumbers } from '@/lib/entry-filing'
-import { toDateKey } from '@/lib/expedient-deadline'
+import { fromDateKey, toDateKey } from '@/lib/expedient-deadline'
 import { parseDocumentLink } from '@/lib/document-links'
 import { getFilingCorrectionError, planFilingCorrection } from '@/lib/record-corrections'
+import {
+  planLateRegistration,
+  type ExistingDocument,
+  type LateRegistrationInput,
+  type LateRegistrationPlan,
+} from '@/lib/late-registration'
 import type { Actuation } from '@/lib/expedient-workflow'
 import { firestore } from '@/services/firebase'
 import { getActiveProcedureType } from '@/services/procedure-type.service'
@@ -37,8 +43,10 @@ import type {
   ExpedientFormData,
   ExpedientHistoryEntry,
   ExpedientStatus,
+  LateRegistrationRecord,
   WorkflowDocument,
   WorkflowDocumentPayload,
+  WorkflowDocumentType,
 } from '@/types/expedient'
 import { isFinalizedExpedient } from '@/types/expedient'
 
@@ -390,6 +398,7 @@ export async function completeRequiredActuation(
   detail: string,
   nextStatus: ExpedientStatus,
   fields: ActuationFields = {},
+  respondedBy?: AssignedOfficial,
 ): Promise<void> {
   const current = await getExpedient(id)
   if (!current) throw new Error('Expediente no encontrado.')
@@ -403,9 +412,20 @@ export async function completeRequiredActuation(
   batch.update(expedientReference(id), {
     ...fields,
     estado: nextStatus,
+    ...(respondedBy ? { funcionarioAsignado: respondedBy } : {}),
     ...(finalized ? { activo: false, fechaCierre: serverTimestamp() } : {}),
     fechaActualizacion: serverTimestamp(),
   })
+  if (respondedBy) {
+    registerExpedientHistory(
+      batch,
+      id,
+      userId,
+      'Cambio de responsable',
+      `${current.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'} → ${respondedBy.nombreCompleto}. Proyectó y firmó la actuación.`,
+    )
+    if (!finalized) queueAssignmentEmail(batch, id, respondedBy.uid, userId)
+  }
   registerExpedientHistory(batch, id, userId, action, detail)
   if (filingNumber) {
     const documentType: WorkflowDocument['tipo'] =
@@ -417,11 +437,15 @@ export async function completeRequiredActuation(
     registerFiling(batch, {
       numero: filingNumber,
       fecha: fields.fechaRadicadoActuacion ?? toDateKey(new Date()),
+      ...(fields.fechaEnvioActuacion ? { fechaEnvio: fields.fechaEnvioActuacion } : {}),
       tipo: action.includes('traslado') ? 'Traslado' : 'Salida',
       expedienteId: current.id,
       expedienteRadicado: current.numeroRadicado,
       solicitante: current.solicitantes[0]?.nombre ?? '',
-      responsable: current.funcionarioAsignado?.nombreCompleto ?? current.responsableExterno ?? '',
+      responsable:
+        (respondedBy ?? current.funcionarioAsignado)?.nombreCompleto ??
+        current.responsableExterno ??
+        '',
       estado: nextStatus,
       municipio: current.predios[0]?.municipio ?? '',
       observaciones: detail,
@@ -535,6 +559,135 @@ export async function extendExpedientDeadline(
   return plan.newDeadline
 }
 
+/** Documento más reciente de cada tipo, para no pedir de nuevo lo que ya está asociado. */
+export function getLatestDocuments(
+  expedient: Pick<Expedient, 'documentosWorkflow'>,
+): Partial<Record<WorkflowDocumentType, ExistingDocument>> {
+  const latest: Partial<Record<WorkflowDocumentType, ExistingDocument>> = {}
+  const documents = [...(expedient.documentosWorkflow ?? [])].sort(
+    (first, second) => first.fecha.toMillis() - second.fecha.toMillis(),
+  )
+  for (const document of documents)
+    latest[document.tipo] = { nombre: document.nombre, url: document.url }
+  return latest
+}
+
+/**
+ * Registro tardío: guarda en un solo lote, con sus fechas reales, las actuaciones que se
+ * hicieron a tiempo pero no se subieron (recepción, responsable, ampliación, traslado y
+ * respuesta). Si algo falla no queda nada a medias. Devuelve el plan para informar el
+ * resultado frente al término.
+ */
+export async function registerLateActuations(
+  id: string,
+  input: LateRegistrationInput,
+  userId: string,
+  userName: string,
+): Promise<LateRegistrationPlan> {
+  const [current, configuration] = await Promise.all([getExpedient(id), getBusinessConfiguration()])
+  if (!current) throw new Error('Expediente no encontrado.')
+  if (isFinalizedExpedient(current)) throw new Error('El expediente ya está cerrado.')
+  if (!current.fechaLimite) throw new Error('El expediente no tiene fecha límite calculada.')
+  const responseDays =
+    current.diasTermino ?? (await getActiveProcedureType(current.tipoTramiteId))?.diasRespuesta
+  if (!responseDays) throw new Error('No se conoce el término inicial del tipo de trámite.')
+
+  const plan = planLateRegistration(input, {
+    status: current.estado,
+    entryNumber: current.numeroRadicado,
+    entryDate: toDateKey(current.fechaRadicado.toDate()),
+    currentDeadline: current.fechaLimite.toDate(),
+    responseDays,
+    previousExtensionDays: current.diasAmpliacion ?? 0,
+    currentAssignee: current.funcionarioAsignado,
+    existingDocuments: getLatestDocuments(current),
+    holidays: configuration.diasFestivos,
+  })
+  const existing = await Promise.all(
+    plan.filings.map((filing) => getDoc(getFilingReference(current.id, filing.numero))),
+  )
+  const repeated = plan.filings.find((_, index) => existing[index].exists())
+  if (repeated)
+    throw new Error(`El radicado ${repeated.numero} ya está registrado para este expediente.`)
+
+  const now = Timestamp.now()
+  const assignee = plan.assignee ?? current.funcionarioAsignado
+  const responsible = assignee?.nombreCompleto ?? current.responsableExterno ?? ''
+  const documents: WorkflowDocument[] = plan.documents.map((document) => ({
+    id: newDocumentId(),
+    tipo: document.tipo,
+    nombre: document.nombre,
+    url: document.url,
+    usuario: userName,
+    fecha: now,
+    ...(document.folios ? { folios: document.folios } : {}),
+    ...(document.radicadoNumero ? { radicadoNumero: document.radicadoNumero } : {}),
+    ...(document.radicadoFecha ? { radicadoFecha: toTimestamp(document.radicadoFecha)! } : {}),
+  }))
+  const record: LateRegistrationRecord = {
+    motivo: input.reason.trim(),
+    usuario: userName,
+    fecha: now,
+  }
+  const extension = plan.extension && {
+    numeroRadicado: input.extension.filingNumber.trim(),
+    fechaRadicado: input.extension.filingDate,
+    diasSolicitados: input.extension.requestedDays,
+    motivo: input.extension.reason.trim(),
+    documentoNombre: input.extension.documentName.trim(),
+    documentoUrl: input.extension.documentUrl.trim(),
+    fechaLimiteAnterior: current.fechaLimite,
+    fechaLimiteNueva: Timestamp.fromDate(plan.extension.newDeadline),
+    usuario: userName,
+    fecha: now,
+  }
+
+  const batch = writeBatch(firestore)
+  batch.update(expedientReference(id), {
+    ...plan.fields,
+    estado: plan.finalStatus,
+    ...(plan.assignee ? { funcionarioAsignado: plan.assignee } : {}),
+    ...(documents.length ? { documentosWorkflow: arrayUnion(...documents) } : {}),
+    ...(extension
+      ? {
+          fechaLimite: extension.fechaLimiteNueva,
+          diasTermino: responseDays,
+          diasAmpliacion: plan.extension!.totalExtensionDays,
+          ampliacionesPlazo: arrayUnion(extension),
+        }
+      : {}),
+    ...(plan.finalized
+      ? { activo: false, fechaCierre: Timestamp.fromDate(fromDateKey(plan.closingDate!)) }
+      : {}),
+    registrosTardios: arrayUnion(record),
+    fechaActualizacion: serverTimestamp(),
+  })
+  for (const entry of plan.history)
+    registerExpedientHistory(batch, id, userId, entry.action, entry.detail)
+  for (const filing of plan.filings)
+    registerFiling(batch, {
+      numero: filing.numero,
+      fecha: filing.fecha,
+      ...(filing.fechaEnvio ? { fechaEnvio: filing.fechaEnvio } : {}),
+      tipo: filing.tipo,
+      expedienteId: current.id,
+      expedienteRadicado: current.numeroRadicado,
+      solicitante: current.solicitantes[0]?.nombre ?? '',
+      responsable: responsible,
+      estado: plan.finalStatus,
+      municipio: current.predios[0]?.municipio ?? '',
+      observaciones: `Registro tardío. ${record.motivo}`,
+      registroTardio: true,
+      ...(filing.documento
+        ? { documentoUrl: filing.documento.url, documentoNombre: filing.documento.nombre }
+        : {}),
+    })
+  // Un expediente cerrado no necesita aviso de asignación.
+  if (plan.assignee && !plan.finalized) queueAssignmentEmail(batch, id, plan.assignee.uid, userId)
+  await commit(batch)
+  return plan
+}
+
 /** Guarda la actuación que produjo planActuation para el paso actual. */
 export function applyActuation(
   expedientId: string,
@@ -554,6 +707,7 @@ export function applyActuation(
         actuation.detail,
         actuation.nextStatus,
         actuation.fields,
+        actuation.respondedBy,
       )
   }
 }

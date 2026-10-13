@@ -103,6 +103,7 @@ export interface Expedient extends ActuationFields {
   /** Suma de días hábiles ampliados; la fecha límite los incluye. */
   diasAmpliacion?: number
   ampliacionesPlazo?: DeadlineExtension[]
+  registrosTardios?: LateRegistrationRecord[]
   solicitantes: Applicant[]
   predios: Property[]
   funcionarioAsignado?: AssignedOfficial
@@ -136,11 +137,34 @@ export interface ActuationFields {
   /** Radicado de salida o de traslado; nunca reemplaza el radicado de entrada. */
   numeroRadicadoActuacion?: string
   fechaRadicadoActuacion?: string
+  /** Fecha en que se envió o notificó la actuación radicada (yyyy-mm-dd). */
+  fechaEnvioActuacion?: string
+}
+
+/** Actuaciones hechas a tiempo en la oficina que se subieron después a la aplicación. */
+export interface LateRegistrationRecord {
+  motivo: string
+  usuario: string
+  fecha: Timestamp
 }
 
 /** Fecha de cierre; los expedientes anteriores a este campo usan su última actualización. */
 export function getClosingDate(item: Pick<Expedient, 'fechaCierre' | 'fechaActualizacion'>): Date {
   return (item.fechaCierre ?? item.fechaActualizacion).toDate()
+}
+
+/**
+ * Fecha con la que se mide si se respondió a tiempo: la del radicado de la respuesta que cerró
+ * el expediente, que puede ser anterior al día en que se registró en la aplicación.
+ */
+export function getResponseDate(
+  item: Pick<Expedient, 'estado' | 'fechaRadicadoActuacion' | 'fechaCierre' | 'fechaActualizacion'>,
+): Date {
+  if (item.estado === 'Archivo (Finalizado)' && item.fechaRadicadoActuacion) {
+    const [year, month, day] = item.fechaRadicadoActuacion.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+  return getClosingDate(item)
 }
 
 export function isFinalizedExpedient(item: Pick<Expedient, 'estado' | 'activo'>): boolean {

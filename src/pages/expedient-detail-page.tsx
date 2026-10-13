@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, CalendarPlus, FileSearch, Pencil } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CalendarPlus, FileSearch, History, Pencil } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
@@ -18,12 +18,14 @@ import { ExpedientDocuments } from '@/features/expedients/components/expedient-d
 import { ExpedientHistory } from '@/features/expedients/components/expedient-history'
 import { ExpedientSummary } from '@/features/expedients/components/expedient-summary'
 import { ExtensionDialog } from '@/features/expedients/components/extension-dialog'
+import { LateRegistrationDialog } from '@/features/expedients/components/late-registration-dialog'
 import { WorkflowStepper } from '@/features/expedients/components/workflow-stepper'
 import { useAuth } from '@/hooks/use-auth'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
 import { hasReplacedEntryFiling, suggestEntryFiling } from '@/lib/entry-filing'
 import { getFlow, getStepDefinition, type Actuation } from '@/lib/expedient-workflow'
-import { formatDate, formatLongDate } from '@/lib/format'
+import { describeRemainingDays, formatDate, formatLongDate } from '@/lib/format'
+import { getLateRegistrationScope, type LateRegistrationPlan } from '@/lib/late-registration'
 import { canCorrectRecords, canManageExpedient } from '@/lib/permissions'
 import { cn } from '@/lib/utils'
 import { listExpedientFilings, type FilingRecord } from '@/services/filing.service'
@@ -52,6 +54,23 @@ function describeActuation(actuation: Actuation): { title: string; description?:
     : { title: actuation.action, description: `Siguiente paso: ${actuation.nextStatus}.` }
 }
 
+function describeLateRegistration(plan: LateRegistrationPlan): {
+  title: string
+  description: string
+} {
+  if (!plan.finalized)
+    return { title: 'Expediente al día', description: `Paso actual: ${plan.finalStatus}.` }
+  return plan.timeliness?.onTime
+    ? {
+        title: 'Expediente finalizado dentro del término',
+        description: 'Se tomó la fecha real de la respuesta. Quedó en el Histórico.',
+      }
+    : {
+        title: 'Expediente finalizado fuera del término',
+        description: `La respuesta se radicó ${plan.timeliness?.businessDaysLate} días hábiles después del vencimiento.`,
+      }
+}
+
 export function ExpedientDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -65,7 +84,9 @@ export function ExpedientDetailPage() {
     queryFn: () => listExpedientFilings(id!),
     enabled: Boolean(id),
   })
-  const [dialog, setDialog] = useState<'actuation' | 'extension' | 'edit' | null>(null)
+  const [dialog, setDialog] = useState<'actuation' | 'extension' | 'edit' | 'late' | null>(
+    params.get('registro') === 'tardio' ? 'late' : null,
+  )
   const [editingFiling, setEditingFiling] = useState<FilingRecord | null>(null)
   const [editingDocument, setEditingDocument] = useState<WorkflowDocument | null>(null)
   const associatedFilings = useMemo(
@@ -101,6 +122,8 @@ export function ExpedientDetailPage() {
   const currentIndex = flow.indexOf(item.estado)
   const step = getStepDefinition(item.estado)
   const canExtend = canManage && Boolean(item.fechaLimite) && (item.diasRestantes ?? 0) >= 0
+  const canRegisterLate =
+    canManage && Boolean(item.fechaLimite) && Boolean(getLateRegistrationScope(item.estado))
   const entryFilingReplaced = hasReplacedEntryFiling(item)
   const suggestedEntryFiling = entryFilingReplaced ? suggestEntryFiling(item) : undefined
   const counts: Record<Tab, number | undefined> = {
@@ -176,6 +199,15 @@ export function ExpedientDetailPage() {
                         <CalendarPlus size={17} /> Ampliar plazo
                       </Button>
                     )}
+                    {canRegisterLate && (
+                      <Button
+                        variant="outline"
+                        onClick={() => setDialog('late')}
+                        title="Subir respuestas, traslados o ampliaciones ya radicados con sus fechas reales"
+                      >
+                        <History size={17} /> Registrar atrasado
+                      </Button>
+                    )}
                     <Button onClick={() => setDialog('actuation')}>
                       {step.title === 'Completar actuación'
                         ? `Completar: ${item.estado}`
@@ -196,6 +228,22 @@ export function ExpedientDetailPage() {
           <WorkflowStepper flow={flow} currentIndex={currentIndex} />
         </div>
       </div>
+
+      {canRegisterLate && item.estadoTermino === 'Vencido' && (
+        <Alert
+          tone="warning"
+          title={`Aparece vencido: ${describeRemainingDays(item.diasRestantes).toLocaleLowerCase('es-CO')}`}
+          className="no-print"
+        >
+          <p>
+            Si ya se respondió, se trasladó o se amplió el plazo a tiempo y no se subió a la
+            aplicación, regístralo con las fechas reales: el término se calculará con ellas.
+          </p>
+          <Button variant="outline" size="sm" className="mt-2" onClick={() => setDialog('late')}>
+            <History size={15} /> Registrar actuaciones atrasadas
+          </Button>
+        </Alert>
+      )}
 
       {entryFilingReplaced && (
         <Alert tone="warning" title="El radicado de entrada fue reemplazado" className="no-print">
@@ -274,6 +322,16 @@ export function ExpedientDetailPage() {
           onCompleted={(actuation) => {
             setDialog(null)
             toast(describeActuation(actuation))
+          }}
+        />
+      )}
+      {dialog === 'late' && (
+        <LateRegistrationDialog
+          expedient={item}
+          onClose={() => setDialog(null)}
+          onCompleted={(plan) => {
+            setDialog(null)
+            toast(describeLateRegistration(plan))
           }}
         />
       )}

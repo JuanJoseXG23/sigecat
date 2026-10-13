@@ -35,16 +35,16 @@ Flujo de traslado (se elige en "En respuesta"):
   → Generar respuesta al ciudadano → Radicar respuesta → Archivo (Finalizado)
 ```
 
-| Paso actual                    | Qué se exige para continuar                                                       | Pasa a                                                      |
-| ------------------------------ | --------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Recibido                       | Confirmar formato físico firmado y asociar el documento recibido (OneDrive)       | Asignado                                                    |
-| Asignado                       | Elegir responsable; se le envía un correo                                         | En respuesta                                                |
-| En respuesta                   | Elegir: respuesta al usuario, traslado (destino y motivo) o cambio de responsable | Radicado de salida / Traslado por competencia / sigue igual |
-| Radicado de salida             | Asociar la respuesta radicada y registrar número y fecha de radicado              | Archivo (Finalizado)                                        |
-| Traslado por competencia       | —                                                                                 | Generar radicado de traslado                                |
-| Generar radicado de traslado   | Asociar el documento de traslado y registrar número y fecha de radicado           | Generar respuesta al ciudadano                              |
-| Generar respuesta al ciudadano | —                                                                                 | Radicar respuesta                                           |
-| Radicar respuesta              | Asociar la respuesta radicada y registrar número y fecha de radicado              | Archivo (Finalizado)                                        |
+| Paso actual                    | Qué se exige para continuar                                                                                | Pasa a                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Recibido                       | Confirmar formato físico firmado y asociar el documento recibido (OneDrive)                                | Asignado                                                    |
+| Asignado                       | Elegir responsable; se le envía un correo                                                                  | En respuesta                                                |
+| En respuesta                   | Elegir: respuesta al usuario, traslado (destino y motivo) o cambio de responsable                          | Radicado de salida / Traslado por competencia / sigue igual |
+| Radicado de salida             | Asociar la respuesta radicada y registrar número y fecha de radicado (envío y quién respondió, opcionales) | Archivo (Finalizado)                                        |
+| Traslado por competencia       | —                                                                                                          | Generar radicado de traslado                                |
+| Generar radicado de traslado   | Asociar el documento de traslado y registrar número y fecha de radicado                                    | Generar respuesta al ciudadano                              |
+| Generar respuesta al ciudadano | —                                                                                                          | Radicar respuesta                                           |
+| Radicar respuesta              | Asociar la respuesta radicada y registrar número y fecha de radicado                                       | Archivo (Finalizado)                                        |
 
 Al llegar a **Archivo (Finalizado)** el expediente queda inactivo, guarda su `fechaCierre` y pasa
 al Histórico en modo consulta. Un Administrador o Coordinador también puede **archivar** un
@@ -92,6 +92,44 @@ En un solo lote se guarda la nueva `fechaLimite` (días hábiles contados desde 
 anterior), `diasAmpliacion`, el detalle en `ampliacionesPlazo[]`, el escaneo como documento
 `AMPLIACION_PLAZO`, el radicado (tipo `Ampliación de plazo`) y el historial. Las reglas están en
 `src/lib/deadline-extension.ts` con sus pruebas; el tope está en `MAX_EXTENSION_FACTOR`.
+
+## Registro de actuaciones atrasadas
+
+Para lo que se hizo a tiempo en la oficina (respuesta, traslado, ampliación) pero no se subió a
+la aplicación. Botón **Registrar atrasado** en el detalle (quien puede gestionar el expediente,
+mientras esté activo); si el expediente aparece vencido, un aviso lo ofrece. También se abre con
+`#/expedientes/{id}?registro=tardio`.
+
+El asistente parte del paso en que quedó el expediente y pide, en el orden del flujo, solo lo
+que falta:
+
+| Sección    | Qué pide                                                                                                                                  |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Situación  | Qué pasó (se respondió, se trasladó o sigue en trámite), si se amplió el plazo y por qué no se registró a tiempo (obligatorio)            |
+| Recepción  | Si quedó en Recibido o Asignado: documento recibido (si falta), firma del formato y responsable                                           |
+| Ampliación | Oficio radicado, días hábiles y motivo. Debe haberse radicado **a más tardar el día del vencimiento vigente**; si fue después, no procede |
+| Radicados  | Traslado (destino, motivo, radicado) y/o respuesta: número, **fecha de radicado** y **fecha de envío**, escaneo y quién proyectó y firmó  |
+| Revisión   | Línea de tiempo con las fechas reales y si cada actuación quedó dentro del término; estado en que quedará                                 |
+
+Reglas (`src/lib/late-registration.ts`, con pruebas):
+
+- Las fechas no pueden ser anteriores a la radicación ni futuras; el envío no es anterior a su
+  radicado; la respuesta al ciudadano no es anterior al traslado ni la respuesta a la ampliación.
+  Los números son distintos entre sí y del radicado de entrada.
+- Si ya hay un documento asociado del tipo (por ejemplo, la respuesta subida sin terminar el
+  paso), sirve de soporte y no se pide de nuevo.
+- Una respuesta fuera del término se registra igual, con los días hábiles de retraso. Un traslado
+  después de 5 días hábiles (art. 21, Ley 1755 de 2015) se advierte sin bloquear.
+- Si respondió **otro compañero**, el expediente queda a su nombre y el historial lo dice. El
+  mismo selector está en los pasos con radicado del flujo normal.
+- Al finalizar, `fechaCierre` es la fecha real del radicado de respuesta.
+
+Todo se guarda en un solo lote: campos y estado, documentos, ampliación y nueva fecha límite,
+radicados (marcados `registroTardio`), historial en orden y `registrosTardios[]` con el motivo.
+
+**Oportunidad:** el detalle y Reportes miden si se respondió a tiempo con la fecha del radicado
+de la respuesta (`fechaRadicadoActuacion`), no con el día en que se cerró en la aplicación; sin
+ese dato, con la fecha de cierre.
 
 ## Correcciones (Administrador y Coordinador)
 

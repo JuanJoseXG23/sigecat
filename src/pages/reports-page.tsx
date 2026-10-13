@@ -7,7 +7,7 @@ import { Select } from '@/components/ui/select'
 import { downloadCsv } from '@/lib/csv'
 import { formatDate } from '@/lib/format'
 import { listExpedients, listHistoricalExpedients } from '@/services/expedient.service'
-import { getClosingDate, type Expedient } from '@/types/expedient'
+import { getClosingDate, getResponseDate, type Expedient } from '@/types/expedient'
 
 function group(items: Expedient[], label: (item: Expedient) => string): [string, number][] {
   const counts = new Map<string, number>()
@@ -18,12 +18,15 @@ function group(items: Expedient[], label: (item: Expedient) => string): [string,
 const responsibleOf = (item: Expedient) =>
   item.funcionarioAsignado?.nombreCompleto ?? item.responsableExterno ?? 'Sin asignar'
 
-/** Cerrado a tiempo: la fecha de cierre no supera la fecha límite (incluida la ampliación). */
+/**
+ * Respondido a tiempo: la fecha del radicado de respuesta (o, sin ella, la de cierre) no supera
+ * la fecha límite, incluida la ampliación. Así cuenta bien lo que se registró tarde.
+ */
 function closedOnTime(item: Expedient): boolean | null {
   if (item.activo || !item.fechaLimite || item.estado === 'Archivado') return null
   const deadline = item.fechaLimite.toDate()
   deadline.setHours(23, 59, 59, 999)
-  return getClosingDate(item) <= deadline
+  return getResponseDate(item) <= deadline
 }
 
 function BarList({
@@ -134,6 +137,7 @@ export function ReportsPage() {
         'Días ampliados',
         'Fecha de cierre',
         'Respondido a tiempo',
+        'Registro tardío',
         'Municipio',
       ],
       rows.map((item) => {
@@ -148,6 +152,7 @@ export function ReportsPage() {
           item.diasAmpliacion ?? 0,
           item.activo ? '' : formatDate(getClosingDate(item)),
           timely === null ? '' : timely ? 'Sí' : 'No',
+          item.registrosTardios?.length ? 'Sí' : 'No',
           item.predios[0]?.municipio,
         ]
       }),

@@ -109,6 +109,10 @@ export interface ActuationInput {
   reason: string
   filingNumber: string
   filingDate: string
+  /** Fecha en que se envió el radicado; opcional en el flujo normal. */
+  sentDate: string
+  /** Pasos con radicado: compañero que proyectó y firmó, si no fue el responsable. */
+  respondedBy?: AssignedOfficial
   notes: string
 }
 
@@ -119,6 +123,7 @@ export const EMPTY_ACTUATION_INPUT: ActuationInput = {
   reason: '',
   filingNumber: '',
   filingDate: '',
+  sentDate: '',
   notes: '',
 }
 
@@ -137,6 +142,8 @@ function getMissingInput(status: ExpedientStatus, input: ActuationInput): string
     return 'Indica la dependencia destino y el motivo del traslado.'
   if (step.requiresFiling && (!input.filingNumber.trim() || !input.filingDate))
     return 'Registra el número y la fecha de radicado.'
+  if (step.requiresFiling && input.sentDate && input.sentDate < input.filingDate)
+    return 'La fecha de envío no puede ser anterior a la del radicado.'
   return null
 }
 
@@ -161,11 +168,13 @@ export type Actuation =
       detail: string
       nextStatus: ExpedientStatus
       fields: ActuationFields
+      /** Compañero que respondió; el expediente queda a su nombre. */
+      respondedBy?: AssignedOfficial
     }
 
 /** Traduce el paso actual y lo diligenciado en la operación que se debe guardar. */
 export function planActuation(
-  expedient: Pick<Expedient, 'estado' | 'trasladoPorCompetencia'>,
+  expedient: Pick<Expedient, 'estado' | 'trasladoPorCompetencia' | 'funcionarioAsignado'>,
   input: ActuationInput,
 ): Actuation {
   const status = expedient.estado
@@ -203,12 +212,21 @@ export function planActuation(
   const step = getStepDefinition(status)
   if (step.requiresFiling) {
     const number = input.filingNumber.trim()
+    const respondedBy =
+      input.respondedBy && input.respondedBy.uid !== expedient.funcionarioAsignado?.uid
+        ? input.respondedBy
+        : undefined
     return {
       kind: 'complete',
       action: step.filingAction!,
       detail: `Radicado ${number}. ${notes}`.trim(),
       nextStatus,
-      fields: { numeroRadicadoActuacion: number, fechaRadicadoActuacion: input.filingDate },
+      fields: {
+        numeroRadicadoActuacion: number,
+        fechaRadicadoActuacion: input.filingDate,
+        ...(input.sentDate ? { fechaEnvioActuacion: input.sentDate } : {}),
+      },
+      ...(respondedBy ? { respondedBy } : {}),
     }
   }
   return {

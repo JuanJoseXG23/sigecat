@@ -26,6 +26,10 @@ export interface FilingRecord {
   observaciones?: string
   documentoUrl?: string
   documentoNombre?: string
+  /** Fecha en que se envió o notificó al destinatario. */
+  fechaEnvio?: string
+  /** Se subió a la aplicación después de radicado (registro tardío). */
+  registroTardio?: boolean
 }
 const COLLECTION = 'radicados'
 
