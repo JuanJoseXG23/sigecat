@@ -1,6 +1,7 @@
 import {
   Archive,
   BarChart3,
+  CircleHelp,
   FileCog,
   FolderKanban,
   Gauge,
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react'
 import type { UserRole } from '@/types/user'
 
-export type NavigationGroup = 'Gestión' | 'Archivo' | 'Administración'
+export type NavigationGroup = 'Gestión' | 'Archivo' | 'Administración' | 'Ayuda'
 
 export interface AppNavigationItem {
   label: string
@@ -34,7 +35,12 @@ const allRoles: readonly UserRole[] = [
 const operationalRoles: readonly UserRole[] = ['Administrador', 'Coordinador', 'Funcionario']
 const managementRoles: readonly UserRole[] = ['Administrador', 'Coordinador', 'Directivo']
 
-export const navigationGroups: readonly NavigationGroup[] = ['Gestión', 'Archivo', 'Administración']
+export const navigationGroups: readonly NavigationGroup[] = [
+  'Gestión',
+  'Archivo',
+  'Administración',
+  'Ayuda',
+]
 
 export const appNavigation: readonly AppNavigationItem[] = [
   {
@@ -113,6 +119,13 @@ export const appNavigation: readonly AppNavigationItem[] = [
     icon: Settings,
     roles: ['Administrador'],
     group: 'Administración',
+  },
+  {
+    label: 'Guía rápida',
+    path: '/ayuda',
+    icon: CircleHelp,
+    roles: allRoles,
+    group: 'Ayuda',
   },
 ]
 

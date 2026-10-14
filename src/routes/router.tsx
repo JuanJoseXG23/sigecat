@@ -53,6 +53,9 @@ const SettingsPage = lazy(() =>
 const UsersPage = lazy(() =>
   import('@/pages/users-page').then((module) => ({ default: module.UsersPage })),
 )
+const HelpPage = lazy(() =>
+  import('@/pages/help-page').then((module) => ({ default: module.HelpPage })),
+)
 const DocumentsLibraryPage = lazy(() =>
   import('@/pages/documents-library-page').then((module) => ({
     default: module.DocumentsLibraryPage,
@@ -97,6 +100,7 @@ export const router = createHashRouter([
           { path: 'reportes', element: withRole('/reportes', <ReportsPage />) },
           { path: 'tipos-tramite', element: withRole('/tipos-tramite', <ProcedureTypesPage />) },
           { path: 'configuracion', element: withRole('/configuracion', <SettingsPage />) },
+          { path: 'ayuda', element: withRole('/ayuda', <HelpPage />) },
           { path: 'acceso-denegado', element: <AccessDeniedPage /> },
           { path: '*', element: <HomeRedirect /> },
         ],

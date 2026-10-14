@@ -18,6 +18,7 @@ Menú por rol (definido en `src/routes/navigation.ts`):
 | Mi Agenda, Radicación                         |   ✓   |   ✓    |   ✓   |          |
 | Reportes                                      |   ✓   |   ✓    |       |          |
 | Usuarios, Tipos de trámite, Configuración     |   ✓   |        |       |          |
+| Guía rápida (Ayuda)                           |   ✓   |   ✓    |   ✓   |    ✓     |
 
 Los usuarios se crean con `npm run user:create` (ver README); la página Usuarios permite editar
 datos, rol y activar o desactivar cuentas.
