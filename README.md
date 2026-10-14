@@ -7,6 +7,8 @@ Impuestos, Fiscalización, Contabilidad, Tesorería y Presupuesto), con historia
 - [Arquitectura](docs/arquitectura.md): stack, carpetas, convenciones y publicación.
 - [Flujo y permisos](docs/flujo-y-permisos.md): roles, estados, términos y correos.
 - [Modelo de datos](docs/modelo-de-datos.md): colecciones de Firestore.
+- [Cumplimiento normativo](docs/cumplimiento-normativo.md): datos personales, derecho de petición,
+  transparencia, gestión documental y seguridad digital.
 - **[EMERGENCIA: recuperar la base de datos](docs/EMERGENCIA-recuperacion.md)**: qué hacer si se
   pierden datos o el proyecto de Firebase.
 

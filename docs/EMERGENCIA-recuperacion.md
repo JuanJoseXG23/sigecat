@@ -11,7 +11,12 @@ diferencias.
    durante la recuperación puede perderse o mezclarse.
 2. **No borre nada**: ni documentos en la consola de Firebase, ni copias, ni el repositorio.
 3. Anote qué pasó, cuándo se notó y qué se ve (o no se ve) en la aplicación.
-4. Identifique el escenario:
+4. **Si alguien accedió, copió o borró datos sin autorización** (no solo una falla técnica):
+   avise de inmediato al oficial de protección de datos de la Alcaldía. La SIC exige reportar el
+   incidente en el Registro Nacional de Bases de Datos **dentro de los 15 días hábiles** siguientes
+   a conocerlo ([cumplimiento normativo](cumplimiento-normativo.md)). Si fue con la llave de
+   administración, elimínela de inmediato en Google Cloud → Cuentas de servicio.
+5. Identifique el escenario:
    - **A.** El proyecto de Firebase existe, pero faltan o están mal algunos datos.
    - **B.** El proyecto de Firebase ya no existe o no hay forma de entrar a él.
 

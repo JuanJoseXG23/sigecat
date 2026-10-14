@@ -70,7 +70,7 @@ recomendación técnica; se puede revisar.
 - Propiedad institucional del proyecto de Firebase y del repositorio (hoy en una cuenta personal).
 - Protección contra eliminación de la base de Firestore (desactivada; la llave no puede cambiarla).
 - Sacar la llave de administración de OneDrive y rotarla.
-- Normativa aplicable (Ley 1581 de 2012, Ley 594 de 2000, Decreto 1080 de 2015, Ley 1712 de
-  2014): separar obligaciones verificadas de buenas prácticas.
+- Acciones de cumplimiento normativo (RNBD, aviso de privacidad, Ley 1712, constancia con Archivo,
+  MSPI): ver [cumplimiento-normativo.md](cumplimiento-normativo.md).
 - D-26: hoy el formulario permite dejar el expediente sin responsable; falta decidir si se asigna
   solo a quien lo registra.
