@@ -12,7 +12,7 @@ import {
 import type { ExpedientStatus } from '@/types/expedient'
 
 const official = { uid: 'f1', nombreCompleto: 'Ana Pérez' }
-const filing = { filingNumber: ' S-100 ', filingDate: '2026-10-02' }
+const filing = { filingNumber: ' 20262000100 ', filingDate: '2026-10-02' }
 const input = (values: Partial<ActuationInput> = {}): ActuationInput => ({
   ...EMPTY_ACTUATION_INPUT,
   ...values,
@@ -93,9 +93,9 @@ test('Radicado de salida exige radicado y finaliza sin tocar el radicado de entr
   assert.deepEqual(planActuation(standard('Radicado de salida'), input(filing)), {
     kind: 'complete',
     action: 'Registró radicado de salida',
-    detail: 'Radicado S-100.',
+    detail: 'Radicado 20262000100.',
     nextStatus: 'Archivo (Finalizado)',
-    fields: { numeroRadicadoActuacion: 'S-100', fechaRadicadoActuacion: '2026-10-02' },
+    fields: { numeroRadicadoActuacion: '20262000100', fechaRadicadoActuacion: '2026-10-02' },
   })
 })
 
@@ -113,7 +113,7 @@ test('el radicado guarda la fecha de envío y quién respondió si fue otro comp
     input({ ...filing, sentDate: '2026-10-03', respondedBy: colleague }),
   ) as { fields: object; respondedBy?: object }
   assert.deepEqual(plan.fields, {
-    numeroRadicadoActuacion: 'S-100',
+    numeroRadicadoActuacion: '20262000100',
     fechaRadicadoActuacion: '2026-10-02',
     fechaEnvioActuacion: '2026-10-03',
   })

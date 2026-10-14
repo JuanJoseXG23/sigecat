@@ -18,7 +18,7 @@ const context: ExtensionContext = {
 }
 
 const valid: ExtensionInput = {
-  filingNumber: ' S-2026-0450 ',
+  filingNumber: ' 20262000450 ',
   filingDate: '2026-09-18',
   requestedDays: 10,
   reason: 'Se requiere visita técnica al predio.',

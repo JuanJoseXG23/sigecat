@@ -140,7 +140,7 @@ export function ExtensionDialog({ expedient, onClose, onCompleted }: ExtensionDi
               <Input
                 value={values.filingNumber}
                 onChange={(event) => update({ filingNumber: event.target.value })}
-                placeholder="Ej. S-2026-00410"
+                placeholder="Ej. 20262000410"
               />
             </Field>
             <Field

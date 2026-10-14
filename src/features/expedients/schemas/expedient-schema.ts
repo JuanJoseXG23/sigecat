@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { getFilingNumberError } from '@/lib/filing-number'
 import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
 
 const optionalText = z.string().trim().optional()
@@ -40,3 +41,16 @@ export const expedientSchema = z.object({
   ),
   observacionesIniciales: optionalText,
 })
+
+/**
+ * Valida el formato del radicado de entrada si el expediente es nuevo o si el número cambia;
+ * los expedientes antiguos con otro formato se pueden seguir editando.
+ */
+export function createExpedientSchema(previousNumber?: string) {
+  return expedientSchema.superRefine((values, context) => {
+    if (values.numeroRadicado === previousNumber?.trim()) return
+    const error = getFilingNumberError(values.numeroRadicado, values.fechaRadicado, 'entrada')
+    if (error)
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['numeroRadicado'], message: error })
+  })
+}

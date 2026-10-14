@@ -580,7 +580,7 @@ export function LateRegistrationDialog({
                   onChange={(event) =>
                     update({ extension: { ...values.extension, filingNumber: event.target.value } })
                   }
-                  placeholder="Ej. S-2026-00410"
+                  placeholder="Ej. 20262000410"
                 />
               </Field>
               <Field label="Fecha de radicado" required>
@@ -715,7 +715,7 @@ export function LateRegistrationDialog({
                   onChange={(filing) => update({ transfer: { ...values.transfer, filing } })}
                   minDate={context.entryDate}
                   existingDocument={existingDocuments.TRASLADO}
-                  placeholder="Ej. S-2026-00321"
+                  placeholder="Ej. 20262000321"
                 />
                 <div className="flex items-center justify-between gap-4 rounded-xl border border-border p-4 text-sm">
                   <div>
@@ -746,7 +746,7 @@ export function LateRegistrationDialog({
                     : context.entryDate
                 }
                 existingDocument={existingDocuments.RADICADO_SALIDA}
-                placeholder="Ej. S-2026-00322"
+                placeholder="Ej. 20262000322"
               />
             )}
 

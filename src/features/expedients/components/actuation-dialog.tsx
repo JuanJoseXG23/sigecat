@@ -241,7 +241,7 @@ export function ActuationDialog({ expedient, onClose, onCompleted }: ActuationDi
                 <Input
                   value={values.filingNumber}
                   onChange={(event) => update({ filingNumber: event.target.value })}
-                  placeholder="Ej. S-2026-00321"
+                  placeholder="Ej. 20262000321"
                 />
               </Field>
               <Field label="Fecha de radicado" required>

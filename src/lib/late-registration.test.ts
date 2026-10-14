@@ -19,7 +19,7 @@ const link = 'https://girardota.sharepoint.com/doc.pdf'
 // Entrada el 1 de septiembre de 2026 con 15 días hábiles: vence el martes 22 de septiembre.
 const context: LateRegistrationContext = {
   status: 'En respuesta',
-  entryNumber: 'E-100',
+  entryNumber: '20261000100',
   entryDate: '2026-09-01',
   currentDeadline: new Date(2026, 8, 22),
   responseDays: 15,
@@ -30,7 +30,7 @@ const context: LateRegistrationContext = {
 }
 
 const filing = (values: Partial<LateFilingInput> = {}): LateFilingInput => ({
-  number: 'S-200',
+  number: '20262000200',
   date: '2026-09-21',
   sentDate: '2026-09-22',
   documentName: 'Respuesta',
@@ -47,7 +47,7 @@ const input = (values: Partial<LateRegistrationInput> = {}): LateRegistrationInp
 })
 
 const extension = {
-  filingNumber: 'S-150',
+  filingNumber: '20262000150',
   filingDate: '2026-09-18',
   requestedDays: 10,
   reason: 'Se requiere visita técnica.',
@@ -79,7 +79,7 @@ test('una respuesta a tiempo registrada tarde cierra dentro del término', () =>
   assert.equal(plan.closingDate, '2026-09-21')
   assert.deepEqual(plan.timeliness, { onTime: true, businessDaysLate: 0 })
   assert.deepEqual(plan.fields, {
-    numeroRadicadoActuacion: 'S-200',
+    numeroRadicadoActuacion: '20262000200',
     fechaRadicadoActuacion: '2026-09-21',
     fechaEnvioActuacion: '2026-09-22',
   })
@@ -227,7 +227,7 @@ test('traslado por competencia con y sin respuesta al ciudadano', () => {
   const transfer = {
     destination: 'Secretaría de Planeación',
     reason: 'Asunto de su competencia',
-    filing: filing({ number: 'T-10', date: '2026-09-04', sentDate: '2026-09-04' }),
+    filing: filing({ number: '20262000010', date: '2026-09-04', sentDate: '2026-09-04' }),
   }
   const pendingCitizen = planLateRegistration(
     input({ outcome: 'transfer', transfer, citizenResponseSent: false }),
@@ -270,7 +270,7 @@ test('el traslado tardío frente al art. 21 se advierte sin bloquear', () => {
       transfer: {
         destination: 'Planeación',
         reason: 'Competencia',
-        filing: filing({ number: 'T-10', date: '2026-09-10', sentDate: '2026-09-10' }),
+        filing: filing({ number: '20262000010', date: '2026-09-10', sentDate: '2026-09-10' }),
       },
     }),
     context,
@@ -285,10 +285,10 @@ test('valida fechas y números de los radicados', () => {
   assert.match(message({ date: '2026-10-14', sentDate: '2026-10-14' })!, /futura/)
   assert.match(message({ sentDate: '' })!, /se envió/)
   assert.match(message({ sentDate: '2026-09-20' })!, /anterior a su radicado/)
-  assert.match(message({ number: 'E-100' })!, /radicado de entrada/)
+  assert.match(message({ number: '20261000100' })!, /radicado de entrada/)
   assert.match(
     getLateRegistrationIssue(
-      input({ extensionEnabled: true, extension: { ...extension, filingNumber: 'S-200' } }),
+      input({ extensionEnabled: true, extension: { ...extension, filingNumber: '20262000200' } }),
       context,
     )!.message,
     /número distinto/,

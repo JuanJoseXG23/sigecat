@@ -8,7 +8,10 @@ import { Field } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { expedientSchema } from '@/features/expedients/schemas/expedient-schema'
+import {
+  createExpedientSchema,
+  type expedientSchema,
+} from '@/features/expedients/schemas/expedient-schema'
 import { calculateExpedientTimeline, toDateKey } from '@/lib/expedient-deadline'
 import { describeRemainingDays, formatLongDate } from '@/lib/format'
 import { useBusinessConfiguration } from '@/hooks/use-business-configuration'
@@ -135,7 +138,7 @@ export function ExpedientForm({
 }: ExpedientFormProps) {
   const entryFilingLocked = Boolean(expedient) && !canEditEntryFiling
   const form = useForm<FormInput, unknown, FormValues>({
-    resolver: zodResolver(expedientSchema),
+    resolver: zodResolver(createExpedientSchema(expedient?.numeroRadicado)),
     defaultValues: getDefaultValues(expedient),
     mode: 'onSubmit',
   })
@@ -187,7 +190,7 @@ export function ExpedientForm({
             }
           >
             <Input
-              placeholder="Ej. 2026-00125"
+              placeholder="Ej. 20261000125"
               readOnly={entryFilingLocked}
               aria-readonly={entryFilingLocked}
               className={

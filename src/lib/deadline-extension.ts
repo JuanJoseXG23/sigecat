@@ -1,5 +1,6 @@
 import { isInstitutionalDocumentUrl } from './document-links'
 import { addBusinessDays, toDateKey } from './expedient-deadline'
+import { getFilingNumberError } from './filing-number'
 
 /**
  * Ampliación del término de respuesta (parágrafo del art. 14 de la Ley 1437 de 2011,
@@ -58,6 +59,8 @@ export function getExtensionError(input: ExtensionInput, context: ExtensionConte
     return 'Usa un enlace HTTPS válido de OneDrive o SharePoint institucional.'
   if (!input.filingNumber.trim() || !input.filingDate)
     return 'Registra el número y la fecha del radicado de la ampliación.'
+  const numberError = getFilingNumberError(input.filingNumber, input.filingDate, 'salida')
+  if (numberError) return numberError
   const today = toDateKey(context.today ?? new Date())
   if (input.filingDate < context.entryDate)
     return 'La fecha del radicado no puede ser anterior a la radicación del expediente.'

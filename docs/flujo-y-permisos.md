@@ -79,6 +79,12 @@ Cada número de radicado registrado en el flujo crea un documento en `radicados`
 radicado de entrada. El radicado de entrada (`numeroRadicado`) no puede repetirse entre
 expedientes.
 
+**Formato de los radicados.** Los asigna Archivo: año + serie + consecutivo de 4 cifras (se
+aceptan más). La serie es `100` para la entrada (`2026100xxxx`) y `200` para todo lo que se envía:
+respuestas, traslados y ampliaciones (`2026200xxxx`). El año debe coincidir con la fecha del
+radicado. Se valida al registrar o corregir un número (`src/lib/filing-number.ts`); los
+radicados históricos con otro formato se conservan mientras no se cambien.
+
 Estas reglas están en `src/lib/expedient-workflow.ts`, con una prueba por paso en
 `expedient-workflow.test.ts`; el diálogo de actuación solo las muestra. Para cambiar el flujo se
 modifica ese módulo y su prueba, y se actualiza esta tabla.

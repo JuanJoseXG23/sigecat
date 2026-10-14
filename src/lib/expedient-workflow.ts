@@ -6,6 +6,7 @@ import type {
   WorkflowDocument,
   WorkflowDocumentType,
 } from '@/types/expedient'
+import { getFilingNumberError } from './filing-number'
 
 /**
  * Reglas del flujo del expediente: qué exige cada paso y qué produce al continuar.
@@ -142,6 +143,10 @@ function getMissingInput(status: ExpedientStatus, input: ActuationInput): string
     return 'Indica la dependencia destino y el motivo del traslado.'
   if (step.requiresFiling && (!input.filingNumber.trim() || !input.filingDate))
     return 'Registra el número y la fecha de radicado.'
+  if (step.requiresFiling) {
+    const error = getFilingNumberError(input.filingNumber, input.filingDate, 'salida')
+    if (error) return error
+  }
   if (step.requiresFiling && input.sentDate && input.sentDate < input.filingDate)
     return 'La fecha de envío no puede ser anterior a la del radicado.'
   return null

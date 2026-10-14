@@ -7,6 +7,7 @@ import {
   getRemainingBusinessDays,
   toDateKey,
 } from './expedient-deadline'
+import { getFilingNumberError } from './filing-number'
 import { formatDate } from './format'
 
 /**
@@ -176,6 +177,8 @@ function getFilingError(
   const today = toDateKey(context.today ?? new Date())
   if (!filing.number.trim() || !filing.date)
     return `Registra el número y la fecha del radicado de ${noun}.`
+  const numberError = getFilingNumberError(filing.number, filing.date, 'salida')
+  if (numberError) return `Radicado de ${noun}: ${numberError}`
   if (filing.date < context.entryDate)
     return `La fecha del radicado de ${noun} no puede ser anterior a la radicación del expediente.`
   if (filing.date > today) return `La fecha del radicado de ${noun} no puede ser futura.`
