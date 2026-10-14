@@ -105,7 +105,8 @@ export interface Expedient extends ActuationFields {
   ampliacionesPlazo?: DeadlineExtension[]
   registrosTardios?: LateRegistrationRecord[]
   solicitantes: Applicant[]
-  predios: Property[]
+  /** Opcional: los expedientes no tienen que identificar predios. */
+  predios?: Property[]
   funcionarioAsignado?: AssignedOfficial
   responsableExterno?: string
   trasladoPorCompetencia?: boolean

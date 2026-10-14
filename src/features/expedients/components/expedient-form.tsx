@@ -65,7 +65,8 @@ function getDefaultValues(expedient?: Expedient): FormInput {
     tipoTramite: expedient?.tipoTramite ?? '',
     asunto: expedient?.asunto ?? '',
     solicitantes: expedient?.solicitantes.length ? expedient.solicitantes : [emptyApplicant],
-    predios: expedient?.predios.length ? expedient.predios : [emptyProperty],
+    // Los nuevos empiezan sin predio; al editar se conservan tal como están guardados.
+    predios: expedient?.predios ?? [],
     funcionarioAsignadoUid: expedient?.funcionarioAsignado?.uid ?? '',
     prioridad: expedient?.prioridad,
     observacionesIniciales: expedient?.observacionesIniciales ?? '',
@@ -314,12 +315,16 @@ export function ExpedientForm({
         </Button>
       </FormSection>
 
-      <FormSection step={4} title="Predios" description="Identificación catastral y registral.">
+      <FormSection
+        step={4}
+        title="Predios (opcional)"
+        description="Solo si el trámite se refiere a un predio: identificación catastral y registral."
+      >
         {properties.fields.map((field, index) => (
           <RepeatableCard
             key={field.id}
             title={`Predio ${index + 1}`}
-            onRemove={properties.fields.length > 1 ? () => properties.remove(index) : undefined}
+            onRemove={() => properties.remove(index)}
           >
             <Field label="Número predial">
               <Input {...form.register(`predios.${index}.numeroPredial`)} />

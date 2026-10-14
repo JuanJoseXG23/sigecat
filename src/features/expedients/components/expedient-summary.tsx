@@ -2,6 +2,7 @@ import { ExternalLink, Hourglass, MapPin, Pencil, Stamp, UserRound } from 'lucid
 import type { ReactNode } from 'react'
 import { DeadlineBadge } from '@/features/expedients/components/expedient-badges'
 import { describeRemainingDays, formatDate, formatLongDate } from '@/lib/format'
+import { getRegisteredProperties } from '@/lib/properties'
 import { cn } from '@/lib/utils'
 import type { FilingRecord } from '@/services/filing.service'
 import { Badge } from '@/components/ui/badge'
@@ -137,6 +138,7 @@ export function ExpedientSummary({
   filings,
   onEditFiling,
 }: ExpedientSummaryProps) {
+  const properties = getRegisteredProperties(item.predios)
   return (
     <div className="grid gap-5 lg:grid-cols-3">
       <div className="space-y-5 lg:col-span-2">
@@ -156,22 +158,24 @@ export function ExpedientSummary({
           </div>
         </Panel>
 
-        <Panel title="Predios" icon={<MapPin size={16} className="text-primary" />}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {item.predios.map((property, index) => (
-              <div key={index} className="rounded-lg bg-muted/50 p-3 text-sm">
-                <p className="font-semibold text-slate-900">
-                  {property.direccion || 'Sin dirección'}
-                </p>
-                <p className="text-muted-foreground">{property.municipio || 'Sin municipio'}</p>
-                <p className="mt-1 text-slate-700">
-                  Predial: {property.numeroPredial || '—'} · Matrícula:{' '}
-                  {property.matriculaInmobiliaria || '—'}
-                </p>
-              </div>
-            ))}
-          </div>
-        </Panel>
+        {properties.length > 0 && (
+          <Panel title="Predios" icon={<MapPin size={16} className="text-primary" />}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {properties.map((property, index) => (
+                <div key={index} className="rounded-lg bg-muted/50 p-3 text-sm">
+                  <p className="font-semibold text-slate-900">
+                    {property.direccion || 'Sin dirección'}
+                  </p>
+                  <p className="text-muted-foreground">{property.municipio || 'Sin municipio'}</p>
+                  <p className="mt-1 text-slate-700">
+                    Predial: {property.numeroPredial || '—'} · Matrícula:{' '}
+                    {property.matriculaInmobiliaria || '—'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        )}
 
         {Boolean(item.ampliacionesPlazo?.length) && (
           <Panel

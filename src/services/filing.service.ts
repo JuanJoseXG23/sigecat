@@ -22,7 +22,8 @@ export interface FilingRecord {
   solicitante: string
   responsable: string
   estado: string
-  municipio: string
+  /** Solo en radicados antiguos: venía del primer predio, que ya no es obligatorio. */
+  municipio?: string
   observaciones?: string
   documentoUrl?: string
   documentoNombre?: string

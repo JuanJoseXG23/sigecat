@@ -23,7 +23,7 @@ export function matchesExpedientSearch(item: Expedient, query: string): boolean 
     item.asunto,
     item.funcionarioAsignado?.nombreCompleto,
     ...item.solicitantes.flatMap((applicant) => [applicant.nombre, applicant.documento]),
-    ...item.predios.flatMap((property) => [
+    ...(item.predios ?? []).flatMap((property) => [
       property.numeroPredial,
       property.matriculaInmobiliaria,
       property.direccion,

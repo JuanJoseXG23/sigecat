@@ -465,7 +465,6 @@ export async function completeRequiredActuation(
         current.responsableExterno ??
         '',
       estado: nextStatus,
-      municipio: current.predios[0]?.municipio ?? '',
       observaciones: detail,
       ...(supportingDocument
         ? { documentoUrl: supportingDocument.url, documentoNombre: supportingDocument.nombre }
@@ -568,7 +567,6 @@ export async function extendExpedientDeadline(
     solicitante: current.solicitantes[0]?.nombre ?? '',
     responsable: current.funcionarioAsignado?.nombreCompleto ?? current.responsableExterno ?? '',
     estado: current.estado,
-    municipio: current.predios[0]?.municipio ?? '',
     observaciones: reason,
     documentoUrl: documentUrl,
     documentoNombre: documentName,
@@ -693,7 +691,6 @@ export async function registerLateActuations(
       solicitante: current.solicitantes[0]?.nombre ?? '',
       responsable: responsible,
       estado: plan.finalStatus,
-      municipio: current.predios[0]?.municipio ?? '',
       observaciones: `Registro tardío. ${record.motivo}`,
       registroTardio: true,
       ...(filing.documento
