@@ -59,7 +59,7 @@ recomendación técnica; se puede revisar.
 ## Pendientes
 
 - Tipos de solicitante "Propietario" y "Copropietario": ¿se mantienen para todas las áreas?
-- Copias de seguridad periódicas en el plan gratuito.
+- Copias de seguridad: el código está listo (README); falta activarlo en Apps Script.
 - Normativa aplicable (Ley 1581 de 2012, Ley 594 de 2000, Decreto 1080 de 2015, Ley 1712 de
   2014): separar obligaciones verificadas de buenas prácticas.
 - D-26: hoy el formulario permite dejar el expediente sin responsable; falta decidir si se asigna

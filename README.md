@@ -129,3 +129,34 @@ que ejecuta el script y confirma también que puede consultar Firestore.
 
 Para detener el proceso por completo, ejecute `disableDailyDeadlineAlerts` en Apps Script. Para
 pausarlo sin eliminar el disparador, desactive **Alertas por correo** en SIGECAT.
+
+## Copias de seguridad
+
+El plan gratuito de Firebase no hace copias. `google-apps-script/Code.gs` guarda cada noche, entre
+las 02:00 y las 03:00, todos los documentos de Firestore (incluido el historial) en un archivo
+`.json.gz` dentro de la carpeta **SIGECAT copias de seguridad** del Drive de la cuenta
+institucional que ejecuta el script, y manda a la papelera las de más de 30 días. El permiso
+`drive.file` solo le deja ver y modificar los archivos que él mismo crea.
+
+### Activación
+
+1. Pegue en Apps Script el `Code.gs` y el `appsscript.json` actuales (este último agrega el
+   permiso de Drive).
+2. Ejecute `backupFirestore` una vez a mano: Google pedirá autorizar el acceso a Drive y quedará
+   la primera copia.
+3. Ejecute `setupDailyBackup` para programarla cada noche. `disableDailyBackup` la detiene.
+
+Cada copia lee todos los documentos, lo que cuenta para la cuota diaria de lecturas. Con decenas
+de miles de expedientes conviene pasar al plan Blaze y usar las exportaciones administradas.
+
+### Restaurar
+
+Descargue la copia de Drive y simule primero:
+
+```powershell
+npx tsx scripts/restore-backup.ts --file=sigecat-2026-10-14_0200.json.gz
+```
+
+Muestra qué documentos faltan en la base y cuáles cambiaron después de la copia. `--apply` crea
+solo los que faltan; `--overwrite` además devuelve los que cambiaron a como estaban. Nunca borra
+documentos. `--collections=expedientes,historial` limita la restauración.

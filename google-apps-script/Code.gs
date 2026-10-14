@@ -593,3 +593,185 @@ function colombianHolidays_(year) {
   colombianHolidayCache_[year] = map
   return map
 }
+
+/*
+ * Copias de seguridad: cada noche guarda en Drive (carpeta "SIGECAT copias de seguridad" de la
+ * cuenta que ejecuta el script) todos los documentos de Firestore, comprimidos, y manda a la
+ * papelera las copias de más de BACKUP_RETENTION_DAYS días. El permiso drive.file solo deja al
+ * script ver y modificar los archivos que él mismo crea. Se restauran con
+ * scripts/restore-backup.ts. Cada copia lee todos los documentos: cuenta para la cuota diaria.
+ */
+var BACKUP_COLLECTIONS = [
+  'usuarios',
+  'directorioUsuarios',
+  'expedientes',
+  'historial',
+  'radicados',
+  'radicadosEntrada',
+  'tiposTramite',
+  'configuracion',
+  'tareas',
+  'notificacionesAsignacion',
+  'consultasDireccion',
+  'solicitudesPruebaCorreo',
+]
+var BACKUP_FOLDER_NAME = 'SIGECAT copias de seguridad'
+var BACKUP_RETENTION_DAYS = 30
+var DRIVE_API = 'https://www.googleapis.com/drive/v3/files'
+
+function setupDailyBackup() {
+  var projectId = PropertiesService.getScriptProperties().getProperty('FIREBASE_PROJECT_ID')
+  if (!projectId) throw new Error('Configura FIREBASE_PROJECT_ID antes de activar las copias.')
+  deleteBackupTriggers_()
+  ScriptApp.newTrigger('backupFirestore').timeBased().everyDays(1).atHour(2).create()
+  Logger.log('Copia diaria programada entre las 02:00 y las 03:00.')
+}
+
+function disableDailyBackup() {
+  deleteBackupTriggers_()
+}
+
+function deleteBackupTriggers_() {
+  var triggers = ScriptApp.getProjectTriggers()
+  for (var i = 0; i < triggers.length; i = i + 1) {
+    if (triggers[i].getHandlerFunction() === 'backupFirestore') ScriptApp.deleteTrigger(triggers[i])
+  }
+}
+
+/* También se puede ejecutar a mano para sacar una copia en el momento. */
+function backupFirestore() {
+  var projectId = PropertiesService.getScriptProperties().getProperty('FIREBASE_PROJECT_ID')
+  var documents = []
+  var counts = {}
+  for (var i = 0; i < BACKUP_COLLECTIONS.length; i = i + 1) {
+    var collectionId = BACKUP_COLLECTIONS[i]
+    // El historial vive dentro de cada expediente: se pide como grupo de colecciones.
+    var response = firestoreRequest_('/documents:runQuery', 'post', {
+      structuredQuery: {
+        from: [{ collectionId: collectionId, allDescendants: collectionId === 'historial' }],
+      },
+    })
+    counts[collectionId] = 0
+    for (var j = 0; j < response.length; j = j + 1) {
+      var document = response[j].document
+      if (!document) continue
+      documents.push({
+        name: document.name,
+        fields: document.fields || {},
+        updateTime: document.updateTime,
+      })
+      counts[collectionId] = counts[collectionId] + 1
+    }
+  }
+  var createdAt = new Date()
+  var fileName =
+    'sigecat-' + Utilities.formatDate(createdAt, TIME_ZONE, 'yyyy-MM-dd_HHmm') + '.json.gz'
+  var content = JSON.stringify({
+    proyecto: projectId,
+    fecha: createdAt.toISOString(),
+    colecciones: counts,
+    documentos: documents,
+  })
+  var blob = Utilities.gzip(Utilities.newBlob(content, 'application/json'), fileName)
+  var folderId = getBackupFolderId_()
+  uploadBackup_(blob, fileName, folderId)
+  var trashed = trashOldBackups_(folderId, createdAt)
+  Logger.log(
+    'Copia ' +
+      fileName +
+      ': ' +
+      documents.length +
+      ' documentos ' +
+      JSON.stringify(counts) +
+      '. Copias antiguas a la papelera: ' +
+      trashed +
+      '.',
+  )
+}
+
+function getBackupFolderId_() {
+  var properties = PropertiesService.getScriptProperties()
+  var folderId = properties.getProperty('BACKUP_FOLDER_ID')
+  if (folderId) {
+    var folder = driveRequest_(DRIVE_API + '/' + folderId + '?fields=id,trashed', 'get')
+    if (folder && !folder.trashed) return folderId
+  }
+  var created = driveRequest_(
+    DRIVE_API + '?fields=id',
+    'post',
+    JSON.stringify({ name: BACKUP_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
+    'application/json',
+  )
+  properties.setProperty('BACKUP_FOLDER_ID', created.id)
+  return created.id
+}
+
+function uploadBackup_(blob, fileName, folderId) {
+  var boundary = 'sigecat' + new Date().getTime()
+  var metadata = JSON.stringify({
+    name: fileName,
+    parents: [folderId],
+    mimeType: 'application/gzip',
+  })
+  var head =
+    '--' +
+    boundary +
+    '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' +
+    metadata +
+    '\r\n--' +
+    boundary +
+    '\r\nContent-Type: application/gzip\r\n\r\n'
+  var tail = '\r\n--' + boundary + '--'
+  var payload = Utilities.newBlob(head)
+    .getBytes()
+    .concat(blob.getBytes())
+    .concat(Utilities.newBlob(tail).getBytes())
+  driveRequest_(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    'post',
+    payload,
+    'multipart/related; boundary=' + boundary,
+  )
+}
+
+/* Manda a la papelera de Drive (no borra) las copias de más de BACKUP_RETENTION_DAYS días. */
+function trashOldBackups_(folderId, now) {
+  var limit = new Date(now.getTime() - BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+  var query = encodeURIComponent("'" + folderId + "' in parents and trashed = false")
+  var list = driveRequest_(
+    DRIVE_API + '?q=' + query + '&fields=files(id,name,createdTime)&pageSize=1000',
+    'get',
+  )
+  var trashed = 0
+  var files = (list && list.files) || []
+  for (var i = 0; i < files.length; i = i + 1) {
+    if (new Date(files[i].createdTime) >= limit) continue
+    driveRequest_(
+      DRIVE_API + '/' + files[i].id,
+      'patch',
+      JSON.stringify({ trashed: true }),
+      'application/json',
+    )
+    trashed = trashed + 1
+  }
+  return trashed
+}
+
+function driveRequest_(url, method, payload, contentType) {
+  var options = {
+    method: method,
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true,
+  }
+  if (payload !== undefined) {
+    options.payload = payload
+    options.contentType = contentType
+  }
+  var response = UrlFetchApp.fetch(url, options)
+  var status = response.getResponseCode()
+  if (status === 404 && method === 'get') return null
+  if (status < 200 || status >= 300)
+    throw new Error('Drive ' + status + ': ' + response.getContentText())
+  var text = response.getContentText()
+  return text ? JSON.parse(text) : null
+}

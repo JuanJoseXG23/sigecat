@@ -34,6 +34,16 @@ jobs:
         run: npm run format:check
       - name: Test
         run: npm test
+      # Las reglas de Firestore son el control de seguridad real: se prueban contra el emulador.
+      - name: Set up Java for the Firestore emulator
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+      - name: Test Firestore rules
+        run: npm run test:rules
       - name: Build
         run: npm run build
       - name: Upload Pages artifact
