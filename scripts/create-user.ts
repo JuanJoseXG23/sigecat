@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util'
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { FieldValue, getFirestore } from 'firebase-admin/firestore'
+import { DEPENDENCIES, toDependencyId } from '../src/lib/dependencies.js'
 import { USER_ROLES, type UserRole } from '../src/types/user.js'
 
 /**
@@ -33,7 +34,7 @@ const nombreCompleto = values.nombre?.trim()
 const correo = values.correo?.trim().toLowerCase()
 const cargo = values.cargo?.trim()
 const rol = values.rol?.trim() as UserRole | undefined
-const dependencia = values.dependencia?.trim()
+const dependencia = toDependencyId(values.dependencia)
 const initialPassword = values.clave
 
 if (!nombreCompleto || !correo || !cargo || !rol) {
@@ -44,6 +45,16 @@ if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
 }
 if (!USER_ROLES.includes(rol)) {
   throw new Error(`Rol inválido. Usa uno de: ${USER_ROLES.join(', ')}.`)
+}
+if (values.dependencia?.trim() && !dependencia) {
+  throw new Error(
+    `Área inválida. Usa una de: ${DEPENDENCIES.map((item) => item.nombre).join(', ')}.`,
+  )
+}
+if (rol === 'Funcionario' && !dependencia) {
+  throw new Error(
+    'Un Funcionario necesita --dependencia: registra y ve los expedientes de su área.',
+  )
 }
 if (initialPassword !== undefined && initialPassword.length < 8) {
   throw new Error('La clave inicial debe tener al menos 8 caracteres.')

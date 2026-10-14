@@ -12,12 +12,14 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast-context'
+import { DependencyFilter } from '@/features/expedients/components/dependency-filter'
 import { ExpedientForm } from '@/features/expedients/components/expedient-form'
 import { ExpedientTable } from '@/features/expedients/components/expedient-table'
 import { byUrgency, matchesExpedientSearch } from '@/features/expedients/expedient-filters'
 import { useAuth } from '@/hooks/use-auth'
 import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useExpedients } from '@/hooks/use-expedients'
+import { matchesDependency } from '@/lib/dependencies'
 import { canManageExpedient, isSupervisor } from '@/lib/permissions'
 import { archiveExpedient, createExpedient, updateExpedient } from '@/services/expedient.service'
 import type { Expedient, ExpedientFormData } from '@/types/expedient'
@@ -35,6 +37,7 @@ export function ExpedientsPage() {
   const { data: officials = [] } = useAssignableOfficials()
   const [status, setStatus] = useState('')
   const [priority, setPriority] = useState('')
+  const [dependency, setDependency] = useState('')
   const [editing, setEditing] = useState<Expedient | undefined>()
   const [archiving, setArchiving] = useState<Expedient | undefined>()
   const [archiveReason, setArchiveReason] = useState('')
@@ -110,13 +113,14 @@ export function ExpedientsPage() {
         .filter(
           (item) =>
             matchesExpedientSearch(item, search) &&
+            matchesDependency(item, dependency) &&
             (!status || item.estado === status) &&
             (!priority || item.prioridad === priority),
         )
         .sort(byUrgency),
-    [expedients, priority, search, status],
+    [dependency, expedients, priority, search, status],
   )
-  const hasFilters = Boolean(search || status || priority)
+  const hasFilters = Boolean(search || dependency || status || priority)
 
   return (
     <section className="mx-auto max-w-[1400px] space-y-6">
@@ -146,6 +150,7 @@ export function ExpedientsPage() {
             aria-label="Buscar expedientes"
           />
         </div>
+        <DependencyFilter className="md:w-48" value={dependency} onChange={setDependency} />
         <Select
           className="md:w-56"
           value={status}
@@ -173,6 +178,7 @@ export function ExpedientsPage() {
             variant="ghost"
             onClick={() => {
               updateParams({ q: null })
+              setDependency('')
               setStatus('')
               setPriority('')
             }}
@@ -183,7 +189,7 @@ export function ExpedientsPage() {
       </div>
 
       <ExpedientTable
-        key={`${search}|${status}|${priority}`}
+        key={`${search}|${dependency}|${status}|${priority}`}
         rows={rows}
         isLoading={isLoading}
         isError={isError}

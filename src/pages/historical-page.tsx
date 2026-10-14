@@ -6,10 +6,12 @@ import { EmptyState, TableSkeleton } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
+import { DependencyFilter } from '@/features/expedients/components/dependency-filter'
 import { matchesExpedientSearch } from '@/features/expedients/expedient-filters'
 import { useHistoricalExpedients } from '@/hooks/use-historical-expedients'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import { downloadCsv } from '@/lib/csv'
+import { matchesDependency } from '@/lib/dependencies'
 import { formatDate } from '@/lib/format'
 import { getClosingDate, type Expedient } from '@/types/expedient'
 
@@ -60,6 +62,7 @@ export function HistoricalPage() {
   const [search, setSearch] = useState('')
   const [type, setType] = useState('')
   const [year, setYear] = useState('')
+  const [dependency, setDependency] = useState('')
 
   const all = useMemo(() => data.map((item) => ({ item, closing: getClosingDate(item) })), [data])
   const years = [...new Set(all.map((row) => row.closing.getFullYear()))].sort((a, b) => b - a)
@@ -69,13 +72,14 @@ export function HistoricalPage() {
         .filter(
           ({ item, closing }) =>
             matchesExpedientSearch(item, search) &&
+            matchesDependency(item, dependency) &&
             (!type || item.tipoTramiteId === type) &&
             (!year || closing.getFullYear() === Number(year)),
         )
         .sort((first, second) => second.closing.getTime() - first.closing.getTime()),
-    [all, search, type, year],
+    [all, dependency, search, type, year],
   )
-  const hasFilters = Boolean(search || type || year)
+  const hasFilters = Boolean(search || dependency || type || year)
 
   return (
     <section className="mx-auto max-w-[1400px] space-y-6">
@@ -101,6 +105,7 @@ export function HistoricalPage() {
             aria-label="Buscar en el histórico"
           />
         </div>
+        <DependencyFilter className="lg:w-48" value={dependency} onChange={setDependency} />
         <Select
           className="lg:w-56"
           value={type}
@@ -130,6 +135,7 @@ export function HistoricalPage() {
             variant="ghost"
             onClick={() => {
               setSearch('')
+              setDependency('')
               setType('')
               setYear('')
             }}

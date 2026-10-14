@@ -8,6 +8,7 @@ import {
   PriorityBadge,
   StatusBadge,
 } from '@/features/expedients/components/expedient-badges'
+import { getDependencyName, getExpedientDependency } from '@/lib/dependencies'
 import { formatDate, initials } from '@/lib/format'
 import type { Expedient } from '@/types/expedient'
 
@@ -110,6 +111,7 @@ export function ExpedientTable({ rows, isLoading, isError, empty, actions }: Exp
                       )}
                     </p>
                     <p className="max-w-60 truncate text-xs text-muted-foreground">
+                      {getDependencyName(getExpedientDependency(item))} ·{' '}
                       {item.tipoTramite ?? 'Sin tipo de trámite'}
                       {item.asunto ? ` · ${item.asunto}` : ''}
                     </p>

@@ -1,10 +1,14 @@
 import { z } from 'zod'
+import { DEPENDENCIES, type DependencyId } from '@/lib/dependencies'
 import { getFilingNumberError } from '@/lib/filing-number'
 import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
 
 const optionalText = z.string().trim().optional()
 
+const dependencyIds = DEPENDENCIES.map((item) => item.id) as [DependencyId, ...DependencyId[]]
+
 export const expedientSchema = z.object({
+  dependencia: z.enum(dependencyIds, { message: 'Selecciona el área.' }),
   numeroRadicado: z.string().trim().min(1, 'Ingresa el número de radicado.'),
   fechaRadicado: z.string().min(1, 'Selecciona la fecha de radicado.'),
   fechaRecibido: optionalText,

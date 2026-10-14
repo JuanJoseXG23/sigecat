@@ -4,7 +4,9 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
+import { DependencyFilter } from '@/features/expedients/components/dependency-filter'
 import { downloadCsv } from '@/lib/csv'
+import { getDependencyName, getExpedientDependency, matchesDependency } from '@/lib/dependencies'
 import { formatDate } from '@/lib/format'
 import { listExpedients, listHistoricalExpedients } from '@/services/expedient.service'
 import { getClosingDate, getResponseDate, type Expedient } from '@/types/expedient'
@@ -84,6 +86,7 @@ export function ReportsPage() {
   const [year, setYear] = useState(String(new Date().getFullYear()))
   const [status, setStatus] = useState('')
   const [type, setType] = useState('')
+  const [dependency, setDependency] = useState('')
   const all = useMemo(
     () => [...(active.data ?? []), ...(closed.data ?? [])],
     [active.data, closed.data],
@@ -96,10 +99,11 @@ export function ReportsPage() {
       all.filter(
         (item) =>
           (!year || item.fechaRadicado.toDate().getFullYear() === Number(year)) &&
+          matchesDependency(item, dependency) &&
           (!status || item.estado === status) &&
           (!type || item.tipoTramite === type),
       ),
-    [all, status, type, year],
+    [all, dependency, status, type, year],
   )
   const evaluated = rows.map(closedOnTime).filter((value) => value !== null)
   const onTime = evaluated.filter(Boolean).length
@@ -129,6 +133,7 @@ export function ReportsPage() {
       `reporte-sigecat-${year || 'todos'}.csv`,
       [
         'Radicado',
+        'Área',
         'Fecha radicado',
         'Tipo de trámite',
         'Estado',
@@ -143,6 +148,7 @@ export function ReportsPage() {
         const timely = closedOnTime(item)
         return [
           item.numeroRadicado,
+          getDependencyName(getExpedientDependency(item)),
           formatDate(item.fechaRadicado),
           item.tipoTramite,
           item.estado,
@@ -173,7 +179,8 @@ export function ReportsPage() {
           </>
         }
       />
-      <div className="no-print grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:grid-cols-3">
+      <div className="no-print grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:grid-cols-4">
+        <DependencyFilter value={dependency} onChange={setDependency} />
         <Select
           value={year}
           onChange={(event) => setYear(event.target.value)}

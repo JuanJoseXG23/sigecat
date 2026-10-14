@@ -20,6 +20,7 @@ import {
   registerExpedientHistory,
 } from '@/services/business-rules.service'
 import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
+import { getDependencyName, getExpedientDependency } from '@/lib/dependencies'
 import { getOutgoingFilingNumbers } from '@/lib/entry-filing'
 import { fromDateKey, toDateKey } from '@/lib/expedient-deadline'
 import { parseDocumentLink } from '@/lib/document-links'
@@ -51,6 +52,14 @@ import type {
 import { isFinalizedExpedient } from '@/types/expedient'
 
 const EXPEDIENTS_COLLECTION = 'expedientes'
+
+/**
+ * Suma a `participantes` a quien actúa y, si cambia, al nuevo responsable. Va en cada escritura
+ * del expediente; la lista nunca se recorta.
+ */
+function withParticipants(...uids: (string | undefined)[]) {
+  return { participantes: arrayUnion(...uids.filter((uid): uid is string => Boolean(uid))) }
+}
 
 function toTimestamp(value?: string): Timestamp | undefined {
   if (!value) return undefined
@@ -121,6 +130,7 @@ async function toExpedientData(
   )
 
   return removeEmptyFields({
+    dependencia: values.dependencia,
     numeroRadicado: values.numeroRadicado.trim(),
     fechaRadicado: toTimestamp(values.fechaRadicado),
     fechaRecibido: toTimestamp(values.fechaRecibido),
@@ -237,6 +247,7 @@ export async function createExpedient(
     estado: 'Recibido',
     id: reference.id,
     creadoPor: createdBy,
+    participantes: [...new Set([createdBy, assignedOfficial?.uid].filter(Boolean))],
     activo: true,
     fechaCreacion: serverTimestamp(),
     fechaActualizacion: serverTimestamp(),
@@ -272,9 +283,12 @@ export async function updateExpedient(
     prioridad: values.prioridad ?? deleteField(),
     observacionesIniciales: values.observacionesIniciales?.trim() || deleteField(),
     fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId, assignedOfficial?.uid),
   })
   if (current) {
     const changes = [
+      getExpedientDependency(current) !== values.dependencia &&
+        `Área: ${getDependencyName(getExpedientDependency(current))} → ${getDependencyName(values.dependencia)}`,
       current.tipoTramite !== data.tipoTramite &&
         `Tipo de trámite: ${current.tipoTramite ?? 'Sin tipo'} → ${data.tipoTramite}`,
       current.funcionarioAsignado?.uid !== assignedOfficial?.uid &&
@@ -301,6 +315,7 @@ export async function archiveExpedient(id: string, userId: string, reason: strin
     estado: 'Archivado',
     fechaCierre: serverTimestamp(),
     fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId),
   })
   registerExpedientHistory(batch, id, userId, 'Archivo del expediente', reason.trim())
   await commit(batch)
@@ -323,6 +338,7 @@ export async function assignExpedient(
     funcionarioAsignado: assignee,
     ...(advanceTo ? { estado: advanceTo } : {}),
     fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId, assignee.uid),
   })
   registerExpedientHistory(
     batch,
@@ -368,6 +384,7 @@ export async function addExpedientWorkflowDocument(
   batch.update(expedientReference(expedientId), {
     documentosWorkflow: arrayUnion(workflowDocument),
     fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId),
   })
   registerExpedientHistory(
     batch,
@@ -397,6 +414,7 @@ export async function transferByCompetence(
     responsableExterno: normalizedDestination,
     estado: 'Traslado por competencia',
     fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId),
   })
   registerExpedientHistory(
     batch,
@@ -433,6 +451,7 @@ export async function completeRequiredActuation(
     ...(respondedBy ? { funcionarioAsignado: respondedBy } : {}),
     ...(finalized ? { activo: false, fechaCierre: serverTimestamp() } : {}),
     fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId, respondedBy?.uid),
   })
   if (respondedBy) {
     registerExpedientHistory(
@@ -550,6 +569,7 @@ export async function extendExpedientDeadline(
     ampliacionesPlazo: arrayUnion(extension),
     documentosWorkflow: arrayUnion(supportingDocument),
     fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId),
   })
   registerExpedientHistory(
     batch,
@@ -677,6 +697,7 @@ export async function registerLateActuations(
       : {}),
     registrosTardios: arrayUnion(record),
     fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId, plan.assignee?.uid),
   })
   for (const entry of plan.history)
     registerExpedientHistory(batch, id, userId, entry.action, entry.detail)
@@ -780,6 +801,7 @@ export async function correctFiling(
       batch.update(expedientReference(expedient.id), {
         ...changes,
         fechaActualizacion: serverTimestamp(),
+        ...withParticipants(userId),
       })
     registerExpedientHistory(
       batch,
@@ -814,6 +836,7 @@ export async function correctWorkflowDocument(
       document.id === documentId ? updated : document,
     ),
     fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId),
   })
   const changes = [
     current.nombre !== updated.nombre && `Nombre: ${current.nombre} → ${updated.nombre}`,

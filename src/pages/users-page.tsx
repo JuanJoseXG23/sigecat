@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
 import { useToast } from '@/components/ui/toast-context'
 import { useAuth } from '@/hooks/use-auth'
+import { DEPENDENCIES, getDependencyName, toDependencyId } from '@/lib/dependencies'
 import { formatDateTime, initials, normalizeSearch } from '@/lib/format'
 import { listUsers, saveUserProfile, setUserActive } from '@/services/user-profile.service'
 import { USER_ROLES, type UserProfile, type UserRole } from '@/types/user'
@@ -143,7 +144,9 @@ export function UsersPage() {
                 </td>
                 <td>
                   <p>{item.cargo}</p>
-                  <p className="text-xs text-muted-foreground">{item.dependencia ?? '—'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.dependencia ? getDependencyName(item.dependencia) : '—'}
+                  </p>
                 </td>
                 <td className="text-muted-foreground">
                   {formatDateTime(item.ultimoIngreso, 'Nunca')}
@@ -231,11 +234,27 @@ export function UsersPage() {
                 onChange={(event) => setEditing({ ...editing, cargo: event.target.value })}
               />
             </Field>
-            <Field label="Dependencia">
-              <Input
-                value={editing.dependencia ?? ''}
-                onChange={(event) => setEditing({ ...editing, dependencia: event.target.value })}
-              />
+            <Field
+              label="Área"
+              hint={
+                editing.dependencia && !toDependencyId(editing.dependencia)
+                  ? `Valor anterior: "${editing.dependencia}". Elige el área que corresponde.`
+                  : 'Un Funcionario registra y ve los expedientes de su área.'
+              }
+            >
+              <Select
+                value={toDependencyId(editing.dependencia) ?? ''}
+                onChange={(event) =>
+                  setEditing({ ...editing, dependencia: event.target.value || undefined })
+                }
+              >
+                <option value="">Sin área</option>
+                {DEPENDENCIES.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+              </Select>
             </Field>
             <Field label="Rol" className="sm:col-span-2">
               <Select

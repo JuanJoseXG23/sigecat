@@ -31,6 +31,7 @@ import { LateRegistrationDialog } from '@/features/expedients/components/late-re
 import { WorkflowStepper } from '@/features/expedients/components/workflow-stepper'
 import { useAuth } from '@/hooks/use-auth'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
+import { getDependencyName, getExpedientDependency } from '@/lib/dependencies'
 import { hasReplacedEntryFiling, suggestEntryFiling } from '@/lib/entry-filing'
 import { getFlow, getStepDefinition, type Actuation } from '@/lib/expedient-workflow'
 import { describeRemainingDays, formatDate, formatLongDate } from '@/lib/format'
@@ -168,7 +169,12 @@ export function ExpedientDetailPage() {
               Radicado {item.numeroRadicado}
             </h1>
             <p className="text-sm text-muted-foreground">
-              {[item.tipoTramite, item.asunto, item.solicitantes[0]?.nombre]
+              {[
+                getDependencyName(getExpedientDependency(item)),
+                item.tipoTramite,
+                item.asunto,
+                item.solicitantes[0]?.nombre,
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>

@@ -18,10 +18,12 @@ import { Badge, type BadgeVariant } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState, Skeleton } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
+import { DependencyFilter } from '@/features/expedients/components/dependency-filter'
 import { InquiryDialog } from '@/features/expedients/components/inquiry-dialog'
 import { ExpedientTable } from '@/features/expedients/components/expedient-table'
 import { byUrgency, matchesExpedientSearch } from '@/features/expedients/expedient-filters'
 import { useAuth } from '@/hooks/use-auth'
+import { matchesDependency } from '@/lib/dependencies'
 import { toDateKey } from '@/lib/expedient-deadline'
 import { formatDate, formatDateTime } from '@/lib/format'
 import {
@@ -235,8 +237,15 @@ export function ManagementPanelPage() {
   const [asking, setAsking] = useState<Expedient | null>(null)
   const [showData, setShowData] = useState(false)
 
-  const activeItems = useMemo(() => active.data ?? [], [active.data])
-  const closedItems = useMemo(() => closed.data ?? [], [closed.data])
+  const [dependency, setDependency] = useState('')
+  const activeItems = useMemo(
+    () => (active.data ?? []).filter((item) => matchesDependency(item, dependency)),
+    [active.data, dependency],
+  )
+  const closedItems = useMemo(
+    () => (closed.data ?? []).filter((item) => matchesDependency(item, dependency)),
+    [closed.data, dependency],
+  )
   const today = new Date()
   const traffic = countByTraffic(activeItems)
   const stages = countByStage(activeItems)
@@ -281,7 +290,8 @@ export function ManagementPanelPage() {
             cualquier gráfica para ver esos expedientes abajo.
           </p>
         </div>
-        <div className="no-print flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="no-print flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <DependencyFilter className="w-44" value={dependency} onChange={setDependency} />
           {updatedAt > 0 && <span>Actualizado {formatDateTime(new Date(updatedAt))}</span>}
           <Button
             variant="outline"

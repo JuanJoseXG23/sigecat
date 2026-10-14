@@ -7,13 +7,13 @@ colección y quién puede escribir en ella según `firestore.rules`.
 
 El id del documento es el uid de Firebase Authentication.
 
-| Campo                                               | Descripción                                                             |
-| --------------------------------------------------- | ----------------------------------------------------------------------- |
-| `nombreCompleto`, `correo`, `cargo`, `dependencia?` | Datos de la persona                                                     |
-| `rol`                                               | `Administrador`, `Coordinador`, `Funcionario`, `Directivo` o `Consulta` |
-| `activo`                                            | Si es `false`, la sesión se cierra al entrar                            |
-| `recibeAlertasVencimiento?`                         | Recibe alertas diarias de vencimiento                                   |
-| `fechaCreacion`, `ultimoIngreso`                    | Fechas                                                                  |
+| Campo                                               | Descripción                                                                                                                                   |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `nombreCompleto`, `correo`, `cargo`, `dependencia?` | Datos de la persona. `dependencia` es el id del área (`src/lib/dependencies.ts`); los perfiles antiguos pueden tener el nombre escrito a mano |
+| `rol`                                               | `Administrador`, `Coordinador`, `Funcionario`, `Directivo` o `Consulta`                                                                       |
+| `activo`                                            | Si es `false`, la sesión se cierra al entrar                                                                                                  |
+| `recibeAlertasVencimiento?`                         | Recibe alertas diarias de vencimiento                                                                                                         |
+| `fechaCreacion`, `ultimoIngreso`                    | Fechas                                                                                                                                        |
 
 Escriben: el Administrador; cada usuario solo actualiza su propio `ultimoIngreso`.
 Leen: el Administrador; cada usuario lee solo su propio perfil.
@@ -30,6 +30,8 @@ también la actualizan. Si se edita un perfil desde la consola de Firebase, se r
 
 | Campo                                                                          | Descripción                                                                                                                                                                          |
 | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `dependencia?`                                                                 | Área que lidera el expediente (id de `src/lib/dependencies.ts`). Sin el campo, es de Catastro                                                                                        |
+| `participantes[]?`                                                             | uid de quienes lo registraron, lo tuvieron asignado o actuaron sobre él. Solo crece (`arrayUnion` en cada escritura)                                                                 |
 | `numeroRadicado`                                                               | Radicado de entrada; único                                                                                                                                                           |
 | `fechaRadicado`, `fechaRecibido?`, `medioIngreso?`                             | Datos de recepción                                                                                                                                                                   |
 | `tipoTramiteId`, `tipoTramite`                                                 | Tipo de trámite y su nombre al momento de guardar                                                                                                                                    |

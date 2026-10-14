@@ -1,4 +1,5 @@
 import type { Timestamp } from 'firebase/firestore'
+import type { DependencyId } from '@/lib/dependencies'
 
 export const EXPEDIENT_STATUSES = [
   'Recibido',
@@ -91,6 +92,13 @@ export interface DeadlineExtension {
 
 export interface Expedient extends ActuationFields {
   id: string
+  /** Área que lidera el expediente; los anteriores a las dependencias son de Catastro. */
+  dependencia?: DependencyId
+  /**
+   * Quienes registraron, tuvieron asignado o actuaron sobre el expediente. Solo crece: con la
+   * separación por dependencias, un Funcionario verá los expedientes donde figura.
+   */
+  participantes?: string[]
   numeroRadicado: string
   fechaRadicado: Timestamp
   fechaRecibido?: Timestamp
@@ -173,6 +181,7 @@ export function isFinalizedExpedient(item: Pick<Expedient, 'estado' | 'activo'>)
 }
 
 export interface ExpedientFormData {
+  dependencia: DependencyId
   numeroRadicado: string
   fechaRadicado: string
   fechaRecibido?: string

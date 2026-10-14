@@ -16,6 +16,16 @@ import { calculateExpedientTimeline, toDateKey } from '@/lib/expedient-deadline'
 import { describeRemainingDays, formatLongDate } from '@/lib/format'
 import { useBusinessConfiguration } from '@/hooks/use-business-configuration'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
+import { useAuth } from '@/hooks/use-auth'
+import {
+  DEFAULT_DEPENDENCY,
+  DEPENDENCIES,
+  getDependencyName,
+  getExpedientDependency,
+  toDependencyId,
+  type DependencyId,
+} from '@/lib/dependencies'
+import { isSupervisor } from '@/lib/permissions'
 import type { Expedient, ExpedientFormData } from '@/types/expedient'
 import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
 
@@ -58,8 +68,9 @@ function toDateInput(value?: { toDate: () => Date }): string {
   return toDateKey(value.toDate())
 }
 
-function getDefaultValues(expedient?: Expedient): FormInput {
+function getDefaultValues(expedient: Expedient | undefined, dependency: DependencyId): FormInput {
   return {
+    dependencia: expedient ? getExpedientDependency(expedient) : dependency,
     numeroRadicado: expedient?.numeroRadicado ?? '',
     fechaRadicado: expedient ? toDateInput(expedient.fechaRadicado) : toDateKey(new Date()),
     fechaRecibido: toDateInput(expedient?.fechaRecibido),
@@ -137,9 +148,13 @@ export function ExpedientForm({
   onSubmit,
 }: ExpedientFormProps) {
   const entryFilingLocked = Boolean(expedient) && !canEditEntryFiling
+  const { profile } = useAuth()
+  // Cada quien registra en su área; solo Administración y Coordinación eligen o cambian el área.
+  const ownDependency = toDependencyId(profile?.dependencia) ?? DEFAULT_DEPENDENCY
+  const dependencyLocked = !isSupervisor(profile)
   const form = useForm<FormInput, unknown, FormValues>({
     resolver: zodResolver(createExpedientSchema(expedient?.numeroRadicado)),
-    defaultValues: getDefaultValues(expedient),
+    defaultValues: getDefaultValues(expedient, ownDependency),
     mode: 'onSubmit',
   })
   const errors = form.formState.errors
@@ -147,6 +162,7 @@ export function ExpedientForm({
   const properties = useFieldArray({ control: form.control, name: 'predios' })
   const filingDate = useWatch({ control: form.control, name: 'fechaRadicado' })
   const procedureTypeId = useWatch({ control: form.control, name: 'tipoTramiteId' })
+  const dependency = useWatch({ control: form.control, name: 'dependencia' })
   const { data: procedureTypes = [] } = useProcedureTypes()
   const { data: configuration } = useBusinessConfiguration()
   const selectedType = procedureTypes.find((item) => item.id === procedureTypeId)
@@ -162,8 +178,8 @@ export function ExpedientForm({
       : undefined
 
   useEffect(() => {
-    form.reset(getDefaultValues(expedient))
-  }, [expedient, form])
+    form.reset(getDefaultValues(expedient, ownDependency))
+  }, [expedient, form, ownDependency])
 
   const submit: SubmitHandler<FormValues> = async (values) => {
     await onSubmit(values)
@@ -177,6 +193,37 @@ export function ExpedientForm({
         description="Datos del radicado de entrada tal como aparecen en el sello o planilla."
       >
         <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Área"
+            required
+            className="sm:col-span-2"
+            error={errors.dependencia?.message}
+            hint={
+              dependencyLocked
+                ? 'Se registra en tu área. Solo Administración o Coordinación la cambian.'
+                : 'Área de la Secretaría que atiende el expediente.'
+            }
+          >
+            {dependencyLocked ? (
+              <>
+                <Input
+                  readOnly
+                  aria-readonly
+                  className="cursor-not-allowed bg-muted text-slate-600"
+                  value={getDependencyName(dependency)}
+                />
+                <input type="hidden" {...form.register('dependencia')} />
+              </>
+            ) : (
+              <Select {...form.register('dependencia')}>
+                {DEPENDENCIES.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.nombre}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
           <Field
             label="Radicado de entrada"
             required

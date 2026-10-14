@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -80,8 +81,16 @@ export async function saveUserProfile(
   const reference = doc(firestore, USERS_COLLECTION, values.uid)
   const current = await getDoc(reference)
   const batch = writeBatch(firestore)
-  if (current.exists()) batch.update(reference, { ...values })
-  else batch.set(reference, { ...values, fechaCreacion: serverTimestamp(), ultimoIngreso: null })
+  const { dependencia, ...rest } = values
+  if (current.exists())
+    batch.update(reference, { ...rest, dependencia: dependencia ?? deleteField() })
+  else
+    batch.set(reference, {
+      ...rest,
+      ...(dependencia ? { dependencia } : {}),
+      fechaCreacion: serverTimestamp(),
+      ultimoIngreso: null,
+    })
   setDirectoryEntry(batch, values)
   await batch.commit()
 }
