@@ -12,7 +12,7 @@ prácticas, y señala lo que debe confirmar la Oficina Jurídica de la Alcaldía
 | Autorización de los ciudadanos      | No se requiere: la entidad pública trata los datos en ejercicio de sus funciones (Ley 1581, art. 10 lit. a) | Cumple                                                                                   | Informar el uso en el aviso de privacidad de la Alcaldía                                                   | Jurídica               |
 | Acceso restringido y seguridad      | Principios de la Ley 1581, art. 4                                                                           | Cumple: reglas por rol y área probadas, historial inmutable, copias diarias              | Verificación en dos pasos (no disponible hoy)                                                              | —                      |
 | Registro Nacional de Bases de Datos | Obligatorio para personas jurídicas públicas (Decreto 090 de 2018)                                          | **Pendiente**                                                                            | Inscribir la base de SIGECAT, o incluirla en el registro de la Alcaldía                                    | Oficial de datos       |
-| Reporte de incidentes               | Reportar a la SIC dentro de 15 días hábiles                                                                 | **Pendiente**                                                                            | Incluirlo en la guía de emergencia                                                                         | Sistemas / Jurídica    |
+| Reporte de incidentes               | Reportar a la SIC dentro de 15 días hábiles                                                                 | Cumple: paso 4 de la guía de emergencia                                                  | —                                                                                                          | —                      |
 | Alojamiento fuera de Colombia       | Solo en países con nivel adecuado, con contrato de transmisión con el encargado                             | Brasil y EE. UU. son adecuados; **el contrato con Google lo aceptó una cuenta personal** | Pasar el proyecto a una cuenta institucional y aceptar allí los términos de tratamiento de datos de Google | Responsable de SIGECAT |
 | Derecho de petición                 | Términos, ampliación hasta el doble, traslado en 5 días (Ley 1755 de 2015)                                  | Cumple: implementado y probado                                                           | —                                                                                                          | —                      |
 | Transparencia                       | Registro de Activos de Información e Índice de Información Clasificada (Ley 1712, arts. 13 y 20)            | **Pendiente**                                                                            | Incluir SIGECAT y sus datos personales en ambos instrumentos                                               | Planeación / TIC       |
@@ -45,8 +45,8 @@ protección de datos de la Alcaldía_ si ya está o si hay que agregarla.
 
 **Incidentes de seguridad.** La Circular Única de la SIC exige reportar en el RNBD, dentro de los
 **15 días hábiles** siguientes a conocerlos, las violaciones de seguridad o accesos no autorizados a
-una base de datos. _Falta_ que la guía de emergencia lo incluya como paso cuando el incidente sea un
-acceso indebido, y no solo una pérdida.
+una base de datos. _Cumple:_ la [guía de emergencia](EMERGENCIA-recuperacion.md) lo incluye como
+primer aviso cuando el incidente es un acceso indebido.
 
 **Alojamiento en el exterior.** Firestore está en `southamerica-east1` (São Paulo, Brasil) y la
 operan Google LLC y Google Cloud, que actúan como **encargados** del tratamiento.
@@ -119,8 +119,7 @@ reglas. Pendientes desde el MSPI:
    Jurídica.
 5. **Registro de Activos e Índice de Información Clasificada** (Ley 1712). Planeación / TIC.
 6. **Constancia con Archivo** de que SIGECAT es herramienta de seguimiento. Archivo.
-7. **Guía de emergencia:** agregar el reporte de incidentes a la SIC en 15 días hábiles. Desarrollo.
-8. **MSPI:** inventario y matriz de riesgos. TIC.
+7. **MSPI:** inventario y matriz de riesgos. TIC.
 
 ## Fuentes
 
