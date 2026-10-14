@@ -8,3 +8,4 @@ dist
 service-account*.json
 firebase-service-account*.json
 secrets/
+backups/

@@ -52,6 +52,9 @@ npm run user:create -- --nombre "Ana Pérez" --correo ana.perez@girardota.gov.co
 
 Roles válidos: `Administrador`, `Coordinador`, `Funcionario`, `Directivo`, `Consulta`.
 
+Áreas válidas para `--dependencia`: Catastro, Cobro coactivo, Impuestos, Fiscalización,
+Contabilidad, Tesorería y Presupuesto. Es obligatoria para un Funcionario.
+
 Si se necesita una contraseña inicial conocida (por ejemplo, para entregar la cuenta en
 persona), agregue `--clave "..."` (mínimo 8 caracteres): no se imprime enlace. Entréguela solo a
 la persona y no la guarde en archivos ni en el repositorio.
@@ -61,6 +64,20 @@ el directorio que usan los demás para elegir responsables:
 
 ```powershell
 npm run users:sync-directory
+```
+
+## Migración a áreas de la Secretaría
+
+Completa en los datos existentes el área (Catastro), los participantes de cada expediente y la
+fecha de cierre de los cerrados antiguos ([diseño](docs/diseno-dependencias-y-permisos.md)).
+Sin `--apply` solo muestra lo que haría; con `--apply` guarda antes en `backups/` los valores
+anteriores y se puede deshacer con `--restore`. Lee todos los expedientes con su historial, lo
+que cuenta para la cuota diaria de Firestore.
+
+```powershell
+npx tsx scripts/migrate-dependencies.ts            # simulación
+npx tsx scripts/migrate-dependencies.ts --apply
+npx tsx scripts/migrate-dependencies.ts --restore=backups/archivo.json
 ```
 
 ## Reglas de Firebase

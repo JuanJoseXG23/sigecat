@@ -22,6 +22,20 @@ Menú por rol (definido en `src/routes/navigation.ts`):
 Los usuarios se crean con `npm run user:create` (ver README); la página Usuarios permite editar
 datos, rol y activar o desactivar cuentas.
 
+## Áreas de la Secretaría
+
+Catastro, Cobro coactivo, Impuestos, Fiscalización, Contabilidad, Tesorería y Presupuesto
+(`src/lib/dependencies.ts`; para agregar una basta con sumarla allí). Cada usuario pertenece a
+una sola área y cada expediente tiene el área que lo lidera: al registrarlo es la de quien lo
+registra; Administrador y Coordinador la eligen o la cambian (queda en el historial). Los
+expedientes anteriores a las áreas son de Catastro. Expedientes, Histórico, Reportes y el Panel
+de dirección filtran por área.
+
+Cada expediente guarda en `participantes` a quien lo registró, a quienes lo tuvieron asignado y a
+quienes actuaron sobre él. Es la base de la separación por áreas que se activará con las nuevas
+reglas: el Funcionario verá solo los expedientes donde figura (ver
+[diseño](diseno-dependencias-y-permisos.md)).
+
 ## Panel de dirección
 
 Para la jefatura (rol **Directivo**; también lo ven Administrador y Coordinador). Es la página de
