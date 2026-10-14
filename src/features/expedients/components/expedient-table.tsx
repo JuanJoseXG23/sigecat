@@ -67,7 +67,7 @@ export function ExpedientTable({ rows, isLoading, isError, empty, actions }: Exp
   return (
     <div className="table-shell">
       {/* Escritorio: tabla */}
-      <div className="hidden overflow-x-auto md:block">
+      <div className="relative hidden overflow-x-auto md:block">
         <table className="data-table min-w-[760px]">
           <thead>
             <tr>

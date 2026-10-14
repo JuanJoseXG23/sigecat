@@ -301,6 +301,25 @@ test('la nota tiene forma estricta y no se edita ni se borra', async () => {
   await assertFails(deleteDoc(doc(as('admin'), 'expedientes/e1/historial/n')))
 })
 
+test('la copia del radicado de entrada en Radicación solo sigue al expediente', async () => {
+  const filing = (db: Firestore, value: string) =>
+    updateDoc(doc(db, 'radicados/e1_20262000001'), { expedienteRadicado: value })
+  // Un supervisor corrige la entrada y, en el mismo lote, la copia del radicado.
+  const admin = as('admin')
+  const batch = writeBatch(admin)
+  batch.update(doc(admin, 'expedientes/e1'), {
+    numeroRadicado: '20261000077',
+    participantes: arrayUnion('admin'),
+  })
+  batch.set(doc(admin, 'radicadosEntrada/20261000077'), { expedienteId: 'e1' })
+  batch.delete(doc(admin, 'radicadosEntrada/20261000001'))
+  batch.update(doc(admin, 'radicados/e1_20262000001'), { expedienteRadicado: '20261000077' })
+  await assertSucceeds(batch.commit())
+  // Otro número que no es el del expediente, o un Funcionario, no.
+  await assertFails(filing(as('admin'), '20261000099'))
+  await assertFails(filing(as('ana'), '20261000077'))
+})
+
 test('sin responsable, solo quien lo registró lo gestiona', async () => {
   await env.withSecurityRulesDisabled((context) =>
     setDoc(doc(context.firestore(), 'expedientes/e3'), {

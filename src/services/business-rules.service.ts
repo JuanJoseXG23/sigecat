@@ -99,6 +99,14 @@ export function getDeadlineStatus(
   }
 }
 
+/** Entradas de historial ya agregadas a cada lote. */
+const historyEntriesPerBatch = new WeakMap<WriteBatch, number>()
+
+/**
+ * Las entradas de un mismo lote comparten la hora del servidor; `orden` conserva la secuencia en
+ * que ocurrieron (ver sortHistoryNewestFirst). La primera lo omite, así una nota, que siempre va
+ * sola, cumple la forma exacta que exige `isValidNote` en firestore.rules.
+ */
 export function registerExpedientHistory(
   batch: WriteBatch,
   expedientId: string,
@@ -106,10 +114,13 @@ export function registerExpedientHistory(
   action: string,
   detail?: string,
 ): void {
+  const order = historyEntriesPerBatch.get(batch) ?? 0
+  historyEntriesPerBatch.set(batch, order + 1)
   batch.set(doc(collection(firestore, 'expedientes', expedientId, 'historial')), {
     usuario: userId,
     accion: action,
     detalle: detail ?? '',
     fecha: serverTimestamp(),
+    ...(order ? { orden: order } : {}),
   })
 }

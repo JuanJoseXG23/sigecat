@@ -82,8 +82,10 @@
 }
 
 @layer components {
+  /* relative: lo absoluto de adentro (textos sr-only) queda dentro del desplazamiento horizontal;
+     sin él se escapa y ensancha toda la página en el celular. */
   .table-shell {
-    @apply overflow-hidden rounded-xl border border-border bg-card shadow-sm;
+    @apply relative overflow-hidden rounded-xl border border-border bg-card shadow-sm;
   }
   .data-table {
     @apply w-full text-left text-sm;

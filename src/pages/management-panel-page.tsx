@@ -124,7 +124,9 @@ function Card({
   className?: string
 }) {
   return (
-    <section className={cn('rounded-xl border border-border bg-card p-5 shadow-sm', className)}>
+    <section
+      className={cn('min-w-0 rounded-xl border border-border bg-card p-5 shadow-sm', className)}
+    >
       <h2 className="font-semibold text-slate-900">{title}</h2>
       {description && <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>}
       <div className="mt-4">{children}</div>

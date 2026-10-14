@@ -213,10 +213,15 @@ service cloud.firestore {
         existsAfter(expedientPath(request.resource.data.expedienteId)) &&
         canManageExpedient(get(expedientPath(request.resource.data.expedienteId)).data);
       // Supervisors correct the date in place; a corrected number is a new document
-      // (its id includes the number) plus the deletion of the old one.
+      // (its id includes the number) plus the deletion of the old one. When the entry
+      // filing number of the expedient changes, its copy here follows it.
       allow update: if isSupervisor() &&
         request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['fecha', 'editadoPor', 'fechaEdicion']);
+          .hasOnly(['fecha', 'editadoPor', 'fechaEdicion', 'expedienteRadicado']) &&
+        (request.resource.data.get('expedienteRadicado', null) ==
+            resource.data.get('expedienteRadicado', null) ||
+          request.resource.data.expedienteRadicado ==
+            getAfter(expedientPath(resource.data.expedienteId)).data.numeroRadicado);
       allow delete: if isSupervisor();
     }
 

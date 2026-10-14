@@ -201,7 +201,7 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {metrics.map((metric) => {
           const active = focus === metric.focus
           return (
@@ -211,13 +211,13 @@ export function DashboardPage() {
               onClick={() => setFocus(active ? '' : metric.focus)}
               aria-pressed={active}
               className={cn(
-                'group flex min-w-0 items-center gap-4 rounded-xl border bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md',
+                'group flex min-w-0 items-center gap-4 rounded-xl border bg-card p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-4',
                 active ? 'border-primary ring-2 ring-primary/20' : 'border-border',
               )}
             >
               <span
                 className={cn(
-                  'grid size-12 shrink-0 place-items-center rounded-xl ring-1',
+                  'hidden size-12 shrink-0 place-items-center rounded-xl ring-1 sm:grid',
                   metric.tone,
                 )}
               >
@@ -228,7 +228,7 @@ export function DashboardPage() {
                 <span className="block text-2xl font-bold tabular-nums text-slate-900">
                   {isLoading ? '–' : metric.value}
                 </span>
-                <span className="block truncate text-xs text-muted-foreground">{metric.hint}</span>
+                <span className="line-clamp-2 text-xs text-muted-foreground">{metric.hint}</span>
               </span>
             </button>
           )

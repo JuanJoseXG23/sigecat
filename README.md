@@ -19,6 +19,24 @@ npm install
 npm run dev
 ```
 
+Para probar sin tocar la base real, la app puede trabajar contra el emulador local (solo en
+desarrollo; la versión publicada no lo incluye). En una terminal:
+
+```powershell
+firebase emulators:start --only firestore,auth --project demo-sigecat
+```
+
+y en otra:
+
+```powershell
+$env:VITE_USE_EMULATORS = 'true'; $env:VITE_FIREBASE_PROJECT_ID = 'demo-sigecat'
+npm run dev
+```
+
+El emulador empieza vacío: para tener datos, cargue una copia y cree cuentas de prueba con el
+SDK de administración apuntando al emulador (`FIRESTORE_EMULATOR_HOST=127.0.0.1:8181`,
+`FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9199`).
+
 ## Inicializar o rotar usuarios
 
 El seed requiere una cuenta de servicio de Firebase Admin que no debe subirse al repositorio.

@@ -138,6 +138,7 @@ export function ExpedientDetailPage() {
   const canExtend = canManage && Boolean(item.fechaLimite) && (item.diasRestantes ?? 0) >= 0
   const canRegisterLate =
     canManage && Boolean(item.fechaLimite) && Boolean(getLateRegistrationScope(item.estado))
+  const canAsk = !finalized && canAskAboutExpedients(profile) && Boolean(item.funcionarioAsignado)
   const entryFilingReplaced = hasReplacedEntryFiling(item)
   const suggestedEntryFiling = entryFilingReplaced ? suggestEntryFiling(item) : undefined
   const counts: Record<Tab, number | undefined> = {
@@ -160,104 +161,105 @@ export function ExpedientDetailPage() {
 
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         <div className="flag-stripe h-1" aria-hidden="true" />
-        <div className="flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge status={item.estado} />
-              {!finalized && <DeadlineBadge status={item.estadoTermino} />}
-              {Boolean(item.diasAmpliacion) && (
-                <Badge variant="info">Plazo ampliado +{item.diasAmpliacion}</Badge>
-              )}
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-              Radicado {item.numeroRadicado}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {[
-                getDependencyName(getExpedientDependency(item)),
-                item.tipoTramite,
-                item.asunto,
-                item.solicitantes[0]?.nombre,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 flex-col gap-3 lg:items-end">
-            {finalized ? (
-              <>
-                <div className="rounded-xl bg-muted/60 px-4 py-3 text-sm">
-                  <p className="font-semibold text-slate-900">
-                    Expediente cerrado · {canEditData ? 'corrección habilitada' : 'solo consulta'}
-                  </p>
-                  <p className="text-muted-foreground">
-                    Cierre: {formatDate(getClosingDate(item))}
-                  </p>
-                </div>
-                {canEditData && (
-                  <Button variant="outline" className="no-print" onClick={() => setDialog('edit')}>
-                    <Pencil size={16} /> Editar datos
-                  </Button>
+        <div className="space-y-4 p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <StatusBadge status={item.estado} />
+                {!finalized && <DeadlineBadge status={item.estadoTermino} />}
+                {Boolean(item.diasAmpliacion) && (
+                  <Badge variant="info">Plazo ampliado +{item.diasAmpliacion}</Badge>
                 )}
-              </>
+              </div>
+              <h1 className="break-words text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+                Radicado {item.numeroRadicado}
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {[
+                  getDependencyName(getExpedientDependency(item)),
+                  item.tipoTramite,
+                  item.asunto,
+                  item.solicitantes[0]?.nombre,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </p>
+            </div>
+
+            {finalized ? (
+              <div className="shrink-0 rounded-xl bg-muted/60 px-4 py-3 text-sm">
+                <p className="font-semibold text-slate-900">
+                  Expediente cerrado · {canEditData ? 'corrección habilitada' : 'solo consulta'}
+                </p>
+                <p className="text-muted-foreground">Cierre: {formatDate(getClosingDate(item))}</p>
+              </div>
             ) : (
-              <>
+              <div className="shrink-0 space-y-1 text-sm text-muted-foreground sm:text-right">
                 {item.fechaLimite && (
-                  <p className="text-sm text-muted-foreground lg:text-right">
+                  <p>
                     Vence el <b className="text-slate-900">{formatLongDate(item.fechaLimite)}</b>
                   </p>
                 )}
-                {canManage ? (
-                  <div className="no-print flex flex-wrap gap-2">
-                    <Button variant="outline" onClick={() => setDialog('edit')}>
-                      <Pencil size={16} /> Editar datos
-                    </Button>
-                    {canExtend && (
-                      <Button variant="outline" onClick={() => setDialog('extension')}>
-                        <CalendarPlus size={17} /> Ampliar plazo
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      onClick={() => setDialog('support')}
-                      title="Otra área o persona respondió parte de la petición"
-                    >
-                      <Handshake size={17} /> Apoyo en respuesta
-                    </Button>
-                    {canRegisterLate && (
-                      <Button
-                        variant="outline"
-                        onClick={() => setDialog('late')}
-                        title="Subir respuestas, traslados o ampliaciones ya radicados con sus fechas reales"
-                      >
-                        <History size={17} /> Registrar atrasado
-                      </Button>
-                    )}
-                    <Button onClick={() => setDialog('actuation')}>
-                      {step.title === 'Completar actuación'
-                        ? `Completar: ${item.estado}`
-                        : step.title}
-                      <ArrowRight size={17} />
-                    </Button>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Gestiona: {item.funcionarioAsignado?.nombreCompleto ?? 'sin responsable'}
-                  </p>
-                )}
-                {canAskAboutExpedients(profile) && item.funcionarioAsignado && (
-                  <Button
-                    variant="outline"
-                    className="no-print"
-                    onClick={() => setDialog('inquiry')}
-                  >
-                    <MessageCircleQuestion size={17} /> Preguntar al responsable
-                  </Button>
-                )}
-              </>
+                <p>
+                  Gestiona:{' '}
+                  <span className="font-medium text-slate-900">
+                    {item.funcionarioAsignado?.nombreCompleto ?? 'sin responsable'}
+                  </span>
+                </p>
+              </div>
             )}
           </div>
+
+          {(canManage || (finalized && canEditData) || canAsk) && (
+            <div className="no-print flex flex-wrap items-center gap-2 border-t border-border pt-4">
+              {canManage && (
+                <Button
+                  className="h-auto min-h-10 w-full whitespace-normal py-2 sm:w-auto"
+                  onClick={() => setDialog('actuation')}
+                >
+                  {step.title === 'Completar actuación' ? `Completar: ${item.estado}` : step.title}
+                  <ArrowRight size={17} />
+                </Button>
+              )}
+              {(canManage || (finalized && canEditData)) && (
+                <Button variant="outline" onClick={() => setDialog('edit')}>
+                  <Pencil size={16} /> Editar datos
+                </Button>
+              )}
+              {canExtend && (
+                <Button variant="outline" onClick={() => setDialog('extension')}>
+                  <CalendarPlus size={17} /> Ampliar plazo
+                </Button>
+              )}
+              {canManage && (
+                <Button
+                  variant="outline"
+                  onClick={() => setDialog('support')}
+                  title="Otra área o persona respondió parte de la petición"
+                >
+                  <Handshake size={17} /> Apoyo en respuesta
+                </Button>
+              )}
+              {canRegisterLate && (
+                <Button
+                  variant="outline"
+                  onClick={() => setDialog('late')}
+                  title="Subir respuestas, traslados o ampliaciones ya radicados con sus fechas reales"
+                >
+                  <History size={17} /> Registrar atrasado
+                </Button>
+              )}
+              {canAsk && (
+                <Button
+                  variant="outline"
+                  className="sm:ml-auto"
+                  onClick={() => setDialog('inquiry')}
+                >
+                  <MessageCircleQuestion size={17} /> Preguntar al responsable
+                </Button>
+              )}
+            </div>
+          )}
         </div>
         <div className="border-t border-border bg-muted/30 px-5 py-5 sm:px-6">
           <WorkflowStepper flow={flow} currentIndex={currentIndex} />

@@ -13,6 +13,7 @@ import {
   type expedientSchema,
 } from '@/features/expedients/schemas/expedient-schema'
 import { calculateExpedientTimeline, toDateKey } from '@/lib/expedient-deadline'
+import { INTAKE_CHANNELS } from '@/lib/intake-channels'
 import { describeRemainingDays, formatLongDate } from '@/lib/format'
 import { useBusinessConfiguration } from '@/hooks/use-business-configuration'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
@@ -40,14 +41,6 @@ interface ExpedientFormProps {
   onCancel: () => void
   onSubmit: (values: ExpedientFormData) => Promise<void>
 }
-
-const INTAKE_CHANNELS = [
-  'Ventanilla única',
-  'Correo electrónico',
-  'Sede electrónica',
-  'Correo certificado',
-  'Atención telefónica',
-]
 
 const emptyApplicant = {
   nombre: '',
@@ -249,8 +242,17 @@ export function ExpedientForm({
           <Field label="Fecha de radicado" required error={errors.fechaRadicado?.message}>
             <Input type="date" max={toDateKey(new Date())} {...form.register('fechaRadicado')} />
           </Field>
-          <Field label="Fecha de recibido" hint="Informativa; no modifica el término.">
-            <Input type="date" {...form.register('fechaRecibido')} />
+          <Field
+            label="Fecha de recibido"
+            hint="Informativa; no modifica el término."
+            error={errors.fechaRecibido?.message}
+          >
+            <Input
+              type="date"
+              min={filingDate}
+              max={toDateKey(new Date())}
+              {...form.register('fechaRecibido')}
+            />
           </Field>
           <Field label="Medio de ingreso">
             <Input

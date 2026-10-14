@@ -208,7 +208,10 @@ ese dato, con la fecha de cierre.
 ## Correcciones (Administrador y Coordinador)
 
 - **Datos del expediente:** botón **Editar datos** en el detalle, también si el expediente ya está
-  cerrado. El estado del flujo no cambia.
+  cerrado. El estado del flujo no cambia. El historial dice qué dato cambió, con el valor anterior y
+  el nuevo; asunto, observaciones y datos de contacto solo se nombran
+  (`src/lib/expedient-changes.ts`). Si cambia el radicado de entrada, también se actualiza su copia
+  en cada radicado de Radicación.
 - **Radicado de entrada:** identifica el expediente y es el que se muestra en todos los
   encabezados. Solo Administrador y Coordinador lo corrigen (también en `firestore.rules`), y
   nunca por un radicado de respuesta, traslado o ampliación del mismo expediente. Si ya se

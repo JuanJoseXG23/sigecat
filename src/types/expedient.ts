@@ -215,4 +215,6 @@ export interface ExpedientHistoryEntry {
   accion: string
   detalle: string
   fecha: Timestamp | null
+  /** Posición dentro de un mismo guardado (desde 1; la primera entrada no lo lleva). */
+  orden?: number
 }

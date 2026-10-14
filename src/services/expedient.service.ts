@@ -31,7 +31,10 @@ import {
   type ResponseSupportInput,
 } from '@/lib/response-support'
 import { getOutgoingFilingNumbers } from '@/lib/entry-filing'
+import { normalizeIntakeChannel } from '@/lib/intake-channels'
+import { describeExpedientChanges } from '@/lib/expedient-changes'
 import { getNoteError, NOTE_ACTION } from '@/lib/expedient-notes'
+import { sortHistoryNewestFirst } from '@/lib/history-order'
 import { fromDateKey, toDateKey } from '@/lib/expedient-deadline'
 import { parseDocumentLink } from '@/lib/document-links'
 import { getFilingCorrectionError, planFilingCorrection } from '@/lib/record-corrections'
@@ -154,7 +157,7 @@ async function toExpedientData(
     numeroRadicado: values.numeroRadicado.trim(),
     fechaRadicado: toTimestamp(values.fechaRadicado),
     fechaRecibido: toTimestamp(values.fechaRecibido),
-    medioIngreso: values.medioIngreso?.trim(),
+    medioIngreso: normalizeIntakeChannel(values.medioIngreso),
     tipoTramiteId: procedureType?.id,
     tipoTramite: procedureType?.nombre ?? values.tipoTramite?.trim(),
     asunto: values.asunto?.trim(),
@@ -358,7 +361,7 @@ export async function updateExpedient(
   batch.update(expedientReference(id), {
     ...data,
     fechaRecibido: values.fechaRecibido ? toTimestamp(values.fechaRecibido) : deleteField(),
-    medioIngreso: values.medioIngreso?.trim() || deleteField(),
+    medioIngreso: normalizeIntakeChannel(values.medioIngreso) ?? deleteField(),
     asunto: values.asunto?.trim() || deleteField(),
     funcionarioAsignado: assignedOfficial ?? deleteField(),
     prioridad: values.prioridad ?? deleteField(),
@@ -369,18 +372,44 @@ export async function updateExpedient(
   if (current && current.numeroRadicado !== data.numeroRadicado) {
     batch.set(entryFilingReference(data.numeroRadicado as string), { expedienteId: id })
     batch.delete(entryFilingReference(current.numeroRadicado))
+    // El libro de Radicación muestra el radicado de entrada de cada expediente: se actualiza.
+    const filings = await getDocs(
+      query(collection(firestore, 'radicados'), where('expedienteId', '==', id)),
+    )
+    for (const filing of filings.docs)
+      batch.update(filing.ref, { expedienteRadicado: data.numeroRadicado })
   }
   if (current) {
-    const changes = [
-      getExpedientDependency(current) !== values.dependencia &&
-        `Área: ${getDependencyName(getExpedientDependency(current))} → ${getDependencyName(values.dependencia)}`,
-      current.tipoTramite !== data.tipoTramite &&
-        `Tipo de trámite: ${current.tipoTramite ?? 'Sin tipo'} → ${data.tipoTramite}`,
-      current.funcionarioAsignado?.uid !== assignedOfficial?.uid &&
-        `Responsable: ${current.funcionarioAsignado?.nombreCompleto ?? 'Sin asignar'} → ${assignedOfficial?.nombreCompleto ?? 'Sin asignar'}`,
-      current.prioridad !== data.prioridad &&
-        `Prioridad: ${current.prioridad ?? 'Sin prioridad'} → ${data.prioridad ?? 'Sin prioridad'}`,
-    ].filter(Boolean)
+    const changes = describeExpedientChanges(
+      {
+        area: getDependencyName(getExpedientDependency(current)),
+        numeroRadicado: current.numeroRadicado,
+        fechaRadicado: toDateKey(current.fechaRadicado.toDate()),
+        fechaRecibido: current.fechaRecibido && toDateKey(current.fechaRecibido.toDate()),
+        medioIngreso: current.medioIngreso,
+        tipoTramite: current.tipoTramite,
+        asunto: current.asunto,
+        responsable: current.funcionarioAsignado?.nombreCompleto,
+        prioridad: current.prioridad,
+        solicitantes: current.solicitantes,
+        predios: current.predios ?? [],
+        observaciones: current.observacionesIniciales,
+      },
+      {
+        area: getDependencyName(values.dependencia),
+        numeroRadicado: data.numeroRadicado as string,
+        fechaRadicado: values.fechaRadicado,
+        fechaRecibido: values.fechaRecibido,
+        medioIngreso: values.medioIngreso,
+        tipoTramite: data.tipoTramite as string | undefined,
+        asunto: values.asunto,
+        responsable: assignedOfficial?.nombreCompleto,
+        prioridad: values.prioridad,
+        solicitantes: values.solicitantes,
+        predios: values.predios,
+        observaciones: values.observacionesIniciales,
+      },
+    )
     registerExpedientHistory(
       batch,
       id,
@@ -873,9 +902,9 @@ export async function addExpedientNote(id: string, text: string, userId: string)
 
 export async function listExpedientHistory(id: string): Promise<ExpedientHistoryEntry[]> {
   const result = await getDocs(collection(firestore, EXPEDIENTS_COLLECTION, id, 'historial'))
-  return result.docs
-    .map((item) => ({ id: item.id, ...item.data() }) as ExpedientHistoryEntry)
-    .sort((a, b) => (b.fecha?.toMillis() ?? 0) - (a.fecha?.toMillis() ?? 0))
+  return sortHistoryNewestFirst(
+    result.docs.map((item) => ({ id: item.id, ...item.data() }) as ExpedientHistoryEntry),
+  )
 }
 
 /**

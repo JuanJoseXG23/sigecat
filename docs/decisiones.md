@@ -82,6 +82,12 @@ Con datos del responsable:
   el físico y corregir desde Radicación.
 - Confirmar con el físico o la planilla de Archivo los diez radicados de entrada corregidos el 14
   de octubre de 2026 (abajo, en Hecho).
+- `20262007648` figura como respuesta de dos expedientes (`20261006795`, Rosmelina Echeverri, y
+  `20261006899`, Ligia Janeth Quintero): uno está mal. Revisar en el físico y corregir desde
+  Radicación. Para evitarlo, se recomienda un índice de radicados de salida únicos, como el de
+  entrada.
+- `20261004908`: la respuesta `20262005217` figura en Radicación del 23 de julio y en el expediente
+  del 21 de julio. Confirmar la fecha real.
 - Tipos de solicitante "Propietario" y "Copropietario": ¿se mantienen para todas las áreas?
 - D-26: hoy el formulario permite dejar el expediente sin responsable; falta decidir si se asigna
   solo a quien lo registra.
@@ -101,3 +107,9 @@ Seis tenían el radicado de su respuesta (serie 200) y cuatro el texto `DP####` 
 `20261006480`, `20261006589`, `20261006677`, `20261006795`. Cada uno tiene nota en su historial;
 el estado anterior quedó en `C:\Users\juanj\copias-sigecat`. `2001007448` ya estaba como
 `20261007448`.
+
+Hecho el 14 de octubre de 2026, en la depuración general (estado anterior en la misma carpeta):
+fecha de cierre de 14 expedientes, que la migración del 13 de octubre había tomado de un
+mantenimiento (ahora es la de "Finalizó expediente"); radicado de entrada en 9 registros de
+Radicación que no lo tenían; número de la actuación radicada en 16 expedientes anteriores a que se
+guardara.

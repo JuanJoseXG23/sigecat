@@ -12,6 +12,7 @@ import { getDependencyName, getExpedientDependency, matchesDependency } from '@/
 import { formatDate } from '@/lib/format'
 import { listExpedientsFiledInYear } from '@/services/expedient.service'
 import { getClosingDate, getResponseDate, type Expedient } from '@/types/expedient'
+import { normalizeIntakeChannel } from '@/lib/intake-channels'
 
 function group(items: Expedient[], label: (item: Expedient) => string): [string, number][] {
   const counts = new Map<string, number>()
@@ -242,7 +243,10 @@ export function ReportsPage() {
         />
         <BarList
           title="Por medio de ingreso"
-          values={group(rows, (item) => item.medioIngreso || 'No registrado')}
+          values={group(
+            rows,
+            (item) => normalizeIntakeChannel(item.medioIngreso) ?? 'No registrado',
+          )}
           total={rows.length}
         />
       </div>

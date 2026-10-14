@@ -336,8 +336,8 @@ function sendDeadlineAlertForExpedient_(expedient, threshold, holidayMap, users)
     MailApp.sendEmail({
       to: recipient.correo,
       subject: subject,
+      // Solo texto: meter los datos del expediente en HTML sin escaparlos podría romper el correo.
       body: body,
-      htmlBody: body.replace(/\n/g, '<br>'),
     })
     patchDocument_(expedient.id, {
       ultimaAlertaVencimiento: { clave: alertKey, fecha: new Date() },

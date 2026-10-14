@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { DEPENDENCIES, type DependencyId } from '@/lib/dependencies'
+import { getEntryDatesError } from '@/lib/entry-dates'
+import { toDateKey } from '@/lib/expedient-deadline'
 import { getFilingNumberError } from '@/lib/filing-number'
 import { APPLICANT_TYPES, EXPEDIENT_PRIORITIES } from '@/types/expedient'
 
@@ -47,11 +49,18 @@ export const expedientSchema = z.object({
 })
 
 /**
- * Valida el formato del radicado de entrada si el expediente es nuevo o si el número cambia;
- * los expedientes antiguos con otro formato se pueden seguir editando.
+ * Valida las fechas y, si el expediente es nuevo o el número cambia, el formato del radicado de
+ * entrada; los expedientes antiguos con otro formato se pueden seguir editando.
  */
 export function createExpedientSchema(previousNumber?: string) {
   return expedientSchema.superRefine((values, context) => {
+    const dates = getEntryDatesError(
+      values.fechaRadicado,
+      values.fechaRecibido || undefined,
+      toDateKey(new Date()),
+    )
+    if (dates)
+      context.addIssue({ code: z.ZodIssueCode.custom, path: [dates.field], message: dates.message })
     if (values.numeroRadicado === previousNumber?.trim()) return
     const error = getFilingNumberError(values.numeroRadicado, values.fechaRadicado, 'entrada')
     if (error)
