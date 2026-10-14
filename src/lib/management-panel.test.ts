@@ -6,6 +6,7 @@ import {
   countAnsweredThisMonth,
   countByStage,
   countByTraffic,
+  getClosedSince,
   getMonthlySeries,
   getRecentlyAnswered,
   getTimeliness,
@@ -118,6 +119,12 @@ test('cuenta los respondidos del mes y lista los más recientes', () => {
     getRecentlyAnswered([first, old, second], 2).map((entry) => entry.id),
     ['b', 'a'],
   )
+})
+
+test('pide los cerrados desde lo que empiece antes: el año o los meses de la gráfica', () => {
+  assert.deepEqual(getClosedSince(new Date(2026, 9, 13)), new Date(2026, 0, 1))
+  assert.deepEqual(getClosedSince(new Date(2026, 1, 10)), new Date(2025, 8, 1))
+  assert.deepEqual(getClosedSince(new Date(2026, 5, 30)), new Date(2026, 0, 1))
 })
 
 test('la pregunta exige responsable y un texto razonable', () => {

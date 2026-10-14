@@ -143,6 +143,16 @@ export function getMonthlySeries(
   return points
 }
 
+/**
+ * Desde cuándo necesita el panel los expedientes cerrados: el año en curso (respuesta oportuna)
+ * y los `months` meses de la gráfica, lo que empiece antes.
+ */
+export function getClosedSince(today = new Date(), months = 6): Date {
+  const yearStart = new Date(today.getFullYear(), 0, 1)
+  const seriesStart = new Date(today.getFullYear(), today.getMonth() - (months - 1), 1)
+  return seriesStart < yearStart ? seriesStart : yearStart
+}
+
 /** Respondidos en el mes de `today`. */
 export function countAnsweredThisMonth(items: ClosedLike[], today = new Date()): number {
   const key = monthKey(today)

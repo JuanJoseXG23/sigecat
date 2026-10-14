@@ -22,12 +22,14 @@ import { InquiryDialog } from '@/features/expedients/components/inquiry-dialog'
 import { ExpedientTable } from '@/features/expedients/components/expedient-table'
 import { byUrgency, matchesExpedientSearch } from '@/features/expedients/expedient-filters'
 import { useAuth } from '@/hooks/use-auth'
+import { toDateKey } from '@/lib/expedient-deadline'
 import { formatDate, formatDateTime } from '@/lib/format'
 import {
   answeredOnTime,
   countAnsweredThisMonth,
   countByStage,
   countByTraffic,
+  getClosedSince,
   getMonthlySeries,
   getRecentlyAnswered,
   getTimeliness,
@@ -36,12 +38,18 @@ import {
   type Traffic,
 } from '@/lib/management-panel'
 import { cn } from '@/lib/utils'
-import { listExpedients, listHistoricalExpedients } from '@/services/expedient.service'
+import { listClosedExpedientsSince, listExpedients } from '@/services/expedient.service'
 import { listMyInquiries, type InquiryStatus } from '@/services/inquiry.service'
 import { getResponseDate, type Expedient, type ExpedientStatus } from '@/types/expedient'
 
-/** Se vuelve a consultar cada minuto para que el panel se mantenga al día solo. */
-const REFRESH_MS = 60_000
+/**
+ * Los activos y las preguntas se vuelven a consultar cada 15 minutos (solo con la pestaña
+ * visible); los cerrados cambian poco y se actualizan con el botón o al actuar. Cada documento
+ * leído cuenta para la cuota diaria de Firestore.
+ */
+const REFRESH_MS = 15 * 60_000
+/** Meses de la gráfica de radicados y respondidos. */
+const SERIES_MONTHS = 6
 
 // Colores validados (CVD y contraste) con el validador de dataviz; el ámbar va siempre con
 // su número visible al lado, porque por sí solo no alcanza contraste 3:1.
@@ -211,10 +219,10 @@ export function ManagementPanelPage() {
     queryFn: () => listExpedients(),
     refetchInterval: REFRESH_MS,
   })
+  const closedSince = getClosedSince(new Date(), SERIES_MONTHS)
   const closed = useQuery({
-    queryKey: ['historical-expedients'],
-    queryFn: listHistoricalExpedients,
-    refetchInterval: REFRESH_MS,
+    queryKey: ['historical-expedients', 'since', toDateKey(closedSince)],
+    queryFn: () => listClosedExpedientsSince(closedSince),
   })
   const inquiries = useQuery({
     queryKey: ['inquiries', user?.uid],
@@ -233,7 +241,7 @@ export function ManagementPanelPage() {
   const traffic = countByTraffic(activeItems)
   const stages = countByStage(activeItems)
   const workload = getWorkload(activeItems)
-  const series = getMonthlySeries([...activeItems, ...closedItems], 6, today)
+  const series = getMonthlySeries([...activeItems, ...closedItems], SERIES_MONTHS, today)
   const yearTimeliness = getTimeliness(
     closedItems.filter((item) => getResponseDate(item).getFullYear() === today.getFullYear()),
   )

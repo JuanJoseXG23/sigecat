@@ -25,7 +25,10 @@ datos, rol y activar o desactivar cuentas.
 ## Panel de dirección
 
 Para la jefatura (rol **Directivo**; también lo ven Administrador y Coordinador). Es la página de
-inicio del Directivo (`#/direccion`) y se actualiza sola cada minuto.
+inicio del Directivo (`#/direccion`). Los expedientes en trámite y las preguntas se actualizan
+solos cada 15 minutos; los cerrados, con el botón **Actualizar** o al actuar sobre un expediente.
+Para no agotar la cuota diaria de lecturas de Firestore, el panel solo descarga los cerrados
+desde el inicio del año o de los seis meses de la gráfica (lo que empiece antes).
 
 - **Indicadores:** en trámite, vencidos, próximos a vencer, respondidos este mes y porcentaje de
   respuesta oportuna del año (con la fecha real de la respuesta).

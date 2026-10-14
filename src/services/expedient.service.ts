@@ -187,6 +187,24 @@ export async function listHistoricalExpedients(): Promise<Expedient[]> {
     .sort(byLastUpdate)
 }
 
+/**
+ * Cerrados con cambios desde `since`. Un expediente cerrado desde esa fecha se actualizó por
+ * última vez después de ella, así que basta con ese rango para no descargar todo el archivo.
+ * `activo` se filtra aquí: combinarlo con el rango en Firestore exigiría un índice compuesto.
+ */
+export async function listClosedExpedientsSince(since: Date): Promise<Expedient[]> {
+  const snapshot = await getDocs(
+    query(
+      collection(firestore, EXPEDIENTS_COLLECTION),
+      where('fechaActualizacion', '>=', Timestamp.fromDate(since)),
+    ),
+  )
+  return snapshot.docs
+    .map((item) => ({ ...(item.data() as Expedient), id: item.id }))
+    .filter((item) => !item.activo)
+    .sort(byLastUpdate)
+}
+
 export async function getExpedient(id: string): Promise<Expedient | null> {
   const snapshot = await getDoc(expedientReference(id))
   if (!snapshot.exists()) return null
