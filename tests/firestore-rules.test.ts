@@ -1,0 +1,278 @@
+import { readFileSync } from 'node:fs'
+import { after, before, beforeEach, test } from 'node:test'
+import {
+  assertFails,
+  assertSucceeds,
+  initializeTestEnvironment,
+  type RulesTestEnvironment,
+} from '@firebase/rules-unit-testing'
+import {
+  arrayUnion,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+  writeBatch,
+  type Firestore,
+} from 'firebase/firestore'
+
+/**
+ * Reglas de firestore.rules contra el emulador (proyecto de prueba, nunca el real):
+ * npm run test:rules
+ */
+let env: RulesTestEnvironment
+
+const users = {
+  admin: { rol: 'Administrador', dependencia: 'catastro' },
+  coordinator: { rol: 'Coordinador', dependencia: 'catastro' },
+  director: { rol: 'Directivo' },
+  viewer: { rol: 'Consulta' },
+  ana: { rol: 'Funcionario', dependencia: 'catastro' },
+  luis: { rol: 'Funcionario', dependencia: 'catastro' },
+  tesoreria: { rol: 'Funcionario', dependencia: 'tesoreria' },
+  inactive: { rol: 'Funcionario', dependencia: 'catastro', activo: false },
+} as const
+
+type UserKey = keyof typeof users
+
+const as = (user: UserKey): Firestore => env.authenticatedContext(user).firestore()
+
+/** Expediente activo de Ana (lo registró y lo tiene), en el que Luis participó antes. */
+const anaExpedient = {
+  id: 'e1',
+  numeroRadicado: '20261000001',
+  dependencia: 'catastro',
+  estado: 'En respuesta',
+  activo: true,
+  creadoPor: 'ana',
+  funcionarioAsignado: { uid: 'ana', nombreCompleto: 'Ana' },
+  participantes: ['luis', 'ana'],
+}
+
+before(async () => {
+  env = await initializeTestEnvironment({
+    projectId: 'demo-sigecat',
+    firestore: { rules: readFileSync('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8181 },
+  })
+})
+
+after(() => env.cleanup())
+
+beforeEach(async () => {
+  await env.clearFirestore()
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore()
+    for (const [uid, data] of Object.entries(users))
+      await setDoc(doc(db, 'usuarios', uid), { activo: true, ...data })
+    await setDoc(doc(db, 'expedientes/e1'), anaExpedient)
+    await setDoc(doc(db, 'radicadosEntrada/20261000001'), { expedienteId: 'e1' })
+    await setDoc(doc(db, 'expedientes/e2'), {
+      ...anaExpedient,
+      id: 'e2',
+      numeroRadicado: '20261000002',
+      creadoPor: 'tesoreria',
+      dependencia: 'tesoreria',
+      funcionarioAsignado: { uid: 'tesoreria', nombreCompleto: 'Teso' },
+      participantes: ['tesoreria'],
+    })
+    await setDoc(doc(db, 'expedientes/e1/historial/h1'), { usuario: 'ana', accion: 'x' })
+    await setDoc(doc(db, 'radicados/e1_20262000001'), { expedienteId: 'e1', numero: '20262000001' })
+    await setDoc(doc(db, 'radicados/e2_20262000002'), { expedienteId: 'e2', numero: '20262000002' })
+  })
+})
+
+const mine = (db: Firestore, uid: string) =>
+  query(
+    collection(db, 'expedientes'),
+    where('participantes', 'array-contains', uid),
+    where('activo', '==', true),
+  )
+
+test('el Funcionario ve solo los expedientes donde participa', async () => {
+  await assertSucceeds(getDocs(mine(as('ana'), 'ana')))
+  await assertSucceeds(getDoc(doc(as('ana'), 'expedientes/e1')))
+  // Luis lo tuvo antes: lo sigue viendo.
+  await assertSucceeds(getDoc(doc(as('luis'), 'expedientes/e1')))
+  await assertFails(getDoc(doc(as('tesoreria'), 'expedientes/e1')))
+  await assertFails(getDocs(collection(as('ana'), 'expedientes')))
+  await assertFails(
+    getDocs(query(collection(as('ana'), 'expedientes'), where('activo', '==', true))),
+  )
+})
+
+test('los usuarios mayores y Consulta ven todo; una cuenta inactiva nada', async () => {
+  for (const user of ['admin', 'coordinator', 'director', 'viewer'] as const)
+    await assertSucceeds(getDocs(collection(as(user), 'expedientes')))
+  await assertFails(getDoc(doc(as('inactive'), 'expedientes/e1')))
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), 'expedientes/e1')))
+})
+
+test('historial y radicados se ven como su expediente', async () => {
+  await assertSucceeds(getDocs(collection(as('luis'), 'expedientes/e1/historial')))
+  await assertFails(getDocs(collection(as('tesoreria'), 'expedientes/e1/historial')))
+  const filingsOf = (db: Firestore, ids: string[]) =>
+    getDocs(query(collection(db, 'radicados'), where('expedienteId', 'in', ids)))
+  await assertSucceeds(filingsOf(as('ana'), ['e1']))
+  await assertFails(filingsOf(as('ana'), ['e1', 'e2']))
+  await assertFails(getDocs(collection(as('ana'), 'radicados')))
+  await assertSucceeds(getDocs(collection(as('director'), 'radicados')))
+})
+
+/** Lote de creación como lo arma createExpedient. */
+function createBatch(db: Firestore, overrides: Record<string, unknown> = {}, claim = true) {
+  const data = {
+    id: 'e9',
+    numeroRadicado: '20261000009',
+    dependencia: 'catastro',
+    estado: 'Recibido',
+    activo: true,
+    creadoPor: 'ana',
+    participantes: ['ana'],
+    ...overrides,
+  }
+  const batch = writeBatch(db)
+  batch.set(doc(db, 'expedientes/e9'), data)
+  if (claim)
+    batch.set(doc(db, 'radicadosEntrada', String(data.numeroRadicado)), { expedienteId: 'e9' })
+  batch.set(doc(db, 'expedientes/e9/historial/h'), { usuario: data.creadoPor, accion: 'Creación' })
+  return batch.commit()
+}
+
+test('al registrar se exige área propia, participantes y radicado de entrada único', async () => {
+  await assertSucceeds(createBatch(as('ana')))
+})
+
+test('no se registra sin reservar el radicado, con uno repetido ni en otra área', async () => {
+  await assertFails(createBatch(as('ana'), {}, false))
+  await assertFails(createBatch(as('ana'), { numeroRadicado: '20261000001' }))
+  await assertFails(createBatch(as('ana'), { dependencia: 'tesoreria' }))
+  await assertFails(createBatch(as('ana'), { dependencia: 'otra' }))
+  await assertFails(createBatch(as('ana'), { participantes: [] }))
+  await assertFails(
+    createBatch(as('ana'), { funcionarioAsignado: { uid: 'luis', nombreCompleto: 'Luis' } }),
+  )
+  await assertFails(
+    createBatch(as('director'), { creadoPor: 'director', participantes: ['director'] }),
+  )
+  // Un supervisor sí elige el área.
+  await assertSucceeds(
+    createBatch(as('coordinator'), {
+      creadoPor: 'coordinator',
+      participantes: ['coordinator'],
+      dependencia: 'tesoreria',
+    }),
+  )
+})
+
+test('solo actúa el responsable actual; quien lo tuvo antes solo consulta', async () => {
+  const update = (db: Firestore, uid: string, data: Record<string, unknown> = {}) =>
+    updateDoc(doc(db, 'expedientes/e1'), {
+      estado: 'Radicado de salida',
+      participantes: arrayUnion(uid),
+      ...data,
+    })
+  await assertSucceeds(update(as('ana'), 'ana'))
+  await assertFails(update(as('luis'), 'luis'))
+  await assertFails(update(as('tesoreria'), 'tesoreria'))
+  await assertFails(update(as('director'), 'director'))
+  await assertSucceeds(update(as('coordinator'), 'coordinator'))
+})
+
+test('participantes no se recorta y el área solo la cambian supervisores', async () => {
+  const set = (db: Firestore, data: Record<string, unknown>) =>
+    updateDoc(doc(db, 'expedientes/e1'), data)
+  await assertFails(set(as('ana'), { participantes: ['ana'] }))
+  await assertFails(set(as('ana'), { participantes: arrayUnion('ana'), dependencia: 'tesoreria' }))
+  await assertFails(
+    set(as('ana'), { participantes: arrayUnion('ana'), numeroRadicado: '20261000005' }),
+  )
+  // Reasignar exige incluir al nuevo responsable.
+  await assertFails(
+    set(as('ana'), {
+      participantes: arrayUnion('ana'),
+      funcionarioAsignado: { uid: 'tesoreria', nombreCompleto: 'Teso' },
+    }),
+  )
+  await assertSucceeds(
+    set(as('ana'), {
+      participantes: arrayUnion('ana', 'tesoreria'),
+      funcionarioAsignado: { uid: 'tesoreria', nombreCompleto: 'Teso' },
+    }),
+  )
+  await assertSucceeds(
+    set(as('coordinator'), { participantes: arrayUnion('coordinator'), dependencia: 'tesoreria' }),
+  )
+  await assertFails(
+    set(as('coordinator'), { participantes: arrayUnion('coordinator'), dependencia: 'otra' }),
+  )
+})
+
+test('corregir el radicado de entrada exige reservar el nuevo número', async () => {
+  const correct = (claim: boolean) => {
+    const db = as('coordinator')
+    const batch = writeBatch(db)
+    batch.update(doc(db, 'expedientes/e1'), {
+      numeroRadicado: '20261000007',
+      participantes: arrayUnion('coordinator'),
+    })
+    if (claim) batch.set(doc(db, 'radicadosEntrada/20261000007'), { expedienteId: 'e1' })
+    batch.delete(doc(db, 'radicadosEntrada/20261000001'))
+    return batch.commit()
+  }
+  await assertFails(correct(false))
+  await assertSucceeds(correct(true))
+})
+
+test('el índice de radicados de entrada no se lista ni se falsea', async () => {
+  await assertSucceeds(getDoc(doc(as('tesoreria'), 'radicadosEntrada/20261000001')))
+  await assertFails(getDocs(collection(as('ana'), 'radicadosEntrada')))
+  await assertFails(setDoc(doc(as('ana'), 'radicadosEntrada/20261000077'), { expedienteId: 'e1' }))
+  await assertFails(deleteDoc(doc(as('ana'), 'radicadosEntrada/20261000001')))
+})
+
+test('solo escribe historial y radicados quien puede gestionar el expediente', async () => {
+  const history = (user: UserKey) =>
+    setDoc(doc(as(user), 'expedientes/e1/historial/n'), { usuario: user, accion: 'x' })
+  await assertSucceeds(history('ana'))
+  await assertFails(history('luis'))
+  await assertFails(history('tesoreria'))
+  const filing = (user: UserKey) =>
+    setDoc(doc(as(user), 'radicados/e1_20262000099'), { expedienteId: 'e1', numero: '20262000099' })
+  await assertSucceeds(filing('ana'))
+  await assertFails(filing('luis'))
+})
+
+test('sin responsable, solo quien lo registró lo gestiona', async () => {
+  await env.withSecurityRulesDisabled((context) =>
+    setDoc(doc(context.firestore(), 'expedientes/e3'), {
+      ...anaExpedient,
+      id: 'e3',
+      funcionarioAsignado: null,
+      participantes: ['ana'],
+    }),
+  )
+  const update = (user: UserKey) =>
+    updateDoc(doc(as(user), 'expedientes/e3'), {
+      participantes: arrayUnion(user),
+      estado: 'Asignado',
+    })
+  await assertFails(update('luis'))
+  await assertSucceeds(update('ana'))
+})
+
+test('el directorio admite el área', async () => {
+  const entry = {
+    uid: 'ana',
+    nombreCompleto: 'Ana',
+    rol: 'Funcionario',
+    activo: true,
+    dependencia: 'catastro',
+  }
+  await assertSucceeds(setDoc(doc(as('admin'), 'directorioUsuarios/ana'), entry))
+  await assertFails(setDoc(doc(as('admin'), 'directorioUsuarios/ana'), { ...entry, correo: 'x' }))
+})

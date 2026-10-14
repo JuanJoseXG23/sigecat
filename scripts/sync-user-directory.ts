@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import { toDependencyId } from '../src/lib/dependencies.js'
 
 /**
  * Reconstruye directorioUsuarios a partir de usuarios. Es idempotente: se puede ejecutar
@@ -24,12 +25,14 @@ const [users, directory] = await Promise.all([
 ])
 const batch = firestore.batch()
 for (const user of users.docs) {
-  const { nombreCompleto, rol, activo } = user.data()
+  const { nombreCompleto, rol, activo, dependencia } = user.data()
+  const area = toDependencyId(dependencia)
   batch.set(firestore.collection('directorioUsuarios').doc(user.id), {
     uid: user.id,
     nombreCompleto,
     rol,
     activo: activo === true,
+    ...(area ? { dependencia: area } : {}),
   })
 }
 const orphans = directory.docs.filter((entry) => !users.docs.some((user) => user.id === entry.id))

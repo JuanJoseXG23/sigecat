@@ -9,21 +9,41 @@ export function isSupervisor(profile: Actor): boolean {
 }
 
 /**
+ * Refleja canReadAll de firestore.rules. Los demás (el Funcionario) solo ven los expedientes
+ * donde figuran en `participantes`, y sus consultas deben pedir exactamente eso.
+ */
+export function canReadAllExpedients(profile: Actor): boolean {
+  return (
+    profile?.rol === 'Administrador' ||
+    profile?.rol === 'Coordinador' ||
+    profile?.rol === 'Directivo' ||
+    profile?.rol === 'Consulta'
+  )
+}
+
+/** uid con el que se filtran las consultas de quien no ve todo; undefined si ve todo. */
+export function getParticipantScope(profile: Actor): string | undefined {
+  return profile && !canReadAllExpedients(profile) ? profile.uid : undefined
+}
+
+/**
  * Refleja canManageExpedient de firestore.rules; si cambia una, debe cambiar la otra.
- * Un Funcionario solo gestiona expedientes sin asignar o asignados a él, y los
- * expedientes finalizados solo los corrigen el Administrador y el Coordinador.
+ * Un Funcionario gestiona los expedientes activos que tiene asignados, o los que registró
+ * mientras no tengan responsable; quien lo tuvo antes solo lo consulta. Los finalizados solo
+ * los corrigen el Administrador y el Coordinador.
  */
 export function canManageExpedient(
   profile: Actor,
-  expedient: Pick<Expedient, 'funcionarioAsignado' | 'activo'>,
+  expedient: Pick<Expedient, 'funcionarioAsignado' | 'activo'> &
+    Partial<Pick<Expedient, 'creadoPor'>>,
 ): boolean {
   if (!profile) return false
   if (!expedient.activo) return isSupervisor(profile)
   if (isSupervisor(profile)) return true
-  return (
-    profile.rol === 'Funcionario' &&
-    (!expedient.funcionarioAsignado || expedient.funcionarioAsignado.uid === profile.uid)
-  )
+  if (profile.rol !== 'Funcionario') return false
+  return expedient.funcionarioAsignado
+    ? expedient.funcionarioAsignado.uid === profile.uid
+    : expedient.creadoPor === profile.uid
 }
 
 /** Roles que ven el Panel de dirección y pueden preguntar a los responsables por correo. */

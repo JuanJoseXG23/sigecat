@@ -78,10 +78,10 @@ function BarList({
 }
 
 export function ReportsPage() {
-  const active = useQuery({ queryKey: ['expedients'], queryFn: () => listExpedients() })
+  const active = useQuery({ queryKey: ['expedients', 'todos'], queryFn: () => listExpedients() })
   const closed = useQuery({
-    queryKey: ['historical-expedients'],
-    queryFn: listHistoricalExpedients,
+    queryKey: ['historical-expedients', 'todos'],
+    queryFn: () => listHistoricalExpedients(),
   })
   const [year, setYear] = useState(String(new Date().getFullYear()))
   const [status, setStatus] = useState('')

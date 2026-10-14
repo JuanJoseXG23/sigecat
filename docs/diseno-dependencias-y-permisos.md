@@ -29,15 +29,15 @@ impone en `firestore.rules`, no solo en la interfaz.
 
 ## Despliegue por pasos
 
-| Paso | Contenido                                                                                                                                 | Estado                        |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| 1    | Validación del formato de radicados (`src/lib/filing-number.ts`)                                                                          | Hecho                         |
-| 2    | Se escriben `dependencia` y `participantes`; área en formulario, Usuarios, tablas y filtros por área. Las reglas actuales siguen vigentes | Hecho                         |
-| 3    | Copia de seguridad y migración de datos existentes (`scripts/migrate-dependencies.ts`): simulación, revisión y aplicación                 | Script listo; sin ejecutar    |
-| 4    | Reglas nuevas probadas en el emulador                                                                                                     | Pendiente (requiere Java 11+) |
-| 5    | Consultas del Funcionario por `participantes` y publicación de reglas e índices: aquí cambia la visibilidad                               | Pendiente                     |
-| 6    | Histórico, Reportes, Biblioteca y Radicación consultan por periodo                                                                        | Pendiente                     |
-| 7    | Pasar expedientes entre áreas y colaboración entre áreas                                                                                  | Pendiente                     |
+| Paso | Contenido                                                                                                                                 | Estado                                                   |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| 1    | Validación del formato de radicados (`src/lib/filing-number.ts`)                                                                          | Hecho                                                    |
+| 2    | Se escriben `dependencia` y `participantes`; área en formulario, Usuarios, tablas y filtros por área. Las reglas actuales siguen vigentes | Hecho                                                    |
+| 3    | Migración de datos existentes (`scripts/migrate-dependencies.ts`): área, participantes, fecha de cierre e índice de radicados de entrada  | Aplicada el 13 de octubre de 2026 (copias en `backups/`) |
+| 4    | Reglas nuevas probadas en el emulador (`npm run test:rules`)                                                                              | Hecho                                                    |
+| 5    | Consultas del Funcionario por `participantes` y publicación de reglas e índices: aquí cambia la visibilidad                               | Hecho                                                    |
+| 6    | Histórico, Reportes, Biblioteca y Radicación consultan por periodo                                                                        | Pendiente                                                |
+| 7    | Pasar expedientes entre áreas y colaboración entre áreas                                                                                  | Pendiente                                                |
 
 El paso 5 solo se publica después del 3: si las consultas por `participantes` salieran antes de
 la migración, los Funcionarios dejarían de ver los expedientes antiguos.

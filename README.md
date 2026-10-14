@@ -82,12 +82,19 @@ npx tsx scripts/migrate-dependencies.ts --restore=backups/archivo.json
 
 ## Reglas de Firebase
 
+Las reglas tienen pruebas contra el emulador de Firestore (proyecto de prueba `demo-sigecat`,
+nunca el real). Requieren Java 21 o superior y Firebase CLI:
+
+```powershell
+npm run test:rules
+```
+
 `firestore.rules` exige un perfil activo para acceder a datos y aplica los permisos por rol
 descritos en [Flujo y permisos](docs/flujo-y-permisos.md). Se despliegan aparte del sitio, después
 de cada cambio:
 
 ```powershell
-firebase deploy --only firestore:rules --project sigecat-7c6ec
+firebase deploy --only firestore:rules,firestore:indexes --project sigecat-7c6ec
 ```
 
 ## Alertas de vencimiento por correo

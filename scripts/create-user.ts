@@ -102,6 +102,7 @@ try {
     nombreCompleto,
     rol,
     activo: true,
+    ...(dependencia ? { dependencia } : {}),
   })
   await batch.commit()
 } catch (error) {

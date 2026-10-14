@@ -52,6 +52,7 @@ import type {
 import { isFinalizedExpedient } from '@/types/expedient'
 
 const EXPEDIENTS_COLLECTION = 'expedientes'
+const ENTRY_FILINGS_COLLECTION = 'radicadosEntrada'
 
 /**
  * Suma a `participantes` a quien actúa y, si cambia, al nuevo responsable. Va en cada escritura
@@ -94,11 +95,19 @@ async function commit(batch: WriteBatch): Promise<void> {
   }
 }
 
+/**
+ * Índice que hace único el radicado de entrada: un Funcionario no puede consultar los
+ * expedientes ajenos, así que la unicidad la garantizan las reglas al reservar el número en
+ * el mismo lote que el expediente.
+ */
+function entryFilingReference(number: string) {
+  return doc(firestore, ENTRY_FILINGS_COLLECTION, number)
+}
+
 async function ensureUniqueFilingNumber(number: string, currentId?: string): Promise<void> {
-  const snapshot = await getDocs(
-    query(collection(firestore, EXPEDIENTS_COLLECTION), where('numeroRadicado', '==', number)),
-  )
-  if (snapshot.docs.some((item) => item.id !== currentId)) {
+  if (number.includes('/')) throw new Error('El radicado de entrada no puede contener "/".')
+  const snapshot = await getDoc(entryFilingReference(number))
+  if (snapshot.exists() && snapshot.data().expedienteId !== currentId) {
     throw new Error(`Ya existe un expediente con el número de radicado ${number}.`)
   }
 }
@@ -172,12 +181,16 @@ function byLastUpdate(first: Expedient, second: Expedient): number {
 }
 
 /**
- * Expedientes activos. Con assigneeUid solo trae los de ese responsable, filtrando en
- * Firestore para no descargar los de todo el equipo.
+ * Con `participant` solo pide los expedientes donde figura esa persona: es lo único que las
+ * reglas le dejan consultar a un Funcionario (ver getParticipantScope).
  */
-export async function listExpedients(assigneeUid?: string): Promise<Expedient[]> {
-  const constraints = [where('activo', '==', true)]
-  if (assigneeUid) constraints.push(where('funcionarioAsignado.uid', '==', assigneeUid))
+function scopeTo(participant: string | undefined) {
+  return participant ? [where('participantes', 'array-contains', participant)] : []
+}
+
+/** Expedientes activos; con `participant`, solo aquellos donde figura. */
+export async function listExpedients(participant?: string): Promise<Expedient[]> {
+  const constraints = [where('activo', '==', true), ...scopeTo(participant)]
   const snapshot = await getDocs(
     query(collection(firestore, EXPEDIENTS_COLLECTION), ...constraints),
   )
@@ -188,9 +201,13 @@ export async function listExpedients(assigneeUid?: string): Promise<Expedient[]>
 }
 
 /** Al finalizar o archivar, `activo` pasa a false; por eso basta con ese filtro. */
-export async function listHistoricalExpedients(): Promise<Expedient[]> {
+export async function listHistoricalExpedients(participant?: string): Promise<Expedient[]> {
   const snapshot = await getDocs(
-    query(collection(firestore, EXPEDIENTS_COLLECTION), where('activo', '==', false)),
+    query(
+      collection(firestore, EXPEDIENTS_COLLECTION),
+      where('activo', '==', false),
+      ...scopeTo(participant),
+    ),
   )
   return snapshot.docs
     .map((item) => ({ ...(item.data() as Expedient), id: item.id }))
@@ -252,6 +269,9 @@ export async function createExpedient(
     fechaCreacion: serverTimestamp(),
     fechaActualizacion: serverTimestamp(),
   })
+  batch.set(entryFilingReference(expedientData.numeroRadicado as string), {
+    expedienteId: reference.id,
+  })
   registerExpedientHistory(batch, reference.id, createdBy, 'Creación del expediente')
   if (assignedOfficial) queueAssignmentEmail(batch, reference.id, assignedOfficial.uid, createdBy)
   await commit(batch)
@@ -285,6 +305,10 @@ export async function updateExpedient(
     fechaActualizacion: serverTimestamp(),
     ...withParticipants(userId, assignedOfficial?.uid),
   })
+  if (current && current.numeroRadicado !== data.numeroRadicado) {
+    batch.set(entryFilingReference(data.numeroRadicado as string), { expedienteId: id })
+    batch.delete(entryFilingReference(current.numeroRadicado))
+  }
   if (current) {
     const changes = [
       getExpedientDependency(current) !== values.dependencia &&

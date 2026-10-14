@@ -1,4 +1,4 @@
-import { collection, getDocs, type Timestamp } from 'firebase/firestore'
+import { collection, getDocs, query, where, type Timestamp } from 'firebase/firestore'
 import { firestore } from '@/services/firebase'
 import { WORKFLOW_DOCUMENT_LABELS, type Expedient, type WorkflowDocument } from '@/types/expedient'
 
@@ -32,9 +32,19 @@ function timestampValue(timestamp: Timestamp | null | undefined): number {
   return timestamp?.toMillis() ?? 0
 }
 
-/** Construye la biblioteca desde los documentos asociados a cada expediente. */
-export async function getExpedientsWithDocuments(): Promise<LibraryExpedient[]> {
-  const snapshot = await getDocs(collection(firestore, 'expedientes'))
+/**
+ * Construye la biblioteca desde los documentos asociados a cada expediente. Con `participant`
+ * solo pide los expedientes donde figura esa persona, que es lo que las reglas le permiten.
+ */
+export async function getExpedientsWithDocuments(
+  participant?: string,
+): Promise<LibraryExpedient[]> {
+  const expedients = collection(firestore, 'expedientes')
+  const snapshot = await getDocs(
+    participant
+      ? query(expedients, where('participantes', 'array-contains', participant))
+      : expedients,
+  )
 
   return snapshot.docs
     .map((item) => {

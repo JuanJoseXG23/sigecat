@@ -5,6 +5,8 @@ import {
   getHomePath,
   canCorrectRecords,
   canManageExpedient,
+  canReadAllExpedients,
+  getParticipantScope,
   isSupervisor,
 } from './permissions'
 
@@ -23,8 +25,9 @@ test('supervisores gestionan cualquier expediente activo', () => {
   )
 })
 
-test('un funcionario solo gestiona expedientes propios o sin asignar', () => {
-  assert.equal(canManageExpedient(official, { activo: true }), true)
+test('un funcionario gestiona lo que tiene asignado o lo que registró sin responsable', () => {
+  assert.equal(canManageExpedient(official, { activo: true, creadoPor: 'f' }), true)
+  assert.equal(canManageExpedient(official, { activo: true, creadoPor: 'x' }), false)
   assert.equal(
     canManageExpedient(official, { activo: true, funcionarioAsignado: assignedTo('f') }),
     true,
@@ -33,6 +36,16 @@ test('un funcionario solo gestiona expedientes propios o sin asignar', () => {
     canManageExpedient(official, { activo: true, funcionarioAsignado: assignedTo('x') }),
     false,
   )
+})
+
+test('el funcionario solo consulta lo suyo; los demás roles ven todo', () => {
+  assert.equal(canReadAllExpedients(official), false)
+  assert.equal(getParticipantScope(official), 'f')
+  for (const profile of [admin, coordinator, viewer, { uid: 'd', rol: 'Directivo' } as const]) {
+    assert.equal(canReadAllExpedients(profile), true)
+    assert.equal(getParticipantScope(profile), undefined)
+  }
+  assert.equal(getParticipantScope(null), undefined)
 })
 
 test('consulta y sesiones sin perfil no gestionan expedientes', () => {

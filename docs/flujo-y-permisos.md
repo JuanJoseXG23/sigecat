@@ -2,13 +2,13 @@
 
 ## Roles
 
-| Rol           | Puede                                                                                                            |
-| ------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Administrador | Todo: usuarios, tipos de trámite, configuración, reportes; corregir expedientes cerrados, radicados y documentos |
-| Coordinador   | Gestionar y archivar cualquier expediente; corregir expedientes cerrados, radicados y documentos; ver reportes   |
-| Funcionario   | Crear expedientes y gestionar los que no tienen responsable o le están asignados                                 |
-| Directivo     | La jefatura: Panel de dirección, ver todo y preguntar por correo a los responsables; no modifica expedientes     |
-| Consulta      | Ver dashboard, expedientes, biblioteca e histórico; no modifica nada                                             |
+| Rol           | Puede                                                                                                                                                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Administrador | Todo: usuarios, tipos de trámite, configuración, reportes; corregir expedientes cerrados, radicados y documentos                                                                         |
+| Coordinador   | Gestionar y archivar cualquier expediente; corregir expedientes cerrados, radicados y documentos; ver reportes                                                                           |
+| Funcionario   | Registrar expedientes en su área. Ve solo los que registró, tiene o tuvo asignados (`participantes`); gestiona los que tiene asignados y los que registró mientras no tengan responsable |
+| Directivo     | La jefatura: Panel de dirección, ver todo y preguntar por correo a los responsables; no modifica expedientes                                                                             |
+| Consulta      | Ver todo (dashboard, expedientes, biblioteca, histórico); no modifica nada                                                                                                               |
 
 Menú por rol (definido en `src/routes/navigation.ts`):
 

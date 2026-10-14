@@ -20,7 +20,7 @@ Leen: el Administrador; cada usuario lee solo su propio perfil.
 
 ## `directorioUsuarios/{uid}`
 
-Copia mínima de cada perfil (`uid`, `nombreCompleto`, `rol`, `activo`) que cualquier sesión
+Copia mínima de cada perfil (`uid`, `nombreCompleto`, `rol`, `activo`, `dependencia?`) que cualquier sesión
 activa puede leer para elegir o filtrar responsables, sin exponer correos ni cargos. El
 Administrador la escribe en el mismo lote que el perfil; los scripts `user:create` y `seed`
 también la actualizan. Si se edita un perfil desde la consola de Firebase, se resincroniza con
@@ -55,8 +55,18 @@ también la actualizan. Si se edita un perfil desde la consola de Firebase, se r
 Subcolección **`historial`**: `usuario`, `accion`, `detalle`, `fecha`. Solo se agregan registros;
 nunca se editan ni se borran.
 
-Escriben: usuarios operativos según [los permisos](flujo-y-permisos.md#roles). Nadie puede
-borrar expedientes.
+Leen: Administrador, Coordinador, Directivo y Consulta, todos; el Funcionario, solo los que
+tienen su uid en `participantes` (sus consultas deben filtrar por ese campo; el historial y los
+radicados siguen a su expediente). Escriben: usuarios operativos según
+[los permisos](flujo-y-permisos.md#roles). Nadie puede borrar expedientes.
+
+## `radicadosEntrada/{numero}`
+
+Índice que hace único el radicado de entrada: `{ expedienteId }`. Se crea en el mismo lote que
+el expediente, y las reglas exigen que exista y apunte al expediente; como un Funcionario no puede
+consultar expedientes ajenos, es la única forma de comprobar que el número no se repite. Al
+corregir el radicado de entrada se crea el nuevo y se borra el anterior. Nadie lo lista; cualquier
+sesión activa puede consultar un número.
 
 ## `radicados/{expedienteId}_{numero}`
 

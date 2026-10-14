@@ -115,7 +115,7 @@ export function ExpedientDetailPage() {
       <EmptyState
         icon={FileSearch}
         title="No encontramos este expediente"
-        description="Puede que el enlace esté incompleto o que el expediente no exista."
+        description="Puede que el enlace esté incompleto, que el expediente no exista o que no haya pasado por ti: cada funcionario ve los expedientes que registró, tiene o tuvo asignados."
         action={
           <Link to="/expedientes" className={buttonVariants({ variant: 'outline' })}>
             Ir a expedientes

@@ -40,8 +40,36 @@ function toFilings(snapshot: QuerySnapshot): FilingRecord[] {
     .sort((a, b) => b.fecha.localeCompare(a.fecha))
 }
 
-export async function listFilings(): Promise<FilingRecord[]> {
-  return toFilings(await getDocs(collection(firestore, COLLECTION)))
+/**
+ * Las reglas comparan cada radicado con su expediente, y una consulta solo puede consultar
+ * unos pocos expedientes: por eso se piden en grupos de este tamaño.
+ */
+const FILINGS_PER_QUERY = 10
+
+/**
+ * Todos los radicados; con `participant`, solo los de los expedientes donde figura esa
+ * persona, que es lo único que las reglas le dejan ver a un Funcionario.
+ */
+export async function listFilings(participant?: string): Promise<FilingRecord[]> {
+  if (!participant) return toFilings(await getDocs(collection(firestore, COLLECTION)))
+  const expedients = await getDocs(
+    query(
+      collection(firestore, 'expedientes'),
+      where('participantes', 'array-contains', participant),
+    ),
+  )
+  const ids = expedients.docs.map((item) => item.id)
+  const groups = Array.from({ length: Math.ceil(ids.length / FILINGS_PER_QUERY) }, (_, index) =>
+    ids.slice(index * FILINGS_PER_QUERY, (index + 1) * FILINGS_PER_QUERY),
+  )
+  const snapshots = await Promise.all(
+    groups.map((group) =>
+      getDocs(query(collection(firestore, COLLECTION), where('expedienteId', 'in', group))),
+    ),
+  )
+  return snapshots
+    .flatMap((snapshot) => snapshot.docs.map((entry) => entry.data() as FilingRecord))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha))
 }
 
 export async function listExpedientFilings(expedientId: string): Promise<FilingRecord[]> {

@@ -19,6 +19,7 @@ import {
 /**
  * Prepara los datos existentes para la separación por áreas (docs/diseno-dependencias-y-permisos.md):
  *
+ * - radicadosEntrada/{número}: índice que hace único el radicado de entrada.
  * - expedientes: `dependencia` = catastro si no la tienen; `participantes` reconstruidos desde
  *   el creador, el responsable y el historial; `fechaCierre` = `fechaActualizacion` en los
  *   cerrados que no la tienen.
@@ -44,26 +45,40 @@ const app =
   initializeApp({ credential: cert(JSON.parse(readFileSync(serviceAccountPath, 'utf8'))) })
 const firestore = getFirestore(app)
 
-/** Valor anterior de cada campo tocado; null significa que el campo no existía. */
+/**
+ * Valor anterior de cada campo tocado; null significa que el campo no existía. `created`
+ * marca los documentos nuevos (el índice de radicados de entrada), que se borran al restaurar.
+ */
 interface BackupEntry {
   path: string
   previous: Record<string, unknown>
+  created?: boolean
 }
 
 interface Change {
   ref: DocumentReference
   fields: Record<string, unknown>
   previous: Record<string, unknown>
+  create?: boolean
 }
 
-async function commitInChunks(
-  changes: { ref: DocumentReference; data: Record<string, unknown> }[],
-  // Los valores vienen del propio Firestore o de la copia; se escriben tal cual.
-) {
-  for (let index = 0; index < changes.length; index += 400) {
+interface Operation {
+  ref: DocumentReference
+  mode: 'update' | 'create' | 'delete'
+  data?: Record<string, unknown>
+}
+
+async function commitInChunks(operations: Operation[]) {
+  for (let index = 0; index < operations.length; index += 400) {
     const batch = firestore.batch()
-    for (const change of changes.slice(index, index + 400))
-      batch.update(change.ref, change.data as UpdateData<DocumentData>)
+    for (const operation of operations.slice(index, index + 400)) {
+      // Los valores vienen del propio Firestore o de la copia; se escriben tal cual.
+      const data = operation.data as UpdateData<DocumentData>
+      if (operation.mode === 'delete') batch.delete(operation.ref)
+      // create falla si el documento ya existe: nunca pisa un índice.
+      else if (operation.mode === 'create') batch.create(operation.ref, data as DocumentData)
+      else batch.update(operation.ref, data)
+    }
     await batch.commit()
   }
 }
@@ -71,15 +86,17 @@ async function commitInChunks(
 if (restoreFile) {
   const entries = JSON.parse(readFileSync(restoreFile, 'utf8')) as BackupEntry[]
   await commitInChunks(
-    entries.map((entry) => ({
-      ref: firestore.doc(entry.path),
-      data: Object.fromEntries(
+    entries.map((entry): Operation => {
+      const ref = firestore.doc(entry.path)
+      if (entry.created) return { ref, mode: 'delete' }
+      const data = Object.fromEntries(
         Object.entries(entry.previous).map(([field, value]) => [
           field,
           value === null ? FieldValue.delete() : value,
         ]),
-      ),
-    })),
+      )
+      return { ref, mode: 'update', data }
+    }),
   )
   console.log(`Restaurados ${entries.length} documento(s) desde ${restoreFile}.`)
   process.exit(0)
@@ -95,12 +112,13 @@ function unmatchedAssignees(history: HistoryLike[]): string[] {
 }
 
 let reads = 0
-const [users, expedients, filings] = await Promise.all([
+const [users, expedients, filings, entryFilings] = await Promise.all([
   firestore.collection('usuarios').get(),
   firestore.collection('expedientes').get(),
   firestore.collection('radicados').get(),
+  firestore.collection('radicadosEntrada').get(),
 ])
-reads += users.size + expedients.size + filings.size
+reads += users.size + expedients.size + filings.size + entryFilings.size
 
 const people: PersonLike[] = users.docs.map((item) => ({
   uid: item.id,
@@ -186,6 +204,31 @@ for (const snapshot of filings.docs) {
   if (Object.keys(fields).length) changes.push({ ref: snapshot.ref, fields, previous })
 }
 
+// Índice del radicado de entrada, que las reglas exigen para que no se repita.
+const claimed = new Map(entryFilings.docs.map((entry) => [entry.id, entry.data().expedienteId]))
+for (const snapshot of expedients.docs) {
+  const number = String(snapshot.data().numeroRadicado ?? '').trim()
+  if (!number || number.includes('/')) {
+    review.push(`EXPEDIENTE ${snapshot.id}: radicado de entrada "${number}" no sirve como índice.`)
+    continue
+  }
+  const owner = claimed.get(number)
+  if (owner === snapshot.id) continue
+  if (owner) {
+    review.push(
+      `RADICADO DE ENTRADA ${number}: lo tienen los expedientes ${owner} y ${snapshot.id}.`,
+    )
+    continue
+  }
+  claimed.set(number, snapshot.id)
+  changes.push({
+    ref: firestore.collection('radicadosEntrada').doc(number),
+    fields: { expedienteId: snapshot.id },
+    previous: {},
+    create: true,
+  })
+}
+
 const count = (collection: string, field: string) =>
   changes.filter((change) => change.ref.parent.id === collection && field in change.fields).length
 console.log(`Lecturas usadas: ${reads} (cuota gratuita: 50.000 al día).`)
@@ -197,6 +240,7 @@ console.log(
   `  radicados: área ${count('radicados', 'dependencia')}, participantes ${count('radicados', 'participantes')}`,
 )
 console.log(`  usuarios: área ${count('usuarios', 'dependencia')}`)
+console.log(`  índice de radicados de entrada: ${count('radicadosEntrada', 'expedienteId')}`)
 if (review.length) console.log(`\nPara revisar (${review.length}):\n${review.join('\n')}`)
 
 if (!apply) {
@@ -216,10 +260,17 @@ const backupFile = path.join(
 const backup: BackupEntry[] = changes.map((change) => ({
   path: change.ref.path,
   previous: change.previous,
+  ...(change.create ? { created: true } : {}),
 }))
 writeFileSync(backupFile, JSON.stringify(backup, null, 2))
 console.log(`\nCopia de los valores anteriores: ${backupFile}`)
-await commitInChunks(changes.map((change) => ({ ref: change.ref, data: change.fields })))
+await commitInChunks(
+  changes.map((change) => ({
+    ref: change.ref,
+    mode: change.create ? 'create' : 'update',
+    data: change.fields,
+  })),
+)
 console.log(
   `Aplicado. Para deshacer: npx tsx scripts/migrate-dependencies.ts --restore=${backupFile}`,
 )

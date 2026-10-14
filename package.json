@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "tsx --test src/lib/*.test.ts",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-sigecat \"tsx --test tests/firestore-rules.test.ts\"",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "seed": "tsx scripts/seed-users.ts",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@types/node": "^22.13.1",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",

@@ -217,7 +217,7 @@ function TrafficBar({
 export function ManagementPanelPage() {
   const { user, profile } = useAuth()
   const active = useQuery({
-    queryKey: ['expedients'],
+    queryKey: ['expedients', 'todos'],
     queryFn: () => listExpedients(),
     refetchInterval: REFRESH_MS,
   })

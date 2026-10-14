@@ -25,20 +25,59 @@ service cloud.firestore {
       return hasRole(['Administrador', 'Coordinador', 'Funcionario']);
     }
 
+    // Mirrors canReadAllExpedients in src/lib/permissions.ts. Everyone else (the
+    // Funcionario) only sees the expedients they registered, held or acted on.
+    function canReadAll() {
+      return hasRole(['Administrador', 'Coordinador', 'Directivo', 'Consulta']);
+    }
+
+    function isParticipant(expedient) {
+      return request.auth.uid in expedient.get('participantes', []);
+    }
+
+    function canReadExpedient(expedient) {
+      return canReadAll() || (signedInWithActiveProfile() && isParticipant(expedient));
+    }
+
+    // Mirrors DEPENDENCIES in src/lib/dependencies.ts.
+    function isDependency(value) {
+      return value in ['catastro', 'cobro-coactivo', 'impuestos', 'fiscalizacion',
+        'contabilidad', 'tesoreria', 'presupuesto'];
+    }
+
     function expedientPath(expedientId) {
       return /databases/$(database)/documents/expedientes/$(expedientId);
     }
 
+    function entryFilingPath(number) {
+      return /databases/$(database)/documents/radicadosEntrada/$(number);
+    }
+
     // Mirrors canManageExpedient in src/lib/permissions.ts; keep both in sync.
-    // A Funcionario only handles expedients that are unassigned or assigned to
-    // them; finalized expedients can only be corrected by supervisors.
+    // A Funcionario handles the active expedients assigned to them, or the ones they
+    // registered while nobody holds them; finalized expedients are for supervisors.
     function canManageExpedient(expedient) {
       return expedient.get('activo', false) == true
         ? isSupervisor() ||
           (isOperationalUser() &&
-            (expedient.get('funcionarioAsignado', null) == null ||
-             expedient.funcionarioAsignado.uid == request.auth.uid))
+            (expedient.get('funcionarioAsignado', null) == null
+              ? expedient.get('creadoPor', '') == request.auth.uid
+              : expedient.funcionarioAsignado.uid == request.auth.uid))
         : isSupervisor();
+    }
+
+    // Whoever writes and the assignee must be in participantes after the write.
+    function hasValidParticipants(data) {
+      return data.get('participantes', null) is list &&
+        request.auth.uid in data.participantes &&
+        (data.get('funcionarioAsignado', null) == null ||
+          data.funcionarioAsignado.uid in data.participantes);
+    }
+
+    // The entry filing number is unique: the batch must claim radicadosEntrada/{number}.
+    function claimsEntryFiling(expedientId, number) {
+      return existsAfter(entryFilingPath(number)) &&
+        getAfter(entryFilingPath(number)).data.expedienteId == expedientId;
     }
 
     // Closing an expedient through the workflow is part of the Funcionario's job;
@@ -62,43 +101,77 @@ service cloud.firestore {
             .hasOnly(['ultimoIngreso']));
     }
 
-    // Minimal copy of each profile (uid, name, role, active) used to pick and filter
-    // assignees. Administrators write it in the same batch as the full profile.
+    // Minimal copy of each profile (uid, name, role, active, area) used to pick and
+    // filter assignees. Administrators write it in the same batch as the full profile.
     match /directorioUsuarios/{userId} {
       allow get, list: if signedInWithActiveProfile();
       allow create, update: if isAdministrator() &&
-        request.resource.data.keys().hasOnly(['uid', 'nombreCompleto', 'rol', 'activo']) &&
+        request.resource.data.keys().hasOnly(['uid', 'nombreCompleto', 'rol', 'activo', 'dependencia']) &&
         request.resource.data.uid == userId;
       allow delete: if isAdministrator();
     }
 
     match /expedientes/{expedientId} {
-      allow get, list: if signedInWithActiveProfile();
+      // Queries must ask exactly for what the reader may see: a Funcionario filters
+      // with where('participantes', 'array-contains', uid).
+      allow get, list: if canReadExpedient(resource.data);
       allow create: if isOperationalUser() &&
         request.resource.data.id == expedientId &&
         request.resource.data.creadoPor == request.auth.uid &&
         request.resource.data.activo == true &&
         request.resource.data.estado == 'Recibido' &&
         request.resource.data.numeroRadicado is string &&
-        request.resource.data.numeroRadicado.size() > 0;
+        request.resource.data.numeroRadicado.size() > 0 &&
+        isDependency(request.resource.data.get('dependencia', '')) &&
+        // Each person registers in their own area; supervisors choose it.
+        (isSupervisor() ||
+          request.resource.data.dependencia == profile().get('dependencia', 'catastro')) &&
+        hasValidParticipants(request.resource.data) &&
+        claimsEntryFiling(expedientId, request.resource.data.numeroRadicado);
       // ultimaAlertaVencimiento is written only by Apps Script, which uses IAM
       // credentials and is therefore not subject to these rules.
       allow update: if canManageExpedient(resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys()
           .hasAny(['id', 'creadoPor', 'fechaCreacion', 'ultimaAlertaVencimiento']) &&
-        // The entry filing number identifies the expedient; only supervisors correct it.
+        // The entry filing number identifies the expedient and the area decides who
+        // works on it; only supervisors change either.
         (isSupervisor() ||
-          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['numeroRadicado'])) &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['numeroRadicado', 'dependencia'])) &&
+        isDependency(request.resource.data.get('dependencia', 'catastro')) &&
+        // participantes only grows: nobody loses access to what passed through them.
+        request.resource.data.participantes.hasAll(resource.data.get('participantes', [])) &&
+        hasValidParticipants(request.resource.data) &&
+        (request.resource.data.numeroRadicado == resource.data.numeroRadicado ||
+          claimsEntryFiling(expedientId, request.resource.data.numeroRadicado)) &&
         isAllowedActivoChange();
       allow delete: if false;
 
       match /historial/{historyId} {
-        allow get, list: if signedInWithActiveProfile();
+        allow get, list: if canReadExpedient(get(expedientPath(expedientId)).data);
+        // Only whoever may act on the expedient (before this batch) writes its history;
+        // a new expedient's history is written by whoever registers it.
         allow create: if isOperationalUser() &&
           request.resource.data.usuario == request.auth.uid &&
-          existsAfter(expedientPath(expedientId));
+          existsAfter(expedientPath(expedientId)) &&
+          (exists(expedientPath(expedientId))
+            ? canManageExpedient(get(expedientPath(expedientId)).data)
+            : getAfter(expedientPath(expedientId)).data.creadoPor == request.auth.uid);
         allow update, delete: if false;
       }
+    }
+
+    // Index that makes the entry filing number unique across all expedients, which a
+    // Funcionario cannot query. Only the expedient id is stored.
+    match /radicadosEntrada/{number} {
+      allow get: if signedInWithActiveProfile();
+      allow list: if false;
+      allow create: if isOperationalUser() &&
+        request.resource.data.keys().hasOnly(['expedienteId']) &&
+        getAfter(expedientPath(request.resource.data.expedienteId)).data.numeroRadicado == number;
+      // Correcting an entry filing number releases the old one.
+      allow delete: if isSupervisor();
+      allow update: if false;
     }
 
     match /tiposTramite/{typeId} {
@@ -113,11 +186,16 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // A filing is visible to whoever can see its expedient. A Funcionario queries them
+    // by expedienteId (== or in, at most 10 per query).
     match /radicados/{filingId} {
-      allow get, list: if signedInWithActiveProfile();
+      allow get, list: if canReadAll() ||
+        (signedInWithActiveProfile() &&
+          isParticipant(get(expedientPath(resource.data.expedienteId)).data));
       allow create: if isOperationalUser() &&
         request.resource.data.expedienteId is string &&
-        existsAfter(expedientPath(request.resource.data.expedienteId));
+        existsAfter(expedientPath(request.resource.data.expedienteId)) &&
+        canManageExpedient(get(expedientPath(request.resource.data.expedienteId)).data);
       // Supervisors correct the date in place; a corrected number is a new document
       // (its id includes the number) plus the deletion of the old one.
       allow update: if isSupervisor() &&

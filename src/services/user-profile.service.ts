@@ -9,6 +9,7 @@ import {
   writeBatch,
   type WriteBatch,
 } from 'firebase/firestore'
+import { toDependencyId } from '@/lib/dependencies'
 import { firestore } from '@/services/firebase'
 import type { UserProfile } from '@/types/user'
 
@@ -32,9 +33,13 @@ export async function updateLastLogin(uid: string): Promise<void> {
  * para elegir o filtrar responsables. Solo el Administrador la escribe, siempre en el
  * mismo lote que el perfil completo.
  */
-export type DirectoryEntry = Pick<UserProfile, 'uid' | 'nombreCompleto' | 'rol' | 'activo'>
+export type DirectoryEntry = Pick<
+  UserProfile,
+  'uid' | 'nombreCompleto' | 'rol' | 'activo' | 'dependencia'
+>
 
 function setDirectoryEntry(batch: WriteBatch, profile: DirectoryEntry): void {
+  const dependency = toDependencyId(profile.dependencia)
   batch.set(
     doc(firestore, DIRECTORY_COLLECTION, profile.uid),
     {
@@ -42,6 +47,7 @@ function setDirectoryEntry(batch: WriteBatch, profile: DirectoryEntry): void {
       nombreCompleto: profile.nombreCompleto,
       rol: profile.rol,
       activo: profile.activo,
+      dependencia: dependency ?? deleteField(),
     },
     { merge: true },
   )

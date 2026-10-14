@@ -10,6 +10,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
 import { EditFilingDialog } from '@/features/expedients/components/correction-dialogs'
 import { useAuth } from '@/hooks/use-auth'
+import { useParticipantScope } from '@/hooks/use-participant-scope'
 import { downloadCsv } from '@/lib/csv'
 import { formatDate, normalizeSearch } from '@/lib/format'
 import { canCorrectRecords } from '@/lib/permissions'
@@ -28,11 +29,15 @@ function expedientLabel(item: FilingRecord): string {
 }
 
 export function FilingPage() {
+  const participant = useParticipantScope()
   const {
     data = [],
     isLoading,
     isError,
-  } = useQuery({ queryKey: ['filings'], queryFn: listFilings })
+  } = useQuery({
+    queryKey: ['filings', participant ?? 'todos'],
+    queryFn: () => listFilings(participant),
+  })
   const [search, setSearch] = useState('')
   const [type, setType] = useState('')
   const [month, setMonth] = useState('')
