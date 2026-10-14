@@ -65,12 +65,26 @@ recomendación técnica; se puede revisar.
 
 ## Pendientes
 
-- Tipos de solicitante "Propietario" y "Copropietario": ¿se mantienen para todas las áreas?
-- Copias de seguridad: el código está listo; falta activar la copia diaria en Apps Script.
-- Propiedad institucional del proyecto de Firebase y del repositorio (hoy en una cuenta personal).
+Del responsable de SIGECAT (requieren su sesión en Google o Firebase):
+
+- Propiedad institucional del proyecto de Firebase, del Apps Script y del repositorio: crear una
+  cuenta de Google con un correo `@girardota.gov.co` (la Alcaldía usa Outlook), hacerla
+  propietaria y aceptar desde ella los términos de tratamiento de datos de Google.
 - Protección contra eliminación de la base de Firestore (desactivada; la llave no puede cambiarla).
-- Sacar la llave de administración de OneDrive y rotarla.
-- Acciones de cumplimiento normativo (RNBD, aviso de privacidad, Ley 1712, constancia con Archivo,
-  MSPI): ver [cumplimiento-normativo.md](cumplimiento-normativo.md).
+- Llaves de administración: eliminar la `f5cf8f1658…` (archivo en Descargas, no la usa SIGECAT) y
+  reemplazar la `e7aa6580bb…` de `secrets/` por una nueva guardada fuera de OneDrive.
+
+Con datos del responsable:
+
+- Usuarios de las otras áreas: nombre, correo, cargo y área (`npm run user:create`).
+- Siete radicados de entrada dudosos: seis con serie 200 (`20262005337`, `20262006102`,
+  `20262004715`, `20262005274`, `20262006858`, `20262005217`) y `2001007448` (¿`20261007448`?).
+  Se corrigen desde **Editar datos**.
+- Tipos de solicitante "Propietario" y "Copropietario": ¿se mantienen para todas las áreas?
 - D-26: hoy el formulario permite dejar el expediente sin responsable; falta decidir si se asigna
   solo a quien lo registra.
+
+De otras dependencias: acciones de cumplimiento normativo (RNBD, aviso de privacidad, Ley 1712,
+constancia con Archivo, MSPI), ver [cumplimiento-normativo.md](cumplimiento-normativo.md).
+
+Hecho: copia diaria en Drive activa desde el 14 de octubre de 2026 (`setupDailyBackup`).
