@@ -150,6 +150,23 @@ reporte. Si la persona tiene usuario, se suma a `participantes` y puede consulta
 pero no gestionarlo. Lo registra quien puede gestionar el expediente. Reglas en
 `src/lib/response-support.ts`, con pruebas.
 
+## Notas del historial
+
+Para aclarar algo del expediente sin cambiarlo (por ejemplo, "el radicado de entrada se confirmó
+con la planilla de Archivo"). Botón **Agregar nota** en la pestaña Historial; el filtro **Solo
+notas** las muestra sin el resto, y se distinguen en color.
+
+- Escriben notas Administrador y Coordinador en cualquier expediente, y el Funcionario en los que
+  figura en `participantes`, aunque ya no los gestione y también cerrados. Directivo y Consulta
+  no escriben.
+- Texto de 5 a 1000 caracteres. Se guarda solo en el historial (acción `Nota`), sin tocar el
+  expediente, con el autor y la fecha del servidor.
+- No se editan ni se borran: para corregir una nota se agrega otra.
+
+`firestore.rules` admite en el historial esa forma exacta (`isValidNote`) de quien puede leer el
+expediente y es usuario operativo; el resto del historial sigue exigiendo poder gestionarlo.
+Reglas en `src/lib/expedient-notes.ts`, con pruebas.
+
 ## Registro de actuaciones atrasadas
 
 Para lo que se hizo a tiempo en la oficina (respuesta, traslado, ampliación) pero no se subió a

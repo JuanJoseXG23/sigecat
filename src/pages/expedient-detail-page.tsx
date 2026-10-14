@@ -28,6 +28,7 @@ import { ExpedientHistory } from '@/features/expedients/components/expedient-his
 import { ExpedientSummary } from '@/features/expedients/components/expedient-summary'
 import { ExtensionDialog } from '@/features/expedients/components/extension-dialog'
 import { SupportDialog } from '@/features/expedients/components/support-dialog'
+import { NoteDialog } from '@/features/expedients/components/note-dialog'
 import { InquiryDialog } from '@/features/expedients/components/inquiry-dialog'
 import { LateRegistrationDialog } from '@/features/expedients/components/late-registration-dialog'
 import { WorkflowStepper } from '@/features/expedients/components/workflow-stepper'
@@ -35,6 +36,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
 import { getDependencyName, getExpedientDependency } from '@/lib/dependencies'
 import { hasReplacedEntryFiling, suggestEntryFiling } from '@/lib/entry-filing'
+import { canAddNote } from '@/lib/expedient-notes'
 import { getFlow, getStepDefinition, type Actuation } from '@/lib/expedient-workflow'
 import { describeRemainingDays, formatDate, formatLongDate } from '@/lib/format'
 import { getLateRegistrationScope, type LateRegistrationPlan } from '@/lib/late-registration'
@@ -97,7 +99,7 @@ export function ExpedientDetailPage() {
     enabled: Boolean(id),
   })
   const [dialog, setDialog] = useState<
-    'actuation' | 'extension' | 'edit' | 'late' | 'inquiry' | 'support' | null
+    'actuation' | 'extension' | 'edit' | 'late' | 'inquiry' | 'support' | 'note' | null
   >(params.get('registro') === 'tardio' ? 'late' : null)
   const [editingFiling, setEditingFiling] = useState<FilingRecord | null>(null)
   const [editingDocument, setEditingDocument] = useState<WorkflowDocument | null>(null)
@@ -345,7 +347,12 @@ export function ExpedientDetailPage() {
             onEditDocument={canCorrect ? setEditingDocument : undefined}
           />
         )}
-        {tab === 'historial' && <ExpedientHistory entries={history} />}
+        {tab === 'historial' && (
+          <ExpedientHistory
+            entries={history}
+            onAddNote={canAddNote(profile, item) ? () => setDialog('note') : undefined}
+          />
+        )}
       </div>
 
       {dialog === 'actuation' && (
@@ -392,6 +399,17 @@ export function ExpedientDetailPage() {
               title: 'Apoyo registrado',
               description: 'Quedó en el resumen y en el historial.',
             })
+          }}
+        />
+      )}
+      {dialog === 'note' && (
+        <NoteDialog
+          expedient={item}
+          onClose={() => setDialog(null)}
+          onCompleted={() => {
+            setDialog(null)
+            setParams({ tab: 'historial' }, { replace: true })
+            toast({ title: 'Nota agregada', description: 'Quedó en el historial.' })
           }}
         />
       )}

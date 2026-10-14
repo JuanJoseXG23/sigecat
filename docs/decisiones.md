@@ -26,29 +26,30 @@ recomendación técnica; se puede revisar.
 
 ## Usuarios, áreas y permisos
 
-| ID   | Decisión                                                                                                             | Estado     |
-| ---- | -------------------------------------------------------------------------------------------------------------------- | ---------- |
-| D-07 | El Funcionario ve y responde lo que se le asigna o pasó por él; los usuarios mayores ven todo                        | Confirmada |
-| D-11 | Ven todo: Administrador, Coordinador y Directivo                                                                     | Confirmada |
-| D-12 | No hay coordinadores por área. Jefatura: Diana. Coordinan la documentación: Juan José y Emanuel                      | Confirmada |
-| D-13 | El funcionario asignado registra todo en SIGECAT                                                                     | Confirmada |
-| D-14 | Quien registra un expediente cuenta como alguien por quien pasó                                                      | Confirmada |
-| D-15 | Los expedientes sin responsable los ven los usuarios mayores y quien los registró                                    | Confirmada |
-| D-16 | Los Funcionarios de Catastro dejan de ver los expedientes de sus compañeros                                          | Confirmada |
-| D-17 | Un expediente puede cambiar de área o tener respuestas compartidas                                                   | Confirmada |
-| D-18 | Cada funcionario pertenece a una sola área                                                                           | Confirmada |
-| D-19 | Todos los expedientes existentes son de Catastro                                                                     | Confirmada |
-| D-23 | Consulta ve todo en lectura                                                                                          | Delegada   |
-| D-24 | Los coordinadores coordinan la documentación de toda la Secretaría                                                   | Delegada   |
-| D-25 | Diana: Directivo. Juan José: Administrador                                                                           | Delegada   |
-| D-26 | El expediente queda asignado a quien lo registra si no elige otro responsable                                        | Delegada   |
-| D-27 | Respuesta compartida: un área lidera y responde; las demás colaboran                                                 | Delegada   |
-| D-28 | ~~Pasar expedientes entre áreas~~: reemplazada por D-34                                                              | Descartada |
-| D-29 | Los tipos de trámite son comunes a todas las áreas                                                                   | Delegada   |
-| D-31 | Solo actúa el responsable actual; quienes lo tuvieron antes solo consultan                                           | Delegada   |
-| D-32 | Catálogo de áreas fijo en el código (`src/lib/dependencies.ts`)                                                      | Delegada   |
-| D-33 | Los Funcionarios ven en Radicación solo los radicados de sus expedientes                                             | Delegada   |
-| D-34 | Apoyo en respuesta: se registra quién de otra área apoyó y en qué; el expediente no cambia de área ni de responsable | Confirmada |
+| ID   | Decisión                                                                                                               | Estado     |
+| ---- | ---------------------------------------------------------------------------------------------------------------------- | ---------- |
+| D-07 | El Funcionario ve y responde lo que se le asigna o pasó por él; los usuarios mayores ven todo                          | Confirmada |
+| D-11 | Ven todo: Administrador, Coordinador y Directivo                                                                       | Confirmada |
+| D-12 | No hay coordinadores por área. Jefatura: Diana. Coordinan la documentación: Juan José y Emanuel                        | Confirmada |
+| D-13 | El funcionario asignado registra todo en SIGECAT                                                                       | Confirmada |
+| D-14 | Quien registra un expediente cuenta como alguien por quien pasó                                                        | Confirmada |
+| D-15 | Los expedientes sin responsable los ven los usuarios mayores y quien los registró                                      | Confirmada |
+| D-16 | Los Funcionarios de Catastro dejan de ver los expedientes de sus compañeros                                            | Confirmada |
+| D-17 | Un expediente puede cambiar de área o tener respuestas compartidas                                                     | Confirmada |
+| D-18 | Cada funcionario pertenece a una sola área                                                                             | Confirmada |
+| D-19 | Todos los expedientes existentes son de Catastro                                                                       | Confirmada |
+| D-23 | Consulta ve todo en lectura                                                                                            | Delegada   |
+| D-24 | Los coordinadores coordinan la documentación de toda la Secretaría                                                     | Delegada   |
+| D-25 | Diana: Directivo. Juan José: Administrador                                                                             | Delegada   |
+| D-26 | El expediente queda asignado a quien lo registra si no elige otro responsable                                          | Delegada   |
+| D-27 | Respuesta compartida: un área lidera y responde; las demás colaboran                                                   | Delegada   |
+| D-28 | ~~Pasar expedientes entre áreas~~: reemplazada por D-34                                                                | Descartada |
+| D-29 | Los tipos de trámite son comunes a todas las áreas                                                                     | Delegada   |
+| D-31 | Solo actúa el responsable actual; quienes lo tuvieron antes solo consultan                                             | Delegada   |
+| D-32 | Catálogo de áreas fijo en el código (`src/lib/dependencies.ts`)                                                        | Delegada   |
+| D-33 | Los Funcionarios ven en Radicación solo los radicados de sus expedientes                                               | Delegada   |
+| D-34 | Apoyo en respuesta: se registra quién de otra área apoyó y en qué; el expediente no cambia de área ni de responsable   | Confirmada |
+| D-37 | Notas en el historial: las dejan supervisores y quien figura en el expediente, también cerrado; no se editan ni borran | Confirmada |
 
 ## Predios
 
@@ -77,9 +78,10 @@ Del responsable de SIGECAT (requieren su sesión en Google o Firebase):
 Con datos del responsable:
 
 - Usuarios de las otras áreas: nombre, correo, cargo y área (`npm run user:create`).
-- Siete radicados de entrada dudosos: seis con serie 200 (`20262005337`, `20262006102`,
-  `20262004715`, `20262005274`, `20262006858`, `20262005217`) y `2001007448` (¿`20261007448`?).
-  Se corrigen desde **Editar datos**.
+- Radicado de respuesta de `20261004715` registrado como `202620047155` (12 cifras): revisar en
+  el físico y corregir desde Radicación.
+- Confirmar con el físico o la planilla de Archivo los diez radicados de entrada corregidos el 14
+  de octubre de 2026 (abajo, en Hecho).
 - Tipos de solicitante "Propietario" y "Copropietario": ¿se mantienen para todas las áreas?
 - D-26: hoy el formulario permite dejar el expediente sin responsable; falta decidir si se asigna
   solo a quien lo registra.
@@ -87,4 +89,15 @@ Con datos del responsable:
 De otras dependencias: acciones de cumplimiento normativo (RNBD, aviso de privacidad, Ley 1712,
 constancia con Archivo, MSPI), ver [cumplimiento-normativo.md](cumplimiento-normativo.md).
 
-Hecho: copia diaria en Drive activa desde el 14 de octubre de 2026 (`setupDailyBackup`).
+Hecho: copia diaria en Drive activa desde el 14 de octubre de 2026 (`setupDailyBackup`). Usuario de
+Emanuel (Coordinador, como John) creado el 14 de octubre de 2026.
+
+Hecho el 14 de octubre de 2026: diez radicados de entrada inválidos corregidos a `2026100` + el
+consecutivo del documento recibido (`DP` + consecutivo; los consecutivos crecen con las fechas).
+Seis tenían el radicado de su respuesta (serie 200) y cuatro el texto `DP####` que dejó
+`fix-entry-filings` el 2 de octubre: `20262004715` → `20261004715`, `20262005217` →
+`20261004908`, `20262005274` → `20261005056`, `20262005337` → `20261005144`, `20262006102` →
+`20261005552`, `20262006858` → `20261006033`, y `DP6480`, `DP6589`, `DP6677`, `DP6795` →
+`20261006480`, `20261006589`, `20261006677`, `20261006795`. Cada uno tiene nota en su historial;
+el estado anterior quedó en `C:\Users\juanj\copias-sigecat`. `2001007448` ya estaba como
+`20261007448`.

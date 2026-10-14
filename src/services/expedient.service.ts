@@ -31,6 +31,7 @@ import {
   type ResponseSupportInput,
 } from '@/lib/response-support'
 import { getOutgoingFilingNumbers } from '@/lib/entry-filing'
+import { getNoteError, NOTE_ACTION } from '@/lib/expedient-notes'
 import { fromDateKey, toDateKey } from '@/lib/expedient-deadline'
 import { parseDocumentLink } from '@/lib/document-links'
 import { getFilingCorrectionError, planFilingCorrection } from '@/lib/record-corrections'
@@ -855,6 +856,18 @@ export async function addResponseSupport(
     ...withParticipants(userId, input.personaUid),
   })
   registerExpedientHistory(batch, id, userId, 'Apoyo en respuesta', describeResponseSupport(input))
+  await commit(batch)
+}
+
+/**
+ * Agrega una nota al historial. No toca el expediente: así la puede dejar también quien ya no
+ * lo gestiona (las reglas solo admiten esa forma exacta, ver `isValidNote`).
+ */
+export async function addExpedientNote(id: string, text: string, userId: string): Promise<void> {
+  const error = getNoteError(text)
+  if (error) throw new Error(error)
+  const batch = writeBatch(firestore)
+  registerExpedientHistory(batch, id, userId, NOTE_ACTION, text.trim())
   await commit(batch)
 }
 

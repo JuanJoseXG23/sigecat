@@ -14,6 +14,7 @@ import {
   getDoc,
   getDocs,
   query,
+  serverTimestamp,
   setDoc,
   updateDoc,
   where,
@@ -245,6 +246,59 @@ test('solo escribe historial y radicados quien puede gestionar el expediente', a
     setDoc(doc(as(user), 'radicados/e1_20262000099'), { expedienteId: 'e1', numero: '20262000099' })
   await assertSucceeds(filing('ana'))
   await assertFails(filing('luis'))
+})
+
+test('una nota la deja quien ve el expediente y es usuario operativo, aunque no lo gestione', async () => {
+  const note = (user: UserKey, noteId = 'n1') =>
+    setDoc(doc(as(user), `expedientes/e1/historial/${user}-${noteId}`), {
+      usuario: user,
+      accion: 'Nota',
+      detalle: 'Se confirmó con la planilla de Archivo.',
+      fecha: serverTimestamp(),
+    })
+  // Luis lo tuvo antes: no gestiona, pero sí aclara.
+  for (const user of ['ana', 'luis', 'admin', 'coordinator'] as const)
+    await assertSucceeds(note(user))
+  await assertFails(note('tesoreria'))
+  await assertFails(note('director'))
+  await assertFails(note('viewer'))
+  await assertFails(note('inactive'))
+  // También en un expediente cerrado, que el Funcionario ya no puede gestionar.
+  await env.withSecurityRulesDisabled((context) =>
+    updateDoc(doc(context.firestore(), 'expedientes/e1'), {
+      activo: false,
+      estado: 'Archivo (Finalizado)',
+    }),
+  )
+  await assertSucceeds(note('luis', 'n2'))
+})
+
+test('la nota tiene forma estricta y no se edita ni se borra', async () => {
+  const note = (data: Record<string, unknown>) =>
+    setDoc(doc(as('luis'), 'expedientes/e1/historial/n'), {
+      usuario: 'luis',
+      accion: 'Nota',
+      detalle: 'Aclaración válida.',
+      fecha: serverTimestamp(),
+      ...data,
+    })
+  await assertFails(note({ usuario: 'ana' }))
+  await assertFails(note({ accion: 'Corrigió radicado de entrada' }))
+  await assertFails(note({ detalle: 'ok' }))
+  await assertFails(note({ detalle: 'x'.repeat(1001) }))
+  await assertFails(note({ fecha: new Date('2026-01-01') }))
+  await assertFails(note({ extra: true }))
+  await assertFails(
+    setDoc(doc(as('luis'), 'expedientes/no-existe/historial/n'), {
+      usuario: 'luis',
+      accion: 'Nota',
+      detalle: 'Aclaración válida.',
+      fecha: serverTimestamp(),
+    }),
+  )
+  await assertSucceeds(note({}))
+  await assertFails(updateDoc(doc(as('luis'), 'expedientes/e1/historial/n'), { detalle: 'Otra.' }))
+  await assertFails(deleteDoc(doc(as('admin'), 'expedientes/e1/historial/n')))
 })
 
 test('sin responsable, solo quien lo registró lo gestiona', async () => {

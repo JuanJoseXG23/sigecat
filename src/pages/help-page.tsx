@@ -8,6 +8,7 @@ import {
   History,
   Mail,
   ShieldQuestion,
+  StickyNote,
   type LucideIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -137,6 +138,19 @@ export function HelpPage() {
             como responsable.
           </p>
           <p>Si esa persona tiene usuario, podrá consultar el expediente, pero no modificarlo.</p>
+        </Section>
+
+        <Section icon={StickyNote} title="Aclarar algo con una nota">
+          <p>
+            En la pestaña <b>Historial</b> del expediente, usa <b>Agregar nota</b> para dejar una
+            aclaración: por ejemplo, que se confirmó el radicado con Archivo o que el ciudadano
+            llamó. Queda con tu nombre y la fecha.
+          </p>
+          <p>
+            Puedes hacerlo en los expedientes que pasaron por ti, aunque ya no los tengas o estén
+            cerrados. Una nota no se edita ni se borra: si te equivocas, agrega otra que la corrija.{' '}
+            <b>Solo notas</b> las muestra sin el resto del historial.
+          </p>
         </Section>
 
         <Section icon={History} title="Algo que no subiste a tiempo">

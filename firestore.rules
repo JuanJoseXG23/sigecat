@@ -80,6 +80,19 @@ service cloud.firestore {
         getAfter(entryFilingPath(number)).data.expedienteId == expedientId;
     }
 
+    // Mirrors NOTE_ACTION, MIN_NOTE_LENGTH and MAX_NOTE_LENGTH in src/lib/expedient-notes.ts.
+    // Only the note itself is written: the expedient stays untouched.
+    function isValidNote(expedientId) {
+      return request.resource.data.keys().hasOnly(['usuario', 'accion', 'detalle', 'fecha']) &&
+        request.resource.data.accion == 'Nota' &&
+        request.resource.data.detalle is string &&
+        request.resource.data.detalle.size() >= 5 &&
+        request.resource.data.detalle.size() <= 1000 &&
+        request.resource.data.fecha == request.time &&
+        exists(expedientPath(expedientId)) &&
+        canReadExpedient(get(expedientPath(expedientId)).data);
+    }
+
     // Closing an expedient through the workflow is part of the Funcionario's job;
     // archiving it outside the workflow is reserved for supervisors.
     function isAllowedActivoChange() {
@@ -151,12 +164,15 @@ service cloud.firestore {
         allow get, list: if canReadExpedient(get(expedientPath(expedientId)).data);
         // Only whoever may act on the expedient (before this batch) writes its history;
         // a new expedient's history is written by whoever registers it.
+        // A note (src/lib/expedient-notes.ts) is the exception: whoever reads the expedient
+        // and is an operational user may add one, even if they no longer act on it.
         allow create: if isOperationalUser() &&
           request.resource.data.usuario == request.auth.uid &&
-          existsAfter(expedientPath(expedientId)) &&
-          (exists(expedientPath(expedientId))
-            ? canManageExpedient(get(expedientPath(expedientId)).data)
-            : getAfter(expedientPath(expedientId)).data.creadoPor == request.auth.uid);
+          ((existsAfter(expedientPath(expedientId)) &&
+            (exists(expedientPath(expedientId))
+              ? canManageExpedient(get(expedientPath(expedientId)).data)
+              : getAfter(expedientPath(expedientId)).data.creadoPor == request.auth.uid)) ||
+           isValidNote(expedientId));
         allow update, delete: if false;
       }
     }
