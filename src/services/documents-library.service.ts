@@ -1,4 +1,5 @@
-import { collection, getDocs, query, where, type Timestamp } from 'firebase/firestore'
+import { Timestamp, collection, getDocs, query, where } from 'firebase/firestore'
+import { getYearBounds } from '@/lib/periods'
 import { firestore } from '@/services/firebase'
 import { WORKFLOW_DOCUMENT_LABELS, type Expedient, type WorkflowDocument } from '@/types/expedient'
 
@@ -34,16 +35,26 @@ function timestampValue(timestamp: Timestamp | null | undefined): number {
 
 /**
  * Construye la biblioteca desde los documentos asociados a cada expediente. Con `participant`
- * solo pide los expedientes donde figura esa persona, que es lo que las reglas le permiten.
+ * solo pide los expedientes donde figura esa persona, que es lo que las reglas le permiten (son
+ * pocos y se filtran por año en la pantalla). Para quien ve todo, `year` limita a los radicados
+ * en ese año: el archivo completo crece sin límite.
  */
 export async function getExpedientsWithDocuments(
   participant?: string,
+  year?: number,
 ): Promise<LibraryExpedient[]> {
   const expedients = collection(firestore, 'expedientes')
+  const bounds = year === undefined ? undefined : getYearBounds(year)
   const snapshot = await getDocs(
     participant
       ? query(expedients, where('participantes', 'array-contains', participant))
-      : expedients,
+      : bounds
+        ? query(
+            expedients,
+            where('fechaRadicado', '>=', Timestamp.fromDate(bounds[0])),
+            where('fechaRadicado', '<', Timestamp.fromDate(bounds[1])),
+          )
+        : expedients,
   )
 
   return snapshot.docs

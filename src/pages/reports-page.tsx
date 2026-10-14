@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
 import { DependencyFilter } from '@/features/expedients/components/dependency-filter'
+import { YearFilter } from '@/features/expedients/components/year-filter'
+import { useArchiveYear } from '@/hooks/use-archive-years'
 import { downloadCsv } from '@/lib/csv'
 import { getDependencyName, getExpedientDependency, matchesDependency } from '@/lib/dependencies'
 import { formatDate } from '@/lib/format'
-import { listExpedients, listHistoricalExpedients } from '@/services/expedient.service'
+import { listExpedientsFiledInYear } from '@/services/expedient.service'
 import { getClosingDate, getResponseDate, type Expedient } from '@/types/expedient'
 
 function group(items: Expedient[], label: (item: Expedient) => string): [string, number][] {
@@ -78,27 +80,23 @@ function BarList({
 }
 
 export function ReportsPage() {
-  const active = useQuery({ queryKey: ['expedients', 'todos'], queryFn: () => listExpedients() })
-  const closed = useQuery({
-    queryKey: ['historical-expedients', 'todos'],
-    queryFn: () => listHistoricalExpedients(),
+  const archiveYear = useArchiveYear('fechaRadicado')
+  const year = archiveYear.year
+  // Solo los radicados del año elegido, activos y cerrados: no todo el archivo.
+  const filed = useQuery({
+    queryKey: ['expedients', 'radicados-en', year ?? 'todos'],
+    queryFn: () => listExpedientsFiledInYear(year),
   })
-  const [year, setYear] = useState(String(new Date().getFullYear()))
   const [status, setStatus] = useState('')
   const [type, setType] = useState('')
   const [dependency, setDependency] = useState('')
-  const all = useMemo(
-    () => [...(active.data ?? []), ...(closed.data ?? [])],
-    [active.data, closed.data],
-  )
-  const years = [...new Set(all.map((item) => item.fechaRadicado.toDate().getFullYear()))].sort(
-    (a, b) => b - a,
-  )
+  const all = useMemo(() => filed.data ?? [], [filed.data])
+  const years = archiveYear.yearsFor([])
   const rows = useMemo(
     () =>
       all.filter(
         (item) =>
-          (!year || item.fechaRadicado.toDate().getFullYear() === Number(year)) &&
+          (year === undefined || item.fechaRadicado.toDate().getFullYear() === year) &&
           matchesDependency(item, dependency) &&
           (!status || item.estado === status) &&
           (!type || item.tipoTramite === type),
@@ -130,7 +128,7 @@ export function ReportsPage() {
 
   const exportExcel = () =>
     downloadCsv(
-      `reporte-sigecat-${year || 'todos'}.csv`,
+      `reporte-sigecat-${archiveYear.value}.csv`,
       [
         'Radicado',
         'Área',
@@ -185,16 +183,12 @@ export function ReportsPage() {
       />
       <div className="no-print grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:grid-cols-4">
         <DependencyFilter value={dependency} onChange={setDependency} />
-        <Select
-          value={year}
-          onChange={(event) => setYear(event.target.value)}
-          aria-label="Año de radicación"
-        >
-          <option value="">Todos los años</option>
-          {years.map((value) => (
-            <option key={value}>{value}</option>
-          ))}
-        </Select>
+        <YearFilter
+          label="Año de radicación"
+          value={archiveYear.value}
+          onChange={archiveYear.setValue}
+          years={years}
+        />
         <Select
           value={status}
           onChange={(event) => setStatus(event.target.value)}
@@ -221,7 +215,7 @@ export function ReportsPage() {
           <div key={kpi.label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
             <p className="mt-1 text-2xl font-bold tabular-nums text-slate-900">
-              {active.isLoading || closed.isLoading ? '–' : kpi.value}
+              {filed.isLoading ? '–' : kpi.value}
             </p>
             {kpi.hint && <p className="mt-0.5 text-xs text-muted-foreground">{kpi.hint}</p>}
           </div>

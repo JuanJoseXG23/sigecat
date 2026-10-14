@@ -36,7 +36,7 @@ impone en `firestore.rules`, no solo en la interfaz.
 | 3    | Migración de datos existentes (`scripts/migrate-dependencies.ts`): área, participantes, fecha de cierre e índice de radicados de entrada  | Aplicada el 13 de octubre de 2026 (copias en `backups/`) |
 | 4    | Reglas nuevas probadas en el emulador (`npm run test:rules`)                                                                              | Hecho                                                    |
 | 5    | Consultas del Funcionario por `participantes` y publicación de reglas e índices: aquí cambia la visibilidad                               | Hecho                                                    |
-| 6    | Histórico, Reportes, Biblioteca y Radicación consultan por periodo                                                                        | Pendiente                                                |
+| 6    | Histórico, Reportes, Biblioteca y Radicación consultan por año                                                                            | Hecho                                                    |
 | 7    | Apoyo en respuesta (D-34): constancia de quién de otra área apoyó; no se pasan expedientes entre áreas                                    | Hecho                                                    |
 
 El paso 5 solo se publica después del 3: si las consultas por `participantes` salieran antes de

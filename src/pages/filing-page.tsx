@@ -8,9 +8,10 @@ import { EmptyState, TableSkeleton } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
+import { YearFilter } from '@/features/expedients/components/year-filter'
 import { EditFilingDialog } from '@/features/expedients/components/correction-dialogs'
 import { useAuth } from '@/hooks/use-auth'
-import { useParticipantScope } from '@/hooks/use-participant-scope'
+import { useArchiveYear } from '@/hooks/use-archive-years'
 import { downloadCsv } from '@/lib/csv'
 import { formatDate, normalizeSearch } from '@/lib/format'
 import { canCorrectRecords } from '@/lib/permissions'
@@ -29,15 +30,22 @@ function expedientLabel(item: FilingRecord): string {
 }
 
 export function FilingPage() {
-  const participant = useParticipantScope()
+  const archiveYear = useArchiveYear('radicados')
+  const { participant, year } = archiveYear
   const {
-    data = [],
+    data: loaded = [],
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ['filings', participant ?? 'todos'],
-    queryFn: () => listFilings(participant),
+    queryKey: ['filings', participant ?? 'todos', participant ? 'todos' : (year ?? 'todos')],
+    queryFn: () => listFilings(participant, participant ? undefined : year),
   })
+  // El Funcionario recibe todos los suyos; el año se filtra aquí.
+  const data = useMemo(
+    () => loaded.filter((item) => year === undefined || item.fecha.startsWith(`${year}-`)),
+    [loaded, year],
+  )
+  const years = archiveYear.yearsFor(loaded.map((item) => Number(item.fecha.slice(0, 4))))
   const [search, setSearch] = useState('')
   const [type, setType] = useState('')
   const [month, setMonth] = useState('')
@@ -112,6 +120,15 @@ export function FilingPage() {
             aria-label="Buscar radicados"
           />
         </div>
+        <YearFilter
+          className="md:w-52"
+          value={archiveYear.value}
+          onChange={(value) => {
+            archiveYear.setValue(value)
+            setMonth('')
+          }}
+          years={years}
+        />
         <Select
           className="md:w-52"
           value={type}

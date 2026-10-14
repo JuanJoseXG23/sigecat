@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
 import { DependencyFilter } from '@/features/expedients/components/dependency-filter'
+import { YearFilter } from '@/features/expedients/components/year-filter'
 import { matchesExpedientSearch } from '@/features/expedients/expedient-filters'
+import { useArchiveYear } from '@/hooks/use-archive-years'
 import { useHistoricalExpedients } from '@/hooks/use-historical-expedients'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import { downloadCsv } from '@/lib/csv'
@@ -57,15 +59,16 @@ function exportRows(rows: Row[]) {
 }
 
 export function HistoricalPage() {
-  const { data = [], isLoading } = useHistoricalExpedients()
+  const archiveYear = useArchiveYear('fechaCierre')
+  const year = archiveYear.year
+  const { data = [], isLoading } = useHistoricalExpedients(year)
   const { data: types = [] } = useProcedureTypes()
   const [search, setSearch] = useState('')
   const [type, setType] = useState('')
-  const [year, setYear] = useState('')
   const [dependency, setDependency] = useState('')
 
   const all = useMemo(() => data.map((item) => ({ item, closing: getClosingDate(item) })), [data])
-  const years = [...new Set(all.map((row) => row.closing.getFullYear()))].sort((a, b) => b - a)
+  const years = archiveYear.yearsFor(all.map((row) => row.closing.getFullYear()))
   const rows = useMemo(
     () =>
       all
@@ -74,12 +77,12 @@ export function HistoricalPage() {
             matchesExpedientSearch(item, search) &&
             matchesDependency(item, dependency) &&
             (!type || item.tipoTramiteId === type) &&
-            (!year || closing.getFullYear() === Number(year)),
+            (year === undefined || closing.getFullYear() === year),
         )
         .sort((first, second) => second.closing.getTime() - first.closing.getTime()),
     [all, dependency, search, type, year],
   )
-  const hasFilters = Boolean(search || dependency || type || year)
+  const hasFilters = Boolean(search || dependency || type)
 
   return (
     <section className="mx-auto max-w-[1400px] space-y-6">
@@ -119,17 +122,13 @@ export function HistoricalPage() {
             </option>
           ))}
         </Select>
-        <Select
-          className="lg:w-44"
-          value={year}
-          onChange={(event) => setYear(event.target.value)}
-          aria-label="Año de cierre"
-        >
-          <option value="">Todos los años</option>
-          {years.map((value) => (
-            <option key={value}>{value}</option>
-          ))}
-        </Select>
+        <YearFilter
+          className="lg:w-52"
+          label="Año de cierre"
+          value={archiveYear.value}
+          onChange={archiveYear.setValue}
+          years={years}
+        />
         {hasFilters && (
           <Button
             variant="ghost"
@@ -137,7 +136,6 @@ export function HistoricalPage() {
               setSearch('')
               setDependency('')
               setType('')
-              setYear('')
             }}
           >
             <X size={16} /> Limpiar

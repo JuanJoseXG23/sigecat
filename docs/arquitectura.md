@@ -54,10 +54,14 @@ google-apps-script/  Proceso de correos que se pega en script.google.com
   nada.
 - **Permisos duplicados a propósito.** `src/lib/permissions.ts` decide qué botones ve el usuario y
   `firestore.rules` hace cumplir lo mismo en el servidor. Si cambia uno, debe cambiar el otro.
-- **Lecturas acotadas.** Cada pantalla consulta solo lo que muestra (activos, finalizados, lo
-  asignado al Funcionario, los radicados de un expediente). TanStack Query conserva los
-  resultados un minuto y las acciones invalidan lo que modifican; la configuración de términos se
-  guarda cinco minutos en memoria.
+- **Lecturas acotadas.** Cada documento leído cuenta para la cuota diaria del plan gratuito de
+  Firestore (50.000 lecturas). Cada pantalla consulta solo lo que muestra: activos, lo del
+  Funcionario (`participantes`), los radicados de un expediente. Histórico, Reportes, Biblioteca y
+  Radicación piden **un año a la vez** (`src/lib/periods.ts`, por defecto el actual); "Todos los
+  años" sigue disponible pero solo se consulta si alguien lo elige. Los años para elegir salen de
+  una lectura del registro más antiguo. El Panel de dirección pide los cerrados desde el inicio del
+  año. TanStack Query conserva los resultados un minuto y las acciones invalidan lo que
+  modifican; la configuración de términos se guarda cinco minutos en memoria.
 - **Carga diferida.** Cada página se descarga al visitarla (`src/routes/router.tsx`); React y
   Firebase van en archivos aparte que el navegador conserva entre publicaciones.
 - **Nada se borra.** Los expedientes se finalizan o archivan, y el historial es de solo escritura.

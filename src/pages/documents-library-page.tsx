@@ -7,12 +7,28 @@ import { EmptyState, LoadingState } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/page-header'
 import { StatusBadge } from '@/features/expedients/components/expedient-badges'
+import { YearFilter } from '@/features/expedients/components/year-filter'
+import { useArchiveYear } from '@/hooks/use-archive-years'
 import { useDocumentsLibrary } from '@/hooks/use-documents-library'
 import { formatDate, normalizeSearch } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 export function DocumentsLibraryPage() {
-  const { data: expedients = [], isLoading, isError, refetch } = useDocumentsLibrary()
+  const archiveYear = useArchiveYear('fechaRadicado')
+  const year = archiveYear.year
+  const { data, isLoading, isError, refetch } = useDocumentsLibrary(year)
+  // El Funcionario recibe todos los suyos; el año se filtra aquí.
+  const expedients = useMemo(
+    () =>
+      (data ?? []).filter(
+        (expedient) =>
+          year === undefined || expedient.fechaRadicado.toDate().getFullYear() === year,
+      ),
+    [data, year],
+  )
+  const years = archiveYear.yearsFor(
+    (data ?? []).map((expedient) => expedient.fechaRadicado.toDate().getFullYear()),
+  )
   const [searchTerm, setSearchTerm] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
 
@@ -58,6 +74,13 @@ export function DocumentsLibraryPage() {
             aria-label="Buscar documentos"
           />
         </div>
+        <YearFilter
+          className="sm:w-52"
+          label="Año de radicación"
+          value={archiveYear.value}
+          onChange={archiveYear.setValue}
+          years={years}
+        />
         <p className="shrink-0 px-2 text-sm text-muted-foreground">
           <b className="text-slate-800">{filtered.length}</b> expedientes ·{' '}
           <b className="text-slate-800">{totalDocuments}</b> documentos

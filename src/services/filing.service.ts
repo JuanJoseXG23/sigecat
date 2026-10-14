@@ -2,6 +2,8 @@ import {
   collection,
   doc,
   getDocs,
+  limit,
+  orderBy,
   query,
   serverTimestamp,
   where,
@@ -46,12 +48,33 @@ function toFilings(snapshot: QuerySnapshot): FilingRecord[] {
  */
 const FILINGS_PER_QUERY = 10
 
+/** Año del primer radicado registrado, con una sola lectura. */
+export async function getFirstFilingYear(): Promise<number | undefined> {
+  const snapshot = await getDocs(
+    query(collection(firestore, COLLECTION), orderBy('fecha'), limit(1)),
+  )
+  const value = snapshot.docs[0]?.get('fecha') as string | undefined
+  return value ? Number(value.slice(0, 4)) : undefined
+}
+
 /**
- * Todos los radicados; con `participant`, solo los de los expedientes donde figura esa
- * persona, que es lo único que las reglas le dejan ver a un Funcionario.
+ * Radicados del año (`fecha` es yyyy-mm-dd) o, sin año, todos. Con `participant`, solo los de
+ * los expedientes donde figura esa persona, que es lo único que las reglas le dejan ver a un
+ * Funcionario; esos son pocos y se filtran por año en la pantalla.
  */
-export async function listFilings(participant?: string): Promise<FilingRecord[]> {
-  if (!participant) return toFilings(await getDocs(collection(firestore, COLLECTION)))
+export async function listFilings(participant?: string, year?: number): Promise<FilingRecord[]> {
+  if (!participant)
+    return toFilings(
+      await getDocs(
+        year === undefined
+          ? collection(firestore, COLLECTION)
+          : query(
+              collection(firestore, COLLECTION),
+              where('fecha', '>=', `${year}-01-01`),
+              where('fecha', '<=', `${year}-12-31`),
+            ),
+      ),
+    )
   const expedients = await getDocs(
     query(
       collection(firestore, 'expedientes'),

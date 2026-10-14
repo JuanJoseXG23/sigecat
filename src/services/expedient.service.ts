@@ -9,8 +9,11 @@ import {
   serverTimestamp,
   doc,
   where,
+  orderBy,
+  limit,
   arrayUnion,
   writeBatch,
+  type QuerySnapshot,
   type WriteBatch,
 } from 'firebase/firestore'
 import {
@@ -21,6 +24,7 @@ import {
 } from '@/services/business-rules.service'
 import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
 import { getDependencyName, getExpedientDependency, toDependencyId } from '@/lib/dependencies'
+import { getYearBounds } from '@/lib/periods'
 import {
   describeResponseSupport,
   getResponseSupportError,
@@ -204,6 +208,56 @@ export async function listExpedients(participant?: string): Promise<Expedient[]>
     .map((item) => ({ ...(item.data() as Expedient), id: item.id }))
     .filter((item) => !isFinalizedExpedient(item))
   return (await withDeadlineStatus(items)).sort(byLastUpdate)
+}
+
+function toExpedients(snapshot: QuerySnapshot): Expedient[] {
+  return snapshot.docs.map((item) => ({ ...(item.data() as Expedient), id: item.id }))
+}
+
+/** Rango [inicio, fin) del año sobre un campo de fecha; sin año, todo el archivo. */
+function inYear(field: string, year: number | undefined) {
+  if (year === undefined) return []
+  const [start, end] = getYearBounds(year)
+  return [where(field, '>=', Timestamp.fromDate(start)), where(field, '<', Timestamp.fromDate(end))]
+}
+
+/** Año del primer valor de `field`, con una sola lectura; undefined si no hay ninguno. */
+export async function getFirstYear(
+  field: 'fechaRadicado' | 'fechaCierre',
+): Promise<number | undefined> {
+  const snapshot = await getDocs(
+    query(collection(firestore, EXPEDIENTS_COLLECTION), orderBy(field), limit(1)),
+  )
+  const value = snapshot.docs[0]?.get(field) as Timestamp | undefined
+  return value?.toDate().getFullYear()
+}
+
+/**
+ * Cerrados en el año (por `fechaCierre`, que la migración completó en los antiguos); sin año,
+ * todos. Para quien ve todo: el Funcionario usa listHistoricalExpedients(uid).
+ */
+export async function listClosedExpedientsInYear(year: number | undefined): Promise<Expedient[]> {
+  const snapshot = await getDocs(
+    year === undefined
+      ? query(collection(firestore, EXPEDIENTS_COLLECTION), where('activo', '==', false))
+      : query(collection(firestore, EXPEDIENTS_COLLECTION), ...inYear('fechaCierre', year)),
+  )
+  return toExpedients(snapshot)
+    .filter((item) => !item.activo)
+    .sort(byLastUpdate)
+}
+
+/**
+ * Expedientes radicados en el año, activos y cerrados (para Reportes y la Biblioteca); sin año,
+ * todos. El término de los activos se recalcula como en listExpedients.
+ */
+export async function listExpedientsFiledInYear(year: number | undefined): Promise<Expedient[]> {
+  const snapshot = await getDocs(
+    query(collection(firestore, EXPEDIENTS_COLLECTION), ...inYear('fechaRadicado', year)),
+  )
+  const items = toExpedients(snapshot)
+  const active = await withDeadlineStatus(items.filter((item) => !isFinalizedExpedient(item)))
+  return [...active, ...items.filter(isFinalizedExpedient)].sort(byLastUpdate)
 }
 
 /** Al finalizar o archivar, `activo` pasa a false; por eso basta con ese filtro. */
