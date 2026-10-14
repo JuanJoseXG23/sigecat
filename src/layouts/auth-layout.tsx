@@ -1,3 +1,4 @@
+import { APP_NAME, APP_SUBTITLE, INSTITUTION, SECRETARIAT } from '@/app/branding'
 import { Suspense } from 'react'
 import { Outlet } from 'react-router-dom'
 import shield from '@/img/Escudo_de_Girardota.webp'
@@ -20,20 +21,20 @@ export function AuthLayout() {
             <img src={shield} alt="" className="size-full object-contain" />
           </div>
           <div>
-            <p className="text-sm font-medium text-white/70">Alcaldía de Girardota</p>
-            <p className="text-sm text-white/50">Secretaría de Hacienda · Catastro</p>
+            <p className="text-sm font-medium text-white/70">{INSTITUTION}</p>
+            <p className="text-sm text-white/50">{SECRETARIAT}</p>
           </div>
         </div>
         <div className="relative max-w-lg">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-juventud">
-            SIGECAT
+            {APP_NAME}
           </p>
           <h1 className="mt-3 text-4xl font-bold leading-tight">
-            Gestión catastral documental, clara y a tiempo.
+            Gestión documental, clara y a tiempo.
           </h1>
         </div>
         <p className="relative text-xs text-white/40">
-          Municipio de Girardota, Antioquia · Sistema Integral de Gestión Catastral Documental
+          Municipio de Girardota, Antioquia · {APP_SUBTITLE}
         </p>
       </section>
 
@@ -47,10 +48,8 @@ export function AuthLayout() {
                 className="size-full object-contain"
               />
             </div>
-            <p className="text-2xl font-bold text-slate-900">SIGECAT</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Sistema Integral de Gestión Catastral Documental
-            </p>
+            <p className="text-2xl font-bold text-slate-900">{APP_NAME}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{APP_SUBTITLE}</p>
           </div>
           <Suspense>
             <Outlet />

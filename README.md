@@ -1,7 +1,8 @@
 # SIGECAT
 
-Sistema Integral de Gestión Catastral Documental para el Municipio de Girardota: registra,
-asigna, controla términos y archiva los expedientes de Catastro, con historial de cada actuación.
+Gestión Documental de la Secretaría de Hacienda y Desarrollo Económico de Girardota: registra,
+asigna, controla términos y archiva los expedientes de sus siete áreas (Catastro, Cobro coactivo,
+Impuestos, Fiscalización, Contabilidad, Tesorería y Presupuesto), con historial de cada actuación.
 
 - [Arquitectura](docs/arquitectura.md): stack, carpetas, convenciones y publicación.
 - [Flujo y permisos](docs/flujo-y-permisos.md): roles, estados, términos y correos.

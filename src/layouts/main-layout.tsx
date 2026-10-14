@@ -1,3 +1,4 @@
+import { APP_NAME } from '@/app/branding'
 import { ChevronsLeft, ChevronsRight, LogOut, Menu, Search, X } from 'lucide-react'
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
@@ -88,8 +89,8 @@ function Brand({ collapsed = false }: { collapsed?: boolean }) {
       </div>
       {!collapsed && (
         <div className="min-w-0 leading-tight">
-          <p className="text-[1.05rem] font-bold tracking-wide text-white">SIGECAT</p>
-          <p className="truncate text-xs text-white/60">Alcaldía de Girardota</p>
+          <p className="text-[1.05rem] font-bold tracking-wide text-white">{APP_NAME}</p>
+          <p className="truncate text-xs text-white/60">Secretaría de Hacienda</p>
         </div>
       )}
     </div>
@@ -226,7 +227,7 @@ export function MainLayout() {
   }
 
   useEffect(() => {
-    document.title = currentItem ? `${currentItem.label} · SIGECAT` : 'SIGECAT · Girardota'
+    document.title = currentItem ? `${currentItem.label} · ${APP_NAME}` : `${APP_NAME} · Girardota`
   }, [currentItem])
 
   return (
