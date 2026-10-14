@@ -56,10 +56,20 @@ recomendación técnica; se puede revisar.
 | ---- | -------------------------------------------------------------------------------------------------------- | ------ |
 | D-10 | Predios opcionales en los expedientes nuevos; los históricos se conservan; se quita la columna Municipio | Hecha  |
 
+## Copias y recuperación
+
+| ID   | Decisión                                                                                                                                            | Estado   |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| D-35 | Copia diaria automática en Drive como respaldo principal; copia manual mensual fuera de la nube; sin copias por correo (llevarían datos personales) | Delegada |
+| D-36 | Simulacro de recuperación cada tres meses con `npm run drill`                                                                                       | Delegada |
+
 ## Pendientes
 
 - Tipos de solicitante "Propietario" y "Copropietario": ¿se mantienen para todas las áreas?
-- Copias de seguridad: el código está listo (README); falta activarlo en Apps Script.
+- Copias de seguridad: el código está listo; falta activar la copia diaria en Apps Script.
+- Propiedad institucional del proyecto de Firebase y del repositorio (hoy en una cuenta personal).
+- Protección contra eliminación de la base de Firestore (desactivada; la llave no puede cambiarla).
+- Sacar la llave de administración de OneDrive y rotarla.
 - Normativa aplicable (Ley 1581 de 2012, Ley 594 de 2000, Decreto 1080 de 2015, Ley 1712 de
   2014): separar obligaciones verificadas de buenas prácticas.
 - D-26: hoy el formulario permite dejar el expediente sin responsable; falta decidir si se asigna

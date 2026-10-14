@@ -1,124 +1,57 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
-import { gunzipSync } from 'node:zlib'
 import { cert, getApps, initializeApp } from 'firebase-admin/app'
+import { getFirestore } from 'firebase-admin/firestore'
 import {
-  GeoPoint,
-  getFirestore,
-  Timestamp,
-  type DocumentData,
-  type Firestore,
-} from 'firebase-admin/firestore'
+  countByCollection,
+  collectionOf,
+  fromRestFields,
+  isNewer,
+  loadServiceAccount,
+  readBackup,
+  sha256,
+  toPath,
+  type BackupDocument,
+} from './lib/backup-format.js'
 
 /**
- * Restaura una copia de seguridad hecha por backupFirestore (google-apps-script/Code.gs).
+ * Restaura una copia de seguridad (de Drive, de export-backup o de cualquier otra vía, siempre en
+ * el formato de backupFirestore). Guía completa: docs/EMERGENCIA-recuperacion.md.
  *
  * Sin --apply solo compara la copia con la base actual: qué documentos faltan y cuáles
  * cambiaron después de la copia. Con --apply crea únicamente los que faltan; para devolver
  * también los que cambiaron hay que añadir --overwrite. Nunca borra documentos.
  *
+ * Por seguridad solo restaura en el mismo proyecto de la copia. Si ese proyecto se perdió y hay
+ * uno nuevo, --target-project=<id del nuevo> confirma que es a propósito.
+ *
  * npx tsx scripts/restore-backup.ts --file=sigecat-2026-10-14_0200.json.gz
- *   [--collections=expedientes,historial] [--apply] [--overwrite]
+ *   [--collections=expedientes,historial] [--apply] [--overwrite] [--target-project=id]
  */
 const option = (name: string) =>
   process.argv.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3)
 const file = option('file')
 const only = option('collections')?.split(',')
+const targetProject = option('target-project')
 const apply = process.argv.includes('--apply')
 const overwrite = process.argv.includes('--overwrite')
 if (!file) throw new Error('Indica la copia con --file=ruta/al/archivo.json.gz')
 
-interface RestValue {
-  stringValue?: string
-  integerValue?: string
-  doubleValue?: number
-  booleanValue?: boolean
-  nullValue?: null
-  timestampValue?: string
-  referenceValue?: string
-  bytesValue?: string
-  geoPointValue?: { latitude?: number; longitude?: number }
-  mapValue?: { fields?: Record<string, RestValue> }
-  arrayValue?: { values?: RestValue[] }
-}
-
-interface BackupDocument {
-  name: string
-  fields: Record<string, RestValue>
-  updateTime: string
-}
-
-interface Backup {
-  proyecto: string
-  fecha: string
-  colecciones: Record<string, number>
-  documentos: BackupDocument[]
-}
-
-const raw = readFileSync(file)
-const backup = JSON.parse((file.endsWith('.gz') ? gunzipSync(raw) : raw).toString('utf8')) as Backup
-
-const serviceAccountPath = path.resolve(
-  process.env.FIREBASE_ADMIN_SERVICE_ACCOUNT_PATH?.trim().replace(/^["']|["']$/g, '') ||
-    'secrets/firebase-admin.json',
-)
-const account = JSON.parse(readFileSync(serviceAccountPath, 'utf8'))
-if (account.project_id !== backup.proyecto)
-  throw new Error(`La copia es del proyecto ${backup.proyecto}, no de ${account.project_id}.`)
-const app = getApps()[0] ?? initializeApp({ credential: cert(account) })
-const firestore = getFirestore(app)
-
-/** Valor del formato REST de Firestore (el que guarda Apps Script) al del SDK de administración. */
-function fromRest(value: RestValue, db: Firestore): unknown {
-  if (value.stringValue !== undefined) return value.stringValue
-  if (value.integerValue !== undefined) return Number(value.integerValue)
-  if (value.doubleValue !== undefined) return value.doubleValue
-  if (value.booleanValue !== undefined) return value.booleanValue
-  if (value.timestampValue !== undefined) return Timestamp.fromDate(new Date(value.timestampValue))
-  if (value.referenceValue !== undefined) return db.doc(toPath(value.referenceValue))
-  if (value.bytesValue !== undefined) return Buffer.from(value.bytesValue, 'base64')
-  if (value.geoPointValue)
-    return new GeoPoint(value.geoPointValue.latitude ?? 0, value.geoPointValue.longitude ?? 0)
-  if (value.mapValue) return fromRestFields(value.mapValue.fields ?? {}, db)
-  if (value.arrayValue) return (value.arrayValue.values ?? []).map((item) => fromRest(item, db))
-  return null
-}
-
-function fromRestFields(fields: Record<string, RestValue>, db: Firestore): DocumentData {
-  return Object.fromEntries(
-    Object.entries(fields).map(([key, value]) => [key, fromRest(value, db)]),
+const backup = readBackup(file)
+const account = loadServiceAccount()
+if (account.project_id !== (targetProject ?? backup.proyecto))
+  throw new Error(
+    targetProject
+      ? `La cuenta de servicio es del proyecto ${account.project_id}, no de ${targetProject}.`
+      : `La copia es del proyecto ${backup.proyecto} y la cuenta de servicio de ${account.project_id}. Si restauras en un proyecto nuevo, confírmalo con --target-project=${account.project_id}.`,
   )
-}
+const firestore = getFirestore(getApps()[0] ?? initializeApp({ credential: cert(account) }))
 
-/** "projects/p/databases/(default)/documents/expedientes/x" → "expedientes/x" */
-function toPath(name: string): string {
-  return name.split('/documents/')[1]
-}
-
-/**
- * Hora RFC 3339 con nanosegundos ("2026-10-14T03:53:39.659123Z") en segundos y nanosegundos;
- * Date la recortaría a milisegundos y todo parecería modificado después de la copia.
- */
-function toPreciseTime(value: string): [number, number] {
-  const match = /^(.*?)(?:\.(\d+))?Z$/.exec(value)
-  const base = match?.[1] ?? value
-  const fraction = match?.[2] ?? ''
-  const seconds = Math.floor(new Date(`${base}Z`).getTime() / 1000)
-  return [seconds, Number(fraction.padEnd(9, '0').slice(0, 9))]
-}
-
-function isNewer(current: Timestamp, backupTime: string): boolean {
-  const [seconds, nanos] = toPreciseTime(backupTime)
-  return current.seconds > seconds || (current.seconds === seconds && current.nanoseconds > nanos)
-}
-
-/** Colección del documento; el historial se reconoce por su subcolección. */
-function collectionOf(documentPath: string): string {
-  const parts = documentPath.split('/')
-  return parts[parts.length - 2]
-}
-
-console.log(`Copia del ${backup.fecha}: ${backup.documentos.length} documentos.`)
+console.log(
+  `Copia del ${backup.fecha} (proyecto ${backup.proyecto}): ${backup.documentos.length} documentos.`,
+)
+console.log(`SHA-256 del archivo: ${sha256(file)}`)
+console.log(
+  `Destino: ${process.env.FIRESTORE_EMULATOR_HOST ? `emulador ${process.env.FIRESTORE_EMULATOR_HOST}` : `proyecto ${account.project_id}`}`,
+)
 const selected = backup.documentos.filter(
   (document) => !only || only.includes(collectionOf(toPath(document.name))),
 )
@@ -136,17 +69,11 @@ for (let index = 0; index < selected.length; index += 300) {
   })
 }
 
-const summarize = (documents: BackupDocument[]) => {
-  const counts: Record<string, number> = {}
-  for (const document of documents) {
-    const collection = collectionOf(toPath(document.name))
-    counts[collection] = (counts[collection] ?? 0) + 1
-  }
-  return JSON.stringify(counts)
-}
 console.log(`Revisados: ${selected.length}.`)
-console.log(`Faltan en la base: ${missing.length} ${summarize(missing)}`)
-console.log(`Cambiaron después de la copia: ${changed.length} ${summarize(changed)}`)
+console.log(`Faltan en la base: ${missing.length} ${JSON.stringify(countByCollection(missing))}`)
+console.log(
+  `Cambiaron después de la copia: ${changed.length} ${JSON.stringify(countByCollection(changed))}`,
+)
 
 const toWrite = overwrite ? [...missing, ...changed] : missing
 if (!apply) {

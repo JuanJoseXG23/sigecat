@@ -6,6 +6,8 @@ asigna, controla términos y archiva los expedientes de Catastro, con historial 
 - [Arquitectura](docs/arquitectura.md): stack, carpetas, convenciones y publicación.
 - [Flujo y permisos](docs/flujo-y-permisos.md): roles, estados, términos y correos.
 - [Modelo de datos](docs/modelo-de-datos.md): colecciones de Firestore.
+- **[EMERGENCIA: recuperar la base de datos](docs/EMERGENCIA-recuperacion.md)**: qué hacer si se
+  pierden datos o el proyecto de Firebase.
 
 ## Inicio local
 
@@ -160,3 +162,20 @@ npx tsx scripts/restore-backup.ts --file=sigecat-2026-10-14_0200.json.gz
 Muestra qué documentos faltan en la base y cuáles cambiaron después de la copia. `--apply` crea
 solo los que faltan; `--overwrite` además devuelve los que cambiaron a como estaban. Nunca borra
 documentos. `--collections=expedientes,historial` limita la restauración.
+
+El procedimiento completo, incluida la restauración en un proyecto nuevo
+(`--target-project`) y la recreación de cuentas con `scripts/rebuild-auth-users.ts`, está en la
+[guía de emergencia](docs/EMERGENCIA-recuperacion.md).
+
+### Copia fuera de la nube y simulacro
+
+`npx tsx scripts/export-backup.ts --out=E:\copias-sigecat` saca en este equipo una copia con el
+mismo formato (solo lee). Guárdela en un disco externo cifrado o una carpeta institucional
+restringida, nunca en OneDrive personal: tiene datos personales.
+
+Cada tres meses, compruebe que la copia reconstruye la base en el emulador (no toca nada real):
+
+```powershell
+$env:BACKUP_FILE = 'C:\recuperacion\sigecat-2026-10-14_0200.json.gz'
+npm run drill
+```
