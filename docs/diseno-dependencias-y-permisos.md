@@ -37,7 +37,7 @@ impone en `firestore.rules`, no solo en la interfaz.
 | 4    | Reglas nuevas probadas en el emulador (`npm run test:rules`)                                                                              | Hecho                                                    |
 | 5    | Consultas del Funcionario por `participantes` y publicación de reglas e índices: aquí cambia la visibilidad                               | Hecho                                                    |
 | 6    | Histórico, Reportes, Biblioteca y Radicación consultan por periodo                                                                        | Pendiente                                                |
-| 7    | Pasar expedientes entre áreas y colaboración entre áreas                                                                                  | Pendiente                                                |
+| 7    | Apoyo en respuesta (D-34): constancia de quién de otra área apoyó; no se pasan expedientes entre áreas                                    | Hecho                                                    |
 
 El paso 5 solo se publica después del 3: si las consultas por `participantes` salieran antes de
 la migración, los Funcionarios dejarían de ver los expedientes antiguos.

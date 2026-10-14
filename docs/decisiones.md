@@ -26,28 +26,29 @@ recomendación técnica; se puede revisar.
 
 ## Usuarios, áreas y permisos
 
-| ID   | Decisión                                                                                                            | Estado     |
-| ---- | ------------------------------------------------------------------------------------------------------------------- | ---------- |
-| D-07 | El Funcionario ve y responde lo que se le asigna o pasó por él; los usuarios mayores ven todo                       | Confirmada |
-| D-11 | Ven todo: Administrador, Coordinador y Directivo                                                                    | Confirmada |
-| D-12 | No hay coordinadores por área. Jefatura: Diana. Coordinan la documentación: Juan José y Emanuel                     | Confirmada |
-| D-13 | El funcionario asignado registra todo en SIGECAT                                                                    | Confirmada |
-| D-14 | Quien registra un expediente cuenta como alguien por quien pasó                                                     | Confirmada |
-| D-15 | Los expedientes sin responsable los ven los usuarios mayores y quien los registró                                   | Confirmada |
-| D-16 | Los Funcionarios de Catastro dejan de ver los expedientes de sus compañeros                                         | Confirmada |
-| D-17 | Un expediente puede cambiar de área o tener respuestas compartidas                                                  | Confirmada |
-| D-18 | Cada funcionario pertenece a una sola área                                                                          | Confirmada |
-| D-19 | Todos los expedientes existentes son de Catastro                                                                    | Confirmada |
-| D-23 | Consulta ve todo en lectura                                                                                         | Delegada   |
-| D-24 | Los coordinadores coordinan la documentación de toda la Secretaría                                                  | Delegada   |
-| D-25 | Diana: Directivo. Juan José: Administrador                                                                          | Delegada   |
-| D-26 | El expediente queda asignado a quien lo registra si no elige otro responsable                                       | Delegada   |
-| D-27 | Respuesta compartida: un área lidera y responde; las demás colaboran                                                | Delegada   |
-| D-28 | Cambian el área el responsable actual y los usuarios mayores; el término no se reinicia (por verificar en la norma) | Delegada   |
-| D-29 | Los tipos de trámite son comunes a todas las áreas                                                                  | Delegada   |
-| D-31 | Solo actúa el responsable actual; quienes lo tuvieron antes solo consultan                                          | Delegada   |
-| D-32 | Catálogo de áreas fijo en el código (`src/lib/dependencies.ts`)                                                     | Delegada   |
-| D-33 | Los Funcionarios ven en Radicación solo los radicados de sus expedientes                                            | Delegada   |
+| ID   | Decisión                                                                                                             | Estado     |
+| ---- | -------------------------------------------------------------------------------------------------------------------- | ---------- |
+| D-07 | El Funcionario ve y responde lo que se le asigna o pasó por él; los usuarios mayores ven todo                        | Confirmada |
+| D-11 | Ven todo: Administrador, Coordinador y Directivo                                                                     | Confirmada |
+| D-12 | No hay coordinadores por área. Jefatura: Diana. Coordinan la documentación: Juan José y Emanuel                      | Confirmada |
+| D-13 | El funcionario asignado registra todo en SIGECAT                                                                     | Confirmada |
+| D-14 | Quien registra un expediente cuenta como alguien por quien pasó                                                      | Confirmada |
+| D-15 | Los expedientes sin responsable los ven los usuarios mayores y quien los registró                                    | Confirmada |
+| D-16 | Los Funcionarios de Catastro dejan de ver los expedientes de sus compañeros                                          | Confirmada |
+| D-17 | Un expediente puede cambiar de área o tener respuestas compartidas                                                   | Confirmada |
+| D-18 | Cada funcionario pertenece a una sola área                                                                           | Confirmada |
+| D-19 | Todos los expedientes existentes son de Catastro                                                                     | Confirmada |
+| D-23 | Consulta ve todo en lectura                                                                                          | Delegada   |
+| D-24 | Los coordinadores coordinan la documentación de toda la Secretaría                                                   | Delegada   |
+| D-25 | Diana: Directivo. Juan José: Administrador                                                                           | Delegada   |
+| D-26 | El expediente queda asignado a quien lo registra si no elige otro responsable                                        | Delegada   |
+| D-27 | Respuesta compartida: un área lidera y responde; las demás colaboran                                                 | Delegada   |
+| D-28 | ~~Pasar expedientes entre áreas~~: reemplazada por D-34                                                              | Descartada |
+| D-29 | Los tipos de trámite son comunes a todas las áreas                                                                   | Delegada   |
+| D-31 | Solo actúa el responsable actual; quienes lo tuvieron antes solo consultan                                           | Delegada   |
+| D-32 | Catálogo de áreas fijo en el código (`src/lib/dependencies.ts`)                                                      | Delegada   |
+| D-33 | Los Funcionarios ven en Radicación solo los radicados de sus expedientes                                             | Delegada   |
+| D-34 | Apoyo en respuesta: se registra quién de otra área apoyó y en qué; el expediente no cambia de área ni de responsable | Confirmada |
 
 ## Predios
 
@@ -57,7 +58,6 @@ recomendación técnica; se puede revisar.
 
 ## Pendientes
 
-- Verificar en la norma que un cambio de área interno no reinicia el término (D-28).
 - Tipos de solicitante "Propietario" y "Copropietario": ¿se mantienen para todas las áreas?
 - Copias de seguridad periódicas en el plan gratuito.
 - Normativa aplicable (Ley 1581 de 2012, Ley 594 de 2000, Decreto 1080 de 2015, Ley 1712 de

@@ -276,3 +276,23 @@ test('el directorio admite el área', async () => {
   await assertSucceeds(setDoc(doc(as('admin'), 'directorioUsuarios/ana'), entry))
   await assertFails(setDoc(doc(as('admin'), 'directorioUsuarios/ana'), { ...entry, correo: 'x' }))
 })
+
+test('quien apoya la respuesta puede consultar el expediente, no gestionarlo', async () => {
+  await assertSucceeds(
+    updateDoc(doc(as('ana'), 'expedientes/e1'), {
+      apoyosRespuesta: arrayUnion({
+        dependencia: 'tesoreria',
+        persona: 'Teso',
+        personaUid: 'tesoreria',
+      }),
+      participantes: arrayUnion('ana', 'tesoreria'),
+    }),
+  )
+  await assertSucceeds(getDoc(doc(as('tesoreria'), 'expedientes/e1')))
+  await assertFails(
+    updateDoc(doc(as('tesoreria'), 'expedientes/e1'), {
+      estado: 'Archivo (Finalizado)',
+      participantes: arrayUnion('tesoreria'),
+    }),
+  )
+})

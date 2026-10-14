@@ -143,6 +143,7 @@ export function ReportsPage() {
         'Fecha de cierre',
         'Respondido a tiempo',
         'Registro tardío',
+        'Apoyo de otras áreas',
       ],
       rows.map((item) => {
         const timely = closedOnTime(item)
@@ -158,6 +159,9 @@ export function ReportsPage() {
           item.activo ? '' : formatDate(getClosingDate(item)),
           timely === null ? '' : timely ? 'Sí' : 'No',
           item.registrosTardios?.length ? 'Sí' : 'No',
+          (item.apoyosRespuesta ?? [])
+            .map((support) => `${support.persona} (${getDependencyName(support.dependencia)})`)
+            .join('; '),
         ]
       }),
     )

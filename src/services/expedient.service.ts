@@ -20,7 +20,12 @@ import {
   registerExpedientHistory,
 } from '@/services/business-rules.service'
 import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
-import { getDependencyName, getExpedientDependency } from '@/lib/dependencies'
+import { getDependencyName, getExpedientDependency, toDependencyId } from '@/lib/dependencies'
+import {
+  describeResponseSupport,
+  getResponseSupportError,
+  type ResponseSupportInput,
+} from '@/lib/response-support'
 import { getOutgoingFilingNumbers } from '@/lib/entry-filing'
 import { fromDateKey, toDateKey } from '@/lib/expedient-deadline'
 import { parseDocumentLink } from '@/lib/document-links'
@@ -45,6 +50,7 @@ import type {
   ExpedientHistoryEntry,
   ExpedientStatus,
   LateRegistrationRecord,
+  ResponseSupport,
   WorkflowDocument,
   WorkflowDocumentPayload,
   WorkflowDocumentType,
@@ -770,6 +776,32 @@ export function applyActuation(
         actuation.respondedBy,
       )
   }
+}
+
+/** Deja constancia del apoyo de otra área en la respuesta, con su historial. */
+export async function addResponseSupport(
+  id: string,
+  input: ResponseSupportInput,
+  userId: string,
+): Promise<void> {
+  const error = getResponseSupportError(input)
+  if (error) throw new Error(error)
+  const support: ResponseSupport = {
+    dependencia: toDependencyId(input.dependencia)!,
+    persona: input.persona.trim(),
+    ...(input.personaUid ? { personaUid: input.personaUid } : {}),
+    descripcion: input.descripcion.trim(),
+    usuario: userId,
+    fecha: Timestamp.now(),
+  }
+  const batch = writeBatch(firestore)
+  batch.update(expedientReference(id), {
+    apoyosRespuesta: arrayUnion(support),
+    fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId, input.personaUid),
+  })
+  registerExpedientHistory(batch, id, userId, 'Apoyo en respuesta', describeResponseSupport(input))
+  await commit(batch)
 }
 
 export async function listExpedientHistory(id: string): Promise<ExpedientHistoryEntry[]> {

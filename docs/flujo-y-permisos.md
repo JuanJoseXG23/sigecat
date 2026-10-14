@@ -139,6 +139,16 @@ anterior), `diasAmpliacion`, el detalle en `ampliacionesPlazo[]`, el escaneo com
 `AMPLIACION_PLAZO`, el radicado (tipo `Ampliación de plazo`) y el historial. Las reglas están en
 `src/lib/deadline-extension.ts` con sus pruebas; el tope está en `MAX_EXTENSION_FACTOR`.
 
+## Apoyo en respuesta
+
+Cuando parte de una petición la responde otra área (por ejemplo, un derecho de petición de
+Catastro con un punto de Tesorería), el expediente **no cambia de área ni de responsable**: con
+**Apoyo en respuesta** en el detalle se registra quién apoyó, de qué área y en qué (5 a 500
+caracteres). Queda en el resumen, en el historial y en la columna "Apoyo de otras áreas" del
+reporte. Si la persona tiene usuario, se suma a `participantes` y puede consultar el expediente,
+pero no gestionarlo. Lo registra quien puede gestionar el expediente. Reglas en
+`src/lib/response-support.ts`, con pruebas.
+
 ## Registro de actuaciones atrasadas
 
 Para lo que se hizo a tiempo en la oficina (respuesta, traslado, ampliación) pero no se subió a

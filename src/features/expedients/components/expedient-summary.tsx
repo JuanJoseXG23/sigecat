@@ -1,6 +1,7 @@
-import { ExternalLink, Hourglass, MapPin, Pencil, Stamp, UserRound } from 'lucide-react'
+import { ExternalLink, Handshake, Hourglass, MapPin, Pencil, Stamp, UserRound } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { DeadlineBadge } from '@/features/expedients/components/expedient-badges'
+import { getDependencyName } from '@/lib/dependencies'
 import { describeRemainingDays, formatDate, formatLongDate } from '@/lib/format'
 import { getRegisteredProperties } from '@/lib/properties'
 import { cn } from '@/lib/utils'
@@ -174,6 +175,24 @@ export function ExpedientSummary({
                 </div>
               ))}
             </div>
+          </Panel>
+        )}
+
+        {Boolean(item.apoyosRespuesta?.length) && (
+          <Panel title="Apoyo en respuesta" icon={<Handshake size={16} className="text-primary" />}>
+            <ol className="space-y-3">
+              {item.apoyosRespuesta!.map((support, index) => (
+                <li key={index} className="rounded-lg border border-border p-3 text-sm">
+                  <p className="font-semibold text-slate-900">
+                    {support.persona} · {getDependencyName(support.dependencia)}
+                  </p>
+                  <p className="mt-1 text-slate-700">{support.descripcion}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Registrado el {formatDate(support.fecha)}
+                  </p>
+                </li>
+              ))}
+            </ol>
           </Panel>
         )}
 

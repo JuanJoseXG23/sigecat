@@ -112,6 +112,7 @@ export interface Expedient extends ActuationFields {
   diasAmpliacion?: number
   ampliacionesPlazo?: DeadlineExtension[]
   registrosTardios?: LateRegistrationRecord[]
+  apoyosRespuesta?: ResponseSupport[]
   solicitantes: Applicant[]
   /** Opcional: los expedientes no tienen que identificar predios. */
   predios?: Property[]
@@ -148,6 +149,18 @@ export interface ActuationFields {
   fechaRadicadoActuacion?: string
   /** Fecha en que se envió o notificó la actuación radicada (yyyy-mm-dd). */
   fechaEnvioActuacion?: string
+}
+
+/** Apoyo de otra área en la respuesta; el expediente no cambia de área ni de responsable. */
+export interface ResponseSupport {
+  dependencia: DependencyId
+  persona: string
+  /** uid de quien apoyó, si tiene usuario: lo deja consultar el expediente. */
+  personaUid?: string
+  descripcion: string
+  /** uid de quien lo registró. */
+  usuario: string
+  fecha: Timestamp
 }
 
 /** Actuaciones hechas a tiempo en la oficina que se subieron después a la aplicación. */

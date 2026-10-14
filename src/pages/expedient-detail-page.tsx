@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CalendarPlus,
   FileSearch,
+  Handshake,
   History,
   MessageCircleQuestion,
   Pencil,
@@ -26,6 +27,7 @@ import { ExpedientDocuments } from '@/features/expedients/components/expedient-d
 import { ExpedientHistory } from '@/features/expedients/components/expedient-history'
 import { ExpedientSummary } from '@/features/expedients/components/expedient-summary'
 import { ExtensionDialog } from '@/features/expedients/components/extension-dialog'
+import { SupportDialog } from '@/features/expedients/components/support-dialog'
 import { InquiryDialog } from '@/features/expedients/components/inquiry-dialog'
 import { LateRegistrationDialog } from '@/features/expedients/components/late-registration-dialog'
 import { WorkflowStepper } from '@/features/expedients/components/workflow-stepper'
@@ -95,7 +97,7 @@ export function ExpedientDetailPage() {
     enabled: Boolean(id),
   })
   const [dialog, setDialog] = useState<
-    'actuation' | 'extension' | 'edit' | 'late' | 'inquiry' | null
+    'actuation' | 'extension' | 'edit' | 'late' | 'inquiry' | 'support' | null
   >(params.get('registro') === 'tardio' ? 'late' : null)
   const [editingFiling, setEditingFiling] = useState<FilingRecord | null>(null)
   const [editingDocument, setEditingDocument] = useState<WorkflowDocument | null>(null)
@@ -214,6 +216,13 @@ export function ExpedientDetailPage() {
                         <CalendarPlus size={17} /> Ampliar plazo
                       </Button>
                     )}
+                    <Button
+                      variant="outline"
+                      onClick={() => setDialog('support')}
+                      title="Otra área o persona respondió parte de la petición"
+                    >
+                      <Handshake size={17} /> Apoyo en respuesta
+                    </Button>
                     {canRegisterLate && (
                       <Button
                         variant="outline"
@@ -371,6 +380,19 @@ export function ExpedientDetailPage() {
           expedientId={item.id}
           document={editingDocument}
           onClose={() => setEditingDocument(null)}
+        />
+      )}
+      {dialog === 'support' && (
+        <SupportDialog
+          expedient={item}
+          onClose={() => setDialog(null)}
+          onCompleted={() => {
+            setDialog(null)
+            toast({
+              title: 'Apoyo registrado',
+              description: 'Quedó en el resumen y en el historial.',
+            })
+          }}
         />
       )}
       {dialog === 'extension' && (
