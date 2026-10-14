@@ -28,7 +28,7 @@ function sendTestDeadlineAlert() {
     to: recipient,
     subject: 'SIGECAT: prueba de alertas por correo',
     body:
-      'La prueba fue exitosa. El proceso de alertas de SIGECAT puede consultar Firestore y enviar correos desde esta cuenta institucional. Alertas habilitadas: ' +
+      'La prueba fue exitosa. El proceso de alertas de SIGECAT puede consultar Firestore y enviar correos desde esta cuenta. Alertas habilitadas: ' +
       (configuration.alertasCorreoHabilitadas === true ? 'si' : 'no') +
       '.',
   })
@@ -90,7 +90,7 @@ function processAssignmentNotifications() {
     var data = notification.data
     try {
       // La solicitud solo trae identificadores; correo y contenido se leen de Firestore
-      // para que nadie pueda usar la cuenta institucional con datos inventados.
+      // para que nadie pueda usar la cuenta del script con datos inventados.
       if (!data.expedienteId || !data.destinatarioUid)
         throw new Error('Solicitud sin expediente o destinatario.')
       var expedient = getDocument_('expedientes/' + data.expedienteId)
@@ -596,10 +596,11 @@ function colombianHolidays_(year) {
 
 /*
  * Copias de seguridad: cada noche guarda en Drive (carpeta "SIGECAT copias de seguridad" de la
- * cuenta que ejecuta el script) todos los documentos de Firestore, comprimidos, y manda a la
- * papelera las copias de más de BACKUP_RETENTION_DAYS días. El permiso drive.file solo deja al
- * script ver y modificar los archivos que él mismo crea. Se restauran con
- * scripts/restore-backup.ts. Cada copia lee todos los documentos: cuenta para la cuota diaria.
+ * cuenta de Google que ejecuta el script) todos los documentos de Firestore, comprimidos, y manda
+ * a la papelera las copias de más de BACKUP_RETENTION_DAYS días. Usa DriveApp, que no necesita
+ * habilitar APIs en Google Cloud; el script solo crea y manda a la papelera sus propios archivos
+ * "sigecat-*.json.gz" de esa carpeta. Se restauran con scripts/restore-backup.ts
+ * (docs/EMERGENCIA-recuperacion.md). Cada copia lee todos los documentos: cuenta para la cuota.
  */
 var BACKUP_COLLECTIONS = [
   'usuarios',
@@ -617,7 +618,6 @@ var BACKUP_COLLECTIONS = [
 ]
 var BACKUP_FOLDER_NAME = 'SIGECAT copias de seguridad'
 var BACKUP_RETENTION_DAYS = 30
-var DRIVE_API = 'https://www.googleapis.com/drive/v3/files'
 
 function setupDailyBackup() {
   var projectId = PropertiesService.getScriptProperties().getProperty('FIREBASE_PROJECT_ID')
@@ -673,9 +673,9 @@ function backupFirestore() {
     documentos: documents,
   })
   var blob = Utilities.gzip(Utilities.newBlob(content, 'application/json'), fileName)
-  var folderId = getBackupFolderId_()
-  uploadBackup_(blob, fileName, folderId)
-  var trashed = trashOldBackups_(folderId, createdAt)
+  var folder = getBackupFolder_()
+  folder.createFile(blob)
+  var trashed = trashOldBackups_(folder, createdAt)
   Logger.log(
     'Copia ' +
       fileName +
@@ -689,89 +689,35 @@ function backupFirestore() {
   )
 }
 
-function getBackupFolderId_() {
+function getBackupFolder_() {
   var properties = PropertiesService.getScriptProperties()
   var folderId = properties.getProperty('BACKUP_FOLDER_ID')
   if (folderId) {
-    var folder = driveRequest_(DRIVE_API + '/' + folderId + '?fields=id,trashed', 'get')
-    if (folder && !folder.trashed) return folderId
+    try {
+      var saved = DriveApp.getFolderById(folderId)
+      if (!saved.isTrashed()) return saved
+    } catch (error) {
+      // La carpeta ya no existe: se busca por nombre o se crea de nuevo.
+    }
   }
-  var created = driveRequest_(
-    DRIVE_API + '?fields=id',
-    'post',
-    JSON.stringify({ name: BACKUP_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
-    'application/json',
-  )
-  properties.setProperty('BACKUP_FOLDER_ID', created.id)
-  return created.id
-}
-
-function uploadBackup_(blob, fileName, folderId) {
-  var boundary = 'sigecat' + new Date().getTime()
-  var metadata = JSON.stringify({
-    name: fileName,
-    parents: [folderId],
-    mimeType: 'application/gzip',
-  })
-  var head =
-    '--' +
-    boundary +
-    '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' +
-    metadata +
-    '\r\n--' +
-    boundary +
-    '\r\nContent-Type: application/gzip\r\n\r\n'
-  var tail = '\r\n--' + boundary + '--'
-  var payload = Utilities.newBlob(head)
-    .getBytes()
-    .concat(blob.getBytes())
-    .concat(Utilities.newBlob(tail).getBytes())
-  driveRequest_(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
-    'post',
-    payload,
-    'multipart/related; boundary=' + boundary,
-  )
+  var folders = DriveApp.getFoldersByName(BACKUP_FOLDER_NAME)
+  var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(BACKUP_FOLDER_NAME)
+  properties.setProperty('BACKUP_FOLDER_ID', folder.getId())
+  return folder
 }
 
 /* Manda a la papelera de Drive (no borra) las copias de más de BACKUP_RETENTION_DAYS días. */
-function trashOldBackups_(folderId, now) {
+function trashOldBackups_(folder, now) {
   var limit = new Date(now.getTime() - BACKUP_RETENTION_DAYS * 24 * 60 * 60 * 1000)
-  var query = encodeURIComponent("'" + folderId + "' in parents and trashed = false")
-  var list = driveRequest_(
-    DRIVE_API + '?q=' + query + '&fields=files(id,name,createdTime)&pageSize=1000',
-    'get',
-  )
+  var files = folder.getFiles()
   var trashed = 0
-  var files = (list && list.files) || []
-  for (var i = 0; i < files.length; i = i + 1) {
-    if (new Date(files[i].createdTime) >= limit) continue
-    driveRequest_(
-      DRIVE_API + '/' + files[i].id,
-      'patch',
-      JSON.stringify({ trashed: true }),
-      'application/json',
-    )
+  while (files.hasNext()) {
+    var file = files.next()
+    // Solo las copias del propio script, nunca otros archivos que alguien deje en la carpeta.
+    if (!/^sigecat-.*\.json\.gz$/.test(file.getName())) continue
+    if (file.getDateCreated() >= limit) continue
+    file.setTrashed(true)
     trashed = trashed + 1
   }
   return trashed
-}
-
-function driveRequest_(url, method, payload, contentType) {
-  var options = {
-    method: method,
-    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
-    muteHttpExceptions: true,
-  }
-  if (payload !== undefined) {
-    options.payload = payload
-    options.contentType = contentType
-  }
-  var response = UrlFetchApp.fetch(url, options)
-  var status = response.getResponseCode()
-  if (status === 404 && method === 'get') return null
-  if (status < 200 || status >= 300)
-    throw new Error('Drive ' + status + ': ' + response.getContentText())
-  var text = response.getContentText()
-  return text ? JSON.parse(text) : null
 }

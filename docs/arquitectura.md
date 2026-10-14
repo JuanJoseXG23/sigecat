@@ -19,7 +19,7 @@ GitHub Pages            firestore.rules
 | Rutas         | React Router con `createHashRouter`                        |
 | Autenticación | Firebase Authentication (correo y contraseña)              |
 | Base de datos | Cloud Firestore                                            |
-| Correos       | Google Apps Script con la cuenta institucional             |
+| Correos       | Google Apps Script con una cuenta de Google                |
 | Documentos    | Enlaces a OneDrive/SharePoint (no se usa Firebase Storage) |
 | Publicación   | GitHub Pages mediante GitHub Actions                       |
 

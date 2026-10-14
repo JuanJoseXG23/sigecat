@@ -103,18 +103,19 @@ firebase deploy --only firestore:rules,firestore:indexes --project sigecat-7c6ec
 
 Las alertas no usan Cloud Functions ni proveedores de pago. El archivo
 `google-apps-script/Code.gs` se instala una sola vez en Google Apps Script y se ejecuta cada día
-desde una cuenta institucional de Google Workspace. Envía únicamente a funcionarios activos que
+desde la cuenta de Google dueña del proyecto de Apps Script (hoy la de quien administra
+SIGECAT; la Alcaldía usa Outlook, no Google Workspace). Envía únicamente a funcionarios activos que
 el administrador haya habilitado en **Configuración → Alertas por correo**.
 
 ### Activación inicial
 
-1. Inicie sesión con la cuenta institucional que enviará los correos y cree un proyecto en
+1. Inicie sesión con la cuenta de Google que enviará los correos y cree un proyecto en
    [Google Apps Script](https://script.google.com/home). Pegue el contenido de
    `google-apps-script/Code.gs` en `Code.gs` y de `google-apps-script/appsscript.json` en el
    manifiesto del proyecto (Configuración del proyecto → Mostrar archivo de manifiesto).
 2. En **Configuración del proyecto → Propiedades del script**, agregue la propiedad
    `FIREBASE_PROJECT_ID` con el valor `sigecat-7c6ec`.
-3. En Google Cloud Console, otorgue a esa misma cuenta institucional el rol **Cloud Datastore User**
+3. En Google Cloud Console, otorgue a esa misma cuenta el rol **Cloud Datastore User**
    en el proyecto `sigecat-7c6ec`. Así el script puede leer usuarios y expedientes y registrar que
    el aviso fue enviado; no se necesita una cuenta de servicio ni una llave privada.
 4. En el editor de Apps Script, seleccione y ejecute `setupDailyDeadlineAlerts` (crea también los
@@ -126,7 +127,7 @@ el administrador haya habilitado en **Configuración → Alertas por correo**.
    mismo responsable y fecha límite.
 
 Para comprobar la conexión antes de habilitar destinatarios, ejecute manualmente
-`sendTestDeadlineAlert` desde Apps Script. El correo de prueba se envía a la cuenta institucional
+`sendTestDeadlineAlert` desde Apps Script. El correo de prueba se envía a la cuenta
 que ejecuta el script y confirma también que puede consultar Firestore.
 
 Para detener el proceso por completo, ejecute `disableDailyDeadlineAlerts` en Apps Script. Para
@@ -136,9 +137,10 @@ pausarlo sin eliminar el disparador, desactive **Alertas por correo** en SIGECAT
 
 El plan gratuito de Firebase no hace copias. `google-apps-script/Code.gs` guarda cada noche, entre
 las 02:00 y las 03:00, todos los documentos de Firestore (incluido el historial) en un archivo
-`.json.gz` dentro de la carpeta **SIGECAT copias de seguridad** del Drive de la cuenta
-institucional que ejecuta el script, y manda a la papelera las de más de 30 días. El permiso
-`drive.file` solo le deja ver y modificar los archivos que él mismo crea.
+`.json.gz` dentro de la carpeta **SIGECAT copias de seguridad** del Drive de la cuenta que
+ejecuta el script, y manda a la papelera las de más de 30 días. Usa el servicio DriveApp, que no
+necesita habilitar APIs en Google Cloud; Google pide el permiso de Drive completo, pero el script
+solo crea y manda a la papelera sus propios archivos `sigecat-*.json.gz` de esa carpeta.
 
 ### Activación
 

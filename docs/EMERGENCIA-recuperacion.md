@@ -31,7 +31,7 @@ Pegue esta guía completa en el chat, con este mensaje, y vaya pegando el result
 | Proyecto de Firebase         | `sigecat-7c6ec` — Firestore nativo en `southamerica-east1`, autenticación con correo y contraseña           |
 | Código, reglas e índices     | GitHub `JuanJoseXG23/sigecat` (`firestore.rules`, `firestore.indexes.json`)                                 |
 | Sitio publicado              | `https://juanjosexg23.github.io/sigecat/` (GitHub Pages; se publica al subir a `main`)                      |
-| Copia diaria                 | Drive de la cuenta institucional que ejecuta Apps Script, carpeta **SIGECAT copias de seguridad**; 30 días  |
+| Copia diaria                 | Drive de la cuenta de Google que ejecuta Apps Script, carpeta **SIGECAT copias de seguridad**; 30 días      |
 | Copias manuales              | Donde se hayan guardado con `scripts/export-backup.ts` (disco externo o carpeta restringida)                |
 | Correos y copias automáticas | Proyecto de Google Apps Script con `google-apps-script/Code.gs`                                             |
 | Documentos escaneados (PDF)  | OneDrive/SharePoint institucional. **No dependen de Firebase**: los expedientes solo guardan el enlace      |
@@ -108,7 +108,8 @@ Siga con **Verificación final**.
 ## Escenario B: el proyecto de Firebase desapareció
 
 B1. **Proyecto nuevo.** En `https://console.firebase.google.com` cree un proyecto con una cuenta
-**institucional** (no personal). Anote su id (por ejemplo `sigecat-girardota`).
+**institucional** (no personal). La Alcaldía usa Outlook: cree una cuenta de Google con un correo
+`@girardota.gov.co` en `accounts.google.com/signup` → "Usar mi dirección de correo electrónico actual". Anote su id (por ejemplo `sigecat-girardota`).
 
 B2. **Firestore.** Cree la base de datos en modo nativo, ubicación `southamerica-east1`. En la
 configuración de la base, active la **protección contra eliminación**.
@@ -146,8 +147,8 @@ copie su configuración en `.env.production` (las seis variables `VITE_FIREBASE_
 prueba y publica.
 
 B9. **Apps Script** (correos y copias): en el proyecto de Apps Script cambie la propiedad
-`FIREBASE_PROJECT_ID` al id nuevo; en Google Cloud Console del proyecto nuevo dé a la cuenta
-institucional el rol **Cloud Datastore User**; ejecute `setupDailyDeadlineAlerts` y
+`FIREBASE_PROJECT_ID` al id nuevo; en Google Cloud Console del proyecto nuevo dé a la cuenta que
+ejecuta el script el rol **Cloud Datastore User**; ejecute `setupDailyDeadlineAlerts` y
 `setupDailyBackup`.
 
 ## Verificación final
@@ -168,6 +169,9 @@ institucional el rol **Cloud Datastore User**; ejecute `setupDailyDeadlineAlerts
 - **Propiedad institucional**: una cuenta institucional debe ser **Propietaria** del proyecto de
   Firebase (consola → Configuración → Usuarios y permisos) y tener acceso de administración al
   repositorio de GitHub. Si el proyecto depende de una sola cuenta personal, se pierde con ella.
+  Como la Alcaldía usa Outlook, cree una cuenta de Google con un correo `@girardota.gov.co`
+  (`accounts.google.com/signup` → "Usar mi dirección de correo electrónico actual"); no requiere
+  permisos de nadie. Lo mismo vale para el proyecto de Apps Script (Compartir → Editor).
 - **Protección contra eliminación** de la base activa (consola de Google Cloud → Firestore →
   base `(default)` → editar).
 - **Llave de administración** fuera de OneDrive y de carpetas compartidas: con ella se pueden

@@ -211,7 +211,7 @@ registran los folios) e imprime la hoja de control del expediente.
 
 ## Correos
 
-Los envía Google Apps Script desde la cuenta institucional. La aplicación nunca envía correos ni
+Los envía Google Apps Script desde la cuenta de Google que lo ejecuta. La aplicación nunca envía correos ni
 decide su destinatario o contenido: solo deja una solicitud con identificadores.
 
 | Correo                   | Cuándo                                                                                                                                      |
