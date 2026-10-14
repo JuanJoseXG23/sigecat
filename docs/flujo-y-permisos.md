@@ -246,6 +246,26 @@ Toda corrección queda en el historial con el valor anterior y el nuevo.
 La pestaña Documentos lista los documentos en orden cronológico con foliación consecutiva (si se
 registran los folios) e imprime la hoja de control del expediente.
 
+## Calendario y recordatorios
+
+Página **Calendario** (`#/calendario`, todos los roles). Cada persona ve su mes, de lunes a
+domingo:
+
+- **Vencimientos:** la `fechaLimite` de los expedientes que tiene asignados en trámite y de los
+  que respondió. No se guarda nada aparte: se consulta por `participantes` y `fechaLimite` (índice
+  compuesto). Colores del semáforo (en plazo, próximo a vencer, vencido) y, si ya se respondió,
+  azul a tiempo o gris fuera de término. Los archivados sin respuesta no aparecen.
+- **Recordatorios:** colección `recordatorios`, un documento por destinatario (los de un mismo
+  envío comparten `grupo`): título (3 a 120), detalle opcional (hasta 1000), día, y hasta 5
+  enlaces de OneDrive institucional. Cada quien se los crea a sí mismo; Administrador y
+  Coordinador también a cualquier persona activa, o a todo el equipo. Quien lo recibe lo marca
+  como hecho; quien lo creó (o un Administrador) lo elimina.
+- **Tareas de Mi agenda** con fecha, solo en el calendario propio.
+
+Administrador y Coordinador eligen de quién ver el calendario y tienen la lista de los
+recordatorios que crearon, con el estado del correo y si ya se hicieron. Reglas en
+`firestore.rules` (con pruebas) y en `src/lib/calendar.ts` y `src/lib/reminders.ts`.
+
 ## Correos
 
 Los envía Google Apps Script desde la cuenta de Google que lo ejecuta. La aplicación nunca envía correos ni
@@ -256,6 +276,7 @@ decide su destinatario o contenido: solo deja una solicitud con identificadores.
 | Asignación               | Al asignar o reasignar un expediente; se procesa cada 5 minutos                                                                             |
 | Alerta de vencimiento    | Diario a las 8 a. m., a responsables con alertas activas, cuando quedan entre 0 y el umbral de días; una vez por responsable y fecha límite |
 | Pregunta de la dirección | Al preguntar desde el Panel de dirección o el detalle; se procesa cada 5 minutos. Responder el correo le llega a quien preguntó             |
+| Recordatorio             | El día del recordatorio desde las 7 a. m. (proceso de cada 5 minutos). Responder el correo le llega a quien lo creó                         |
 | Prueba                   | Desde Configuración, solo administradores                                                                                                   |
 
 La instalación del script está en el README.

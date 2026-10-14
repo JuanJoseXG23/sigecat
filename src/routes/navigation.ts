@@ -1,6 +1,7 @@
 import {
   Archive,
   BarChart3,
+  CalendarDays,
   CircleHelp,
   FileCog,
   FolderKanban,
@@ -69,6 +70,13 @@ export const appNavigation: readonly AppNavigationItem[] = [
     path: '/radicacion',
     icon: Stamp,
     roles: [...operationalRoles, 'Directivo'],
+    group: 'Gestión',
+  },
+  {
+    label: 'Calendario',
+    path: '/calendario',
+    icon: CalendarDays,
+    roles: allRoles,
     group: 'Gestión',
   },
   {

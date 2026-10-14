@@ -23,6 +23,7 @@ import {
   registerExpedientHistory,
 } from '@/services/business-rules.service'
 import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
+import { isDeadlineOf } from '@/lib/calendar'
 import { getDependencyName, getExpedientDependency, toDependencyId } from '@/lib/dependencies'
 import { getYearBounds } from '@/lib/periods'
 import {
@@ -294,6 +295,25 @@ export async function listClosedExpedientsSince(since: Date): Promise<Expedient[
     .map((item) => ({ ...(item.data() as Expedient), id: item.id }))
     .filter((item) => !item.activo)
     .sort(byLastUpdate)
+}
+
+/**
+ * Vencimientos de una persona entre dos fechas (el final excluido), para su calendario: lo que
+ * tiene asignado en trámite y lo que respondió. Se pide por `participantes`, que es lo que las
+ * reglas le permiten consultar a un Funcionario sobre sí mismo.
+ */
+export async function listDeadlinesInRange(uid: string, start: Date, end: Date) {
+  const snapshot = await getDocs(
+    query(
+      collection(firestore, EXPEDIENTS_COLLECTION),
+      where('participantes', 'array-contains', uid),
+      where('fechaLimite', '>=', Timestamp.fromDate(start)),
+      where('fechaLimite', '<', Timestamp.fromDate(end)),
+    ),
+  )
+  const items = toExpedients(snapshot).filter((item) => isDeadlineOf(item, uid))
+  const active = await withDeadlineStatus(items.filter((item) => !isFinalizedExpedient(item)))
+  return [...active, ...items.filter(isFinalizedExpedient)]
 }
 
 export async function getExpedient(id: string): Promise<Expedient | null> {

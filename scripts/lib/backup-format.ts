@@ -26,6 +26,7 @@ export const BACKUP_COLLECTIONS = [
   'notificacionesAsignacion',
   'consultasDireccion',
   'solicitudesPruebaCorreo',
+  'recordatorios',
 ] as const
 
 export interface RestValue {

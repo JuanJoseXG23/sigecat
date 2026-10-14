@@ -320,6 +320,76 @@ test('la copia del radicado de entrada en Radicación solo sigue al expediente',
   await assertFails(filing(as('ana'), '20261000077'))
 })
 
+/** Recordatorio como lo arma createReminders. */
+function reminder(db: Firestore, id: string, data: Record<string, unknown>) {
+  return setDoc(doc(db, 'recordatorios', id), {
+    id,
+    grupo: 'g1',
+    titulo: 'Reunión de seguimiento',
+    fecha: '2026-10-20',
+    destinatarioUid: 'ana',
+    destinatarioNombre: 'Ana',
+    creadoPor: 'ana',
+    creadoPorNombre: 'Ana',
+    documentos: [],
+    correo: 'Pendiente',
+    hecho: false,
+    fechaCreacion: serverTimestamp(),
+    ...data,
+  })
+}
+
+test('cada quien se crea recordatorios; los supervisores también a otros', async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    for (const uid of ['ana', 'luis', 'admin', 'coordinator', 'director'])
+      await setDoc(doc(context.firestore(), 'directorioUsuarios', uid), { uid, activo: true })
+  })
+  await assertSucceeds(reminder(as('ana'), 'r1', {}))
+  await assertFails(reminder(as('ana'), 'r2', { destinatarioUid: 'luis' }))
+  await assertSucceeds(
+    reminder(as('coordinator'), 'r3', { destinatarioUid: 'luis', creadoPor: 'coordinator' }),
+  )
+  await assertSucceeds(reminder(as('admin'), 'r4', { destinatarioUid: 'ana', creadoPor: 'admin' }))
+  await assertSucceeds(
+    reminder(as('director'), 'r5', { destinatarioUid: 'director', creadoPor: 'director' }),
+  )
+  // Para alguien que no existe, a nombre de otro, ya enviado, con campos de más o sin título.
+  await assertFails(reminder(as('admin'), 'r6', { destinatarioUid: 'nadie', creadoPor: 'admin' }))
+  await assertFails(reminder(as('ana'), 'r7', { creadoPor: 'luis' }))
+  await assertFails(reminder(as('ana'), 'r8', { correo: 'Enviado' }))
+  await assertFails(reminder(as('ana'), 'r9', { extra: true }))
+  await assertFails(reminder(as('ana'), 'r10', { titulo: 'ok' }))
+  await assertFails(
+    reminder(as('inactive'), 'r11', { destinatarioUid: 'inactive', creadoPor: 'inactive' }),
+  )
+})
+
+test('un recordatorio lo ven quien lo recibe, quien lo creó y los supervisores', async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore()
+    await setDoc(doc(db, 'recordatorios/r1'), {
+      destinatarioUid: 'ana',
+      creadoPor: 'admin',
+      titulo: 'Reunión',
+      fecha: '2026-10-20',
+      hecho: false,
+    })
+  })
+  const mine = (db: Firestore, uid: string) =>
+    getDocs(query(collection(db, 'recordatorios'), where('destinatarioUid', '==', uid)))
+  await assertSucceeds(getDoc(doc(as('ana'), 'recordatorios/r1')))
+  await assertSucceeds(mine(as('ana'), 'ana'))
+  await assertSucceeds(mine(as('coordinator'), 'ana'))
+  await assertFails(getDoc(doc(as('luis'), 'recordatorios/r1')))
+  await assertFails(mine(as('luis'), 'ana'))
+  // Quien lo recibe solo lo marca como hecho; no lo cambia ni lo borra.
+  await assertSucceeds(updateDoc(doc(as('ana'), 'recordatorios/r1'), { hecho: true }))
+  await assertFails(updateDoc(doc(as('ana'), 'recordatorios/r1'), { titulo: 'Otro' }))
+  await assertFails(updateDoc(doc(as('admin'), 'recordatorios/r1'), { hecho: false }))
+  await assertFails(deleteDoc(doc(as('ana'), 'recordatorios/r1')))
+  await assertSucceeds(deleteDoc(doc(as('admin'), 'recordatorios/r1')))
+})
+
 test('sin responsable, solo quien lo registró lo gestiona', async () => {
   await env.withSecurityRulesDisabled((context) =>
     setDoc(doc(context.firestore(), 'expedientes/e3'), {

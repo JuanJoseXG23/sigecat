@@ -36,6 +36,9 @@ const ExpedientDetailPage = lazy(() =>
     default: module.ExpedientDetailPage,
   })),
 )
+const CalendarPage = lazy(() =>
+  import('@/pages/calendar-page').then((module) => ({ default: module.CalendarPage })),
+)
 const HistoricalPage = lazy(() =>
   import('@/pages/historical-page').then((module) => ({ default: module.HistoricalPage })),
 )
@@ -97,6 +100,7 @@ export const router = createHashRouter([
               { path: 'direccion', element: withRole('/direccion', <ManagementPanelPage />) },
               { path: 'dashboard', element: withRole('/dashboard', <DashboardPage />) },
               { path: 'agenda', element: withRole('/agenda', <AgendaPage />) },
+              { path: 'calendario', element: withRole('/calendario', <CalendarPage />) },
               { path: 'expedientes', element: withRole('/expedientes', <ExpedientsPage />) },
               {
                 path: 'expedientes/:id',

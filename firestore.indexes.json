@@ -7,6 +7,30 @@
         { "fieldPath": "participantes", "arrayConfig": "CONTAINS" },
         { "fieldPath": "activo", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "expedientes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "participantes", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "fechaLimite", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recordatorios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destinatarioUid", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recordatorios",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "creadoPor", "order": "ASCENDING" },
+        { "fieldPath": "fecha", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  CalendarDays,
   CalendarPlus,
   Eye,
   FilePlus2,
@@ -178,6 +179,20 @@ export function HelpPage() {
           </p>
         </Section>
 
+        <Section icon={CalendarDays} title="Calendario y recordatorios">
+          <p>
+            En <b>Calendario</b> ves el día en que vence cada expediente tuyo, con el semáforo:
+            verde en plazo, amarillo próximo a vencer, rojo vencido. Los que ya respondiste salen en
+            azul (o en gris si fue fuera de término). Toca un día para ver el detalle y abrir el
+            expediente.
+          </p>
+          <p>
+            Con <b>Nuevo recordatorio</b> te dejas un aviso para un día. Ese día, desde las 7 a. m.,
+            te llega un correo; cuando lo hagas, márcalo como hecho. Administración y Coordinación
+            también te pueden dejar recordatorios, con enlaces a documentos de OneDrive.
+          </p>
+        </Section>
+
         <Section icon={Mail} title="Correos que recibes">
           <ul className="list-disc space-y-1 pl-5">
             <li>Cuando te asignan un expediente.</li>
@@ -186,6 +201,7 @@ export function HelpPage() {
               Cuando la Dirección pregunta por un expediente tuyo: respóndele directamente desde el
               correo.
             </li>
+            <li>El día de cada recordatorio que tienes en el calendario.</li>
           </ul>
         </Section>
 

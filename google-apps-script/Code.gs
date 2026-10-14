@@ -83,7 +83,14 @@ function processEmailTestRequests() {
   }
 }
 
+/* Corre cada 5 minutos: correos de asignación y, en el mismo activador (así no hay que crear
+   uno nuevo), los recordatorios del calendario que ya llegaron a su día. */
 function processAssignmentNotifications() {
+  try {
+    processReminders_()
+  } catch (error) {
+    Logger.log('No fue posible procesar los recordatorios: ' + error)
+  }
   var notifications = queryPendingAssignmentNotifications_()
   for (var i = 0; i < notifications.length; i = i + 1) {
     var notification = notifications[i]
@@ -247,6 +254,106 @@ function processManagementInquiries() {
         addHistory_(data.expedienteId, 'Pregunta de la dirección no enviada', String(error))
     }
   }
+}
+
+/* Recordatorios del calendario (colección recordatorios, uno por destinatario). Se envían el día
+   del recordatorio desde las 7 a. m.; los de días pasados que quedaron pendientes, también. El
+   correo del destinatario y de quien lo creó se leen de Firestore, no del recordatorio. */
+var REMINDER_HOUR = 7
+
+function processReminders_() {
+  var now = new Date()
+  if (Number(Utilities.formatDate(now, TIME_ZONE, 'H')) < REMINDER_HOUR) return
+  var today = dateKey_(now)
+  var appUrl =
+    PropertiesService.getScriptProperties().getProperty('APP_URL') ||
+    'https://juanjosexg23.github.io/sigecat/'
+  var reminders = queryPendingReminders_()
+  var users = {}
+  var userOf = function (uid) {
+    if (!users.hasOwnProperty(uid)) users[uid] = getDocument_('usuarios/' + uid)
+    return users[uid]
+  }
+  for (var i = 0; i < reminders.length; i = i + 1) {
+    var reminder = reminders[i]
+    var data = reminder.data
+    if (!data.fecha || data.fecha > today) continue
+    var path = 'recordatorios/' + reminder.id
+    try {
+      var recipient = userOf(data.destinatarioUid)
+      if (!recipient || recipient.activo !== true || !recipient.correo) {
+        patchFields_(path, {
+          correo: 'Omitido',
+          detalleCorreo: 'La persona no está activa o no tiene correo.',
+          fechaCorreo: new Date(),
+        })
+        continue
+      }
+      var creator = userOf(data.creadoPor)
+      var fromOther = data.creadoPor !== data.destinatarioUid
+      var documents = data.documentos || []
+      var lines = []
+      for (var d = 0; d < documents.length; d = d + 1)
+        lines.push('- ' + documents[d].nombre + ': ' + documents[d].url)
+      var body =
+        'Hola ' +
+        (recipient.nombreCompleto || '') +
+        ',\n\n' +
+        (fromOther
+          ? (creator && creator.nombreCompleto ? creator.nombreCompleto : 'SIGECAT') +
+            ' te dejó este recordatorio para hoy:'
+          : 'Este es tu recordatorio para hoy:') +
+        '\n\n' +
+        data.titulo +
+        (data.descripcion ? '\n\n' + data.descripcion : '') +
+        (lines.length ? '\n\nDocumentos:\n' + lines.join('\n') : '') +
+        '\n\nVer en el calendario de SIGECAT: ' +
+        appUrl +
+        '#/calendario'
+      var email = {
+        to: recipient.correo,
+        name: 'SIGECAT',
+        subject: 'SIGECAT: recordatorio - ' + data.titulo,
+        // Solo texto: el contenido lo escribe una persona y no se escapa como HTML.
+        body: body,
+      }
+      if (fromOther && creator && creator.correo) email.replyTo = creator.correo
+      MailApp.sendEmail(email)
+      patchFields_(path, { correo: 'Enviado', fechaCorreo: new Date() })
+    } catch (error) {
+      patchFields_(path, {
+        correo: 'Error',
+        detalleCorreo: String(error),
+        fechaCorreo: new Date(),
+      })
+    }
+  }
+}
+
+function queryPendingReminders_() {
+  var response = firestoreRequest_('/documents:runQuery', 'post', {
+    structuredQuery: {
+      from: [{ collectionId: 'recordatorios' }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'correo' },
+          op: 'EQUAL',
+          value: { stringValue: 'Pendiente' },
+        },
+      },
+    },
+  })
+  var results = []
+  for (var i = 0; i < response.length; i = i + 1) {
+    if (response[i].document) {
+      var document = response[i].document
+      results.push({
+        id: document.name.split('/').pop(),
+        data: decodeFields_(document.fields || {}),
+      })
+    }
+  }
+  return results
 }
 
 function queryPending_(collectionId) {
@@ -647,6 +754,7 @@ var BACKUP_COLLECTIONS = [
   'notificacionesAsignacion',
   'consultasDireccion',
   'solicitudesPruebaCorreo',
+  'recordatorios',
 ]
 var BACKUP_FOLDER_NAME = 'SIGECAT copias de seguridad'
 var BACKUP_RETENTION_DAYS = 30
