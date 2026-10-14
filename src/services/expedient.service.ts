@@ -410,13 +410,9 @@ export async function updateExpedient(
         observaciones: values.observacionesIniciales,
       },
     )
-    registerExpedientHistory(
-      batch,
-      id,
-      userId,
-      changes.length ? 'Edición del expediente' : 'Actualización del expediente',
-      changes.join('. '),
-    )
+    // Guardar sin cambios solo llenaría el historial de entradas vacías.
+    if (!changes.length) throw new Error('No hay cambios para guardar.')
+    registerExpedientHistory(batch, id, userId, 'Edición del expediente', changes.join('. '))
   }
   await commit(batch)
 }

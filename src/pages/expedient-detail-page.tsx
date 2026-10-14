@@ -8,10 +8,12 @@ import {
   History,
   MessageCircleQuestion,
   Pencil,
+  StickyNote,
 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { Badge } from '@/components/ui/badge'
+import { ActionMenu } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { buttonVariants } from '@/components/ui/button-variants'
 import { Alert, EmptyState, LoadingState } from '@/components/ui/feedback'
@@ -138,6 +140,7 @@ export function ExpedientDetailPage() {
   const canExtend = canManage && Boolean(item.fechaLimite) && (item.diasRestantes ?? 0) >= 0
   const canRegisterLate =
     canManage && Boolean(item.fechaLimite) && Boolean(getLateRegistrationScope(item.estado))
+  const canNote = canAddNote(profile, item)
   const canAsk = !finalized && canAskAboutExpedients(profile) && Boolean(item.funcionarioAsignado)
   const entryFilingReplaced = hasReplacedEntryFiling(item)
   const suggestedEntryFiling = entryFilingReplaced ? suggestEntryFiling(item) : undefined
@@ -159,8 +162,9 @@ export function ExpedientDetailPage() {
         <ArrowLeft size={16} /> Volver
       </button>
 
-      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        <div className="flag-stripe h-1" aria-hidden="true" />
+      {/* Sin overflow-hidden: el menú Más acciones debe poder salir de la tarjeta. */}
+      <div className="rounded-2xl border border-border bg-card shadow-sm">
+        <div className="flag-stripe h-1 rounded-t-2xl" aria-hidden="true" />
         <div className="space-y-4 p-5 sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0 flex-1 space-y-2">
@@ -210,13 +214,10 @@ export function ExpedientDetailPage() {
             )}
           </div>
 
-          {(canManage || (finalized && canEditData) || canAsk) && (
+          {(canManage || (finalized && canEditData) || canAsk || canNote) && (
             <div className="no-print flex flex-wrap items-center gap-2 border-t border-border pt-4">
               {canManage && (
-                <Button
-                  className="h-auto min-h-10 w-full whitespace-normal py-2 sm:w-auto"
-                  onClick={() => setDialog('actuation')}
-                >
+                <Button onClick={() => setDialog('actuation')}>
                   {step.title === 'Completar actuación' ? `Completar: ${item.estado}` : step.title}
                   <ArrowRight size={17} />
                 </Button>
@@ -226,42 +227,61 @@ export function ExpedientDetailPage() {
                   <Pencil size={16} /> Editar datos
                 </Button>
               )}
-              {canExtend && (
-                <Button variant="outline" onClick={() => setDialog('extension')}>
-                  <CalendarPlus size={17} /> Ampliar plazo
-                </Button>
-              )}
-              {canManage && (
-                <Button
-                  variant="outline"
-                  onClick={() => setDialog('support')}
-                  title="Otra área o persona respondió parte de la petición"
-                >
-                  <Handshake size={17} /> Apoyo en respuesta
-                </Button>
-              )}
-              {canRegisterLate && (
-                <Button
-                  variant="outline"
-                  onClick={() => setDialog('late')}
-                  title="Subir respuestas, traslados o ampliaciones ya radicados con sus fechas reales"
-                >
-                  <History size={17} /> Registrar atrasado
-                </Button>
-              )}
+              <ActionMenu
+                label="Más acciones"
+                actions={[
+                  ...(canExtend
+                    ? [
+                        {
+                          label: 'Ampliar plazo',
+                          description: 'Radicar la ampliación del término antes del vencimiento.',
+                          icon: CalendarPlus,
+                          onSelect: () => setDialog('extension'),
+                        },
+                      ]
+                    : []),
+                  ...(canManage
+                    ? [
+                        {
+                          label: 'Apoyo en respuesta',
+                          description: 'Otra área o persona respondió parte de la petición.',
+                          icon: Handshake,
+                          onSelect: () => setDialog('support'),
+                        },
+                      ]
+                    : []),
+                  ...(canRegisterLate
+                    ? [
+                        {
+                          label: 'Registrar atrasado',
+                          description:
+                            'Subir respuestas, traslados o ampliaciones ya radicados, con sus fechas reales.',
+                          icon: History,
+                          onSelect: () => setDialog('late'),
+                        },
+                      ]
+                    : []),
+                  ...(canNote
+                    ? [
+                        {
+                          label: 'Agregar nota',
+                          description: 'Aclarar algo en el historial, sin cambiar el expediente.',
+                          icon: StickyNote,
+                          onSelect: () => setDialog('note'),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
               {canAsk && (
-                <Button
-                  variant="outline"
-                  className="sm:ml-auto"
-                  onClick={() => setDialog('inquiry')}
-                >
+                <Button variant="outline" className="ml-auto" onClick={() => setDialog('inquiry')}>
                   <MessageCircleQuestion size={17} /> Preguntar al responsable
                 </Button>
               )}
             </div>
           )}
         </div>
-        <div className="border-t border-border bg-muted/30 px-5 py-5 sm:px-6">
+        <div className="rounded-b-2xl border-t border-border bg-muted/30 px-5 py-5 sm:px-6">
           <WorkflowStepper flow={flow} currentIndex={currentIndex} />
         </div>
       </div>
@@ -352,7 +372,8 @@ export function ExpedientDetailPage() {
         {tab === 'historial' && (
           <ExpedientHistory
             entries={history}
-            onAddNote={canAddNote(profile, item) ? () => setDialog('note') : undefined}
+            filingNumber={item.numeroRadicado}
+            onAddNote={canNote ? () => setDialog('note') : undefined}
           />
         )}
       </div>

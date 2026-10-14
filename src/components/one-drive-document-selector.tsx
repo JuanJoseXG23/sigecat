@@ -132,7 +132,7 @@ export function OneDriveDocumentSelector({
               <Input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="Ej. Radicado de entrada escaneado"
+                placeholder="Número de radicado y qué es. Ej. 20262005337 Respuesta"
               />
             </Field>
             <Field label="Folios">

@@ -44,7 +44,9 @@ function Responsible({ name }: { name?: string }) {
       <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-[0.7rem] font-bold text-primary">
         {initials(name)}
       </span>
-      <span className="max-w-32 truncate text-slate-700">{name}</span>
+      <span className="max-w-56 truncate text-slate-700" title={name}>
+        {name}
+      </span>
     </span>
   )
 }
@@ -101,7 +103,7 @@ export function ExpedientTable({ rows, isLoading, isError, empty, actions }: Exp
                       </Link>
                       {item.prioridad && <PriorityBadge priority={item.prioridad} />}
                     </span>
-                    <p className="max-w-60 truncate text-sm text-slate-700">
+                    <p className="max-w-80 truncate text-sm text-slate-700">
                       {item.solicitantes[0]?.nombre || 'Solicitante sin registrar'}
                       {item.solicitantes.length > 1 && (
                         <span className="text-muted-foreground">
@@ -110,7 +112,7 @@ export function ExpedientTable({ rows, isLoading, isError, empty, actions }: Exp
                         </span>
                       )}
                     </p>
-                    <p className="max-w-60 truncate text-xs text-muted-foreground">
+                    <p className="max-w-80 truncate text-xs text-muted-foreground">
                       {getDependencyName(getExpedientDependency(item))} ·{' '}
                       {item.tipoTramite ?? 'Sin tipo de trámite'}
                       {item.asunto ? ` · ${item.asunto}` : ''}

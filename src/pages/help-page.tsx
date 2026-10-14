@@ -125,39 +125,43 @@ export function HelpPage() {
             días hábiles (sin fines de semana ni festivos).
           </p>
           <p>
-            Si no alcanzas a responder, usa <b>Ampliar plazo</b> antes del vencimiento, con el
-            oficio radicado que se envió al ciudadano. El plazo total no puede pasar del doble del
-            inicial (Ley 1755 de 2015).
+            Si no alcanzas a responder, usa <b>Más acciones → Ampliar plazo</b> antes del
+            vencimiento, con el oficio radicado que se envió al ciudadano. El plazo total no puede
+            pasar del doble del inicial (Ley 1755 de 2015).
           </p>
         </Section>
 
         <Section icon={Handshake} title="Apoyo de otra área">
           <p>
-            Si parte de la petición la responde otra área, usa <b>Apoyo en respuesta</b> en el
-            detalle: quién apoyó, de qué área y en qué. El expediente sigue en tu área y contigo
-            como responsable.
+            Si parte de la petición la responde otra área, usa{' '}
+            <b>Más acciones → Apoyo en respuesta</b> en el detalle: quién apoyó, de qué área y en
+            qué. El expediente sigue en tu área y contigo como responsable.
           </p>
           <p>Si esa persona tiene usuario, podrá consultar el expediente, pero no modificarlo.</p>
         </Section>
 
         <Section icon={StickyNote} title="Aclarar algo con una nota">
           <p>
-            En la pestaña <b>Historial</b> del expediente, usa <b>Agregar nota</b> para dejar una
-            aclaración: por ejemplo, que se confirmó el radicado con Archivo o que el ciudadano
-            llamó. Queda con tu nombre y la fecha.
+            En la pestaña <b>Historial</b> del expediente (o en <b>Más acciones</b>), usa{' '}
+            <b>Agregar nota</b> para dejar una aclaración: por ejemplo, que se confirmó el radicado
+            con Archivo o que el ciudadano llamó. Queda con tu nombre y la fecha.
           </p>
           <p>
             Puedes hacerlo en los expedientes que pasaron por ti, aunque ya no los tengas o estén
             cerrados. Una nota no se edita ni se borra: si te equivocas, agrega otra que la corrija.{' '}
-            <b>Solo notas</b> las muestra sin el resto del historial.
+            El filtro <b>Notas</b> las muestra sin el resto del historial.
+          </p>
+          <p>
+            El historial se filtra por tipo (trámite, radicados, documentos, correcciones, correos,
+            notas), se busca por texto y se exporta a Excel.
           </p>
         </Section>
 
         <Section icon={History} title="Algo que no subiste a tiempo">
           <p>
             Si respondiste, trasladaste o ampliaste en la oficina pero no lo registraste, usa{' '}
-            <b>Registrar atrasado</b>: pide las fechas reales de cada radicado y deja constancia del
-            motivo.
+            <b>Más acciones → Registrar atrasado</b>: pide las fechas reales de cada radicado y deja
+            constancia del motivo.
           </p>
         </Section>
 
@@ -166,6 +170,11 @@ export function HelpPage() {
             Los escaneos se guardan en el <b>OneDrive institucional</b>; SIGECAT guarda el enlace.
             En la pestaña <b>Documentos</b> del expediente están todos, en orden, con la hoja de
             control para imprimir.
+          </p>
+          <p>
+            Nombra cada documento con su número de radicado y qué es, para encontrarlo después:{' '}
+            <b>20262005337 Respuesta</b>, <b>20261005144 Petición</b>, <b>20262006101 Traslado</b>.
+            Escribe nombres y textos en minúscula normal, no todo en MAYÚSCULAS.
           </p>
         </Section>
 

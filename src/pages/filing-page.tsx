@@ -69,7 +69,7 @@ export function FilingPage() {
 
   const exportRows = () =>
     downloadCsv(
-      `radicados-catastro-${month || 'todos'}.csv`,
+      `radicados-sigecat-${month || 'todos'}.csv`,
       [
         'Radicado',
         'Fecha',

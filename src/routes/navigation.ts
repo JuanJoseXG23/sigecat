@@ -79,7 +79,7 @@ export const appNavigation: readonly AppNavigationItem[] = [
     group: 'Gestión',
   },
   {
-    label: 'Biblioteca de documentos',
+    label: 'Biblioteca',
     path: '/documentos',
     icon: Library,
     roles: allRoles,

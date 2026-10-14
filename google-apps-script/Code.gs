@@ -88,12 +88,13 @@ function processAssignmentNotifications() {
   for (var i = 0; i < notifications.length; i = i + 1) {
     var notification = notifications[i]
     var data = notification.data
+    var expedient = null
     try {
       // La solicitud solo trae identificadores; correo y contenido se leen de Firestore
       // para que nadie pueda usar la cuenta del script con datos inventados.
       if (!data.expedienteId || !data.destinatarioUid)
         throw new Error('Solicitud sin expediente o destinatario.')
-      var expedient = getDocument_('expedientes/' + data.expedienteId)
+      expedient = getDocument_('expedientes/' + data.expedienteId)
       if (!expedient) throw new Error('El expediente no existe.')
       if (
         !expedient.funcionarioAsignado ||
@@ -135,12 +136,19 @@ function processAssignmentNotifications() {
         estado: 'Enviado',
         fechaProcesamiento: new Date(),
       })
+      addHistory_(
+        data.expedienteId,
+        'Correo de asignación enviado',
+        'A ' + (recipient.nombreCompleto || ''),
+      )
     } catch (error) {
       patchFields_('notificacionesAsignacion/' + notification.id, {
         estado: 'Error',
         detalleError: String(error),
         fechaProcesamiento: new Date(),
       })
+      if (expedient)
+        addHistory_(data.expedienteId, 'Correo de asignación no enviado', String(error))
     }
   }
 }
@@ -157,10 +165,11 @@ function processManagementInquiries() {
     var inquiry = inquiries[i]
     var data = inquiry.data
     var path = 'consultasDireccion/' + inquiry.id
+    var expedient = null
     try {
       if (!data.expedienteId || !data.destinatarioUid || !data.solicitadoPor)
         throw new Error('Solicitud incompleta.')
-      var expedient = getDocument_('expedientes/' + data.expedienteId)
+      expedient = getDocument_('expedientes/' + data.expedienteId)
       if (!expedient) throw new Error('El expediente no existe.')
       if (
         !expedient.funcionarioAsignado ||
@@ -221,14 +230,12 @@ function processManagementInquiries() {
         body: body,
       })
       // Deja la pregunta en el historial del expediente para que el equipo la vea.
-      firestoreRequest_('/documents/expedientes/' + data.expedienteId + '/historial', 'post', {
-        fields: {
-          usuario: encodeValue_(data.solicitadoPor),
-          accion: encodeValue_('Pregunta de la dirección'),
-          detalle: encodeValue_('A ' + (recipient.nombreCompleto || '') + ': ' + question),
-          fecha: encodeValue_(new Date()),
-        },
-      })
+      addHistory_(
+        data.expedienteId,
+        'Pregunta de la dirección',
+        'A ' + (recipient.nombreCompleto || '') + ': ' + question,
+        data.solicitadoPor,
+      )
       patchFields_(path, { estado: 'Enviado', fechaProcesamiento: new Date() })
     } catch (error) {
       patchFields_(path, {
@@ -236,6 +243,8 @@ function processManagementInquiries() {
         detalleError: String(error),
         fechaProcesamiento: new Date(),
       })
+      if (expedient)
+        addHistory_(data.expedienteId, 'Pregunta de la dirección no enviada', String(error))
     }
   }
 }
@@ -342,6 +351,11 @@ function sendDeadlineAlertForExpedient_(expedient, threshold, holidayMap, users)
     patchDocument_(expedient.id, {
       ultimaAlertaVencimiento: { clave: alertKey, fecha: new Date() },
     })
+    addHistory_(
+      expedient.id,
+      'Alerta de vencimiento enviada',
+      'A ' + (official.nombreCompleto || '') + ': ' + label + ' (' + deadline + ').',
+    )
     Logger.log('Alerta enviada para ' + filing + ' a ' + recipient.correo + '.')
   } catch (error) {
     Logger.log('No fue posible enviar la alerta del expediente ' + expedient.id + ': ' + error)
@@ -420,6 +434,24 @@ function queryPendingAssignmentNotifications_() {
     }
   }
   return results
+}
+
+/* Deja constancia en el historial del expediente (por defecto como acción automática del
+   sistema). Si falla, no interrumpe el envío: el correo ya salió o ya se registró el error. */
+function addHistory_(expedientId, action, detail, userId) {
+  if (!expedientId) return
+  try {
+    firestoreRequest_('/documents/expedientes/' + expedientId + '/historial', 'post', {
+      fields: {
+        usuario: encodeValue_(userId || 'sistema'),
+        accion: encodeValue_(action),
+        detalle: encodeValue_(detail || ''),
+        fecha: encodeValue_(new Date()),
+      },
+    })
+  } catch (error) {
+    Logger.log('No se pudo escribir el historial de ' + expedientId + ': ' + error)
+  }
 }
 
 function getDocument_(path) {

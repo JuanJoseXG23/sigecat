@@ -27,7 +27,7 @@ const responsibleOf = (item: Expedient) =>
 
 function exportRows(rows: Row[]) {
   downloadCsv(
-    `historico-catastro-${new Date().toISOString().slice(0, 10)}.csv`,
+    `historico-sigecat-${new Date().toISOString().slice(0, 10)}.csv`,
     [
       'Radicado',
       'Fecha de radicado',
@@ -163,12 +163,12 @@ export function HistoricalPage() {
                 <tr key={item.id}>
                   <td>
                     <p className="font-semibold text-slate-900">{item.numeroRadicado}</p>
-                    <p className="max-w-60 truncate text-xs text-muted-foreground">
+                    <p className="max-w-80 truncate text-xs text-muted-foreground">
                       {item.tipoTramite ?? 'Sin tipo'}
                       {item.asunto ? ` · ${item.asunto}` : ''}
                     </p>
                   </td>
-                  <td className="max-w-56 truncate">{item.solicitantes[0]?.nombre ?? '—'}</td>
+                  <td className="max-w-72 truncate">{item.solicitantes[0]?.nombre ?? '—'}</td>
                   <td>{responsibleOf(item) || '—'}</td>
                   <td className="whitespace-nowrap">
                     <p>{formatDate(closing)}</p>

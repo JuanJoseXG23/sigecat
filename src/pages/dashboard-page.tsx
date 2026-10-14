@@ -236,15 +236,14 @@ export function DashboardPage() {
       </div>
 
       <div className="space-y-3">
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-sm lg:flex-row">
+        <div className="space-y-3 rounded-xl border border-border bg-card p-3 shadow-sm">
           <Input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Filtrar por radicado, solicitante, documento o predio"
-            className="lg:max-w-sm"
             aria-label="Filtrar expedientes"
           />
-          <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Select
               value={status}
               onChange={(event) => setStatus(event.target.value)}

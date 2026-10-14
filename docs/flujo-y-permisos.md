@@ -125,7 +125,7 @@ y se repite en `google-apps-script/Code.gs` para las alertas; si cambia una, deb
 
 Parágrafo del art. 14 de la Ley 1437 de 2011, sustituido por la Ley 1755 de 2015: cuando no se
 puede responder a tiempo, antes del vencimiento se informa al peticionario el motivo y el nuevo
-plazo, que no puede exceder el doble del inicial. En el detalle, **Ampliar plazo** (quien puede
+plazo, que no puede exceder el doble del inicial. En el detalle, **Más acciones → Ampliar plazo** (quien puede
 gestionar el expediente, mientras no esté vencido) exige:
 
 | Dato                          | Regla                                                                                         |
@@ -144,17 +144,33 @@ anterior), `diasAmpliacion`, el detalle en `ampliacionesPlazo[]`, el escaneo com
 
 Cuando parte de una petición la responde otra área (por ejemplo, un derecho de petición de
 Catastro con un punto de Tesorería), el expediente **no cambia de área ni de responsable**: con
-**Apoyo en respuesta** en el detalle se registra quién apoyó, de qué área y en qué (5 a 500
+**Más acciones → Apoyo en respuesta** en el detalle se registra quién apoyó, de qué área y en qué (5 a 500
 caracteres). Queda en el resumen, en el historial y en la columna "Apoyo de otras áreas" del
 reporte. Si la persona tiene usuario, se suma a `participantes` y puede consultar el expediente,
 pero no gestionarlo. Lo registra quien puede gestionar el expediente. Reglas en
 `src/lib/response-support.ts`, con pruebas.
 
+## Historial
+
+La pestaña Historial muestra quién hizo qué y cuándo, agrupado por día, con el nombre y el rol de
+cada persona ("SIGECAT · Automático" para lo que hacen los procesos). Se filtra por tipo
+(trámite, radicados y plazos, documentos, correcciones, correos y preguntas, notas), se busca por
+texto, se ordena de los más recientes a los más antiguos o al revés y se exporta a Excel. Las
+ediciones muestran cada dato con su valor anterior y el nuevo; un correo que no se pudo enviar se
+ve en rojo. Lógica en `src/lib/history-view.ts`, con pruebas.
+
+Apps Script también escribe en el historial: cada correo de asignación y cada alerta de
+vencimiento enviados, y los que no se pudieron enviar con el motivo.
+
+Las entradas que se guardan juntas (por ejemplo, el radicado de la respuesta y el cierre) llevan
+`orden` para mostrarse en la secuencia en que ocurrieron. Editar datos sin cambiar nada no se
+guarda, para no llenar el historial de entradas vacías.
+
 ## Notas del historial
 
 Para aclarar algo del expediente sin cambiarlo (por ejemplo, "el radicado de entrada se confirmó
-con la planilla de Archivo"). Botón **Agregar nota** en la pestaña Historial; el filtro **Solo
-notas** las muestra sin el resto, y se distinguen en color.
+con la planilla de Archivo"). **Agregar nota** en la pestaña Historial o en **Más acciones**; el
+filtro **Notas** las muestra sin el resto, y se distinguen en color.
 
 - Escriben notas Administrador y Coordinador en cualquier expediente, y el Funcionario en los que
   figura en `participantes`, aunque ya no los gestione y también cerrados. Directivo y Consulta
@@ -170,7 +186,7 @@ Reglas en `src/lib/expedient-notes.ts`, con pruebas.
 ## Registro de actuaciones atrasadas
 
 Para lo que se hizo a tiempo en la oficina (respuesta, traslado, ampliación) pero no se subió a
-la aplicación. Botón **Registrar atrasado** en el detalle (quien puede gestionar el expediente,
+la aplicación. **Más acciones → Registrar atrasado** en el detalle (quien puede gestionar el expediente,
 mientras esté activo); si el expediente aparece vencido, un aviso lo ofrece. También se abre con
 `#/expedientes/{id}?registro=tardio`.
 

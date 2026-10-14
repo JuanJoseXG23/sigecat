@@ -18,7 +18,15 @@ const dateFormat = new Intl.DateTimeFormat('es-CO', {
   year: 'numeric',
 })
 const longDateFormat = new Intl.DateTimeFormat('es-CO', { dateStyle: 'full' })
-const dateTimeFormat = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' })
+// Mismo día y mes que formatDate, para que todas las fechas de la app se lean igual.
+const dateTimeFormat = new Intl.DateTimeFormat('es-CO', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: 'numeric',
+  minute: '2-digit',
+})
+const timeFormat = new Intl.DateTimeFormat('es-CO', { hour: 'numeric', minute: '2-digit' })
 
 /** 2 oct 2026 */
 export function formatDate(value: DateLike, empty = '—'): string {
@@ -38,6 +46,12 @@ export function formatLongDate(value: DateLike, empty = '—'): string {
 export function formatDateTime(value: DateLike, empty = '—'): string {
   const date = toDate(value)
   return date ? dateTimeFormat.format(date) : empty
+}
+
+/** 3:15 p. m. */
+export function formatTime(value: DateLike, empty = '—'): string {
+  const date = toDate(value)
+  return date ? timeFormat.format(date) : empty
 }
 
 /** "Vence hoy", "Quedan 3 días hábiles", "Vencido hace 2 días hábiles". */
