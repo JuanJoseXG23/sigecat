@@ -278,12 +278,13 @@ service cloud.firestore {
       allow create: if signedInWithActiveProfile() &&
         request.resource.data.keys().hasOnly(['id', 'grupo', 'titulo', 'descripcion', 'fecha',
           'destinatarioUid', 'destinatarioNombre', 'creadoPor', 'creadoPorNombre', 'documentos',
-          'correo', 'hecho', 'fechaCreacion']) &&
+          'correo', 'correoAviso', 'hecho', 'fechaCreacion']) &&
         request.resource.data.id == reminderId &&
         request.resource.data.creadoPor == request.auth.uid &&
         (request.resource.data.destinatarioUid == request.auth.uid || isSupervisor()) &&
         exists(/databases/$(database)/documents/directorioUsuarios/$(request.resource.data.destinatarioUid)) &&
         request.resource.data.correo == 'Pendiente' &&
+        request.resource.data.get('correoAviso', 'Pendiente') == 'Pendiente' &&
         request.resource.data.hecho == false &&
         request.resource.data.fechaCreacion == request.time &&
         request.resource.data.titulo is string &&

@@ -256,24 +256,26 @@ function processManagementInquiries() {
   }
 }
 
-/* Recordatorios del calendario (colección recordatorios, uno por destinatario). Se envían el día
-   del recordatorio desde las 7 a. m.; los de días pasados que quedaron pendientes, también. El
-   correo del destinatario y de quien lo creó se leen de Firestore, no del recordatorio. */
+/* Recordatorios del calendario (colección recordatorios, uno por destinatario). Si lo creó otra
+   persona, primero sale un aviso al asignarlo; el día del recordatorio, desde las 7 a. m., sale el
+   recordatorio (también los de días pasados que quedaron pendientes). El correo del destinatario y
+   de quien lo creó se leen de Firestore, no del recordatorio. */
 var REMINDER_HOUR = 7
 
 function processReminders_() {
   var now = new Date()
-  if (Number(Utilities.formatDate(now, TIME_ZONE, 'H')) < REMINDER_HOUR) return
   var today = dateKey_(now)
   var appUrl =
     PropertiesService.getScriptProperties().getProperty('APP_URL') ||
     'https://juanjosexg23.github.io/sigecat/'
-  var reminders = queryPendingReminders_()
   var users = {}
   var userOf = function (uid) {
     if (!users.hasOwnProperty(uid)) users[uid] = getDocument_('usuarios/' + uid)
     return users[uid]
   }
+  processReminderNotices_(today, appUrl, userOf)
+  if (Number(Utilities.formatDate(now, TIME_ZONE, 'H')) < REMINDER_HOUR) return
+  var reminders = queryPendingReminders_('correo')
   for (var i = 0; i < reminders.length; i = i + 1) {
     var reminder = reminders[i]
     var data = reminder.data
@@ -330,13 +332,76 @@ function processReminders_() {
   }
 }
 
-function queryPendingReminders_() {
+/* Aviso al asignar un recordatorio que creó otra persona (correoAviso = Pendiente). Sale en el
+   siguiente ciclo de 5 minutos, a cualquier hora. Si el recordatorio ya es para hoy o pasó, no se
+   envía: el correo del día lo cubre, y así no llegan dos seguidos. */
+function processReminderNotices_(today, appUrl, userOf) {
+  var notices = queryPendingReminders_('correoAviso')
+  for (var i = 0; i < notices.length; i = i + 1) {
+    var data = notices[i].data
+    var path = 'recordatorios/' + notices[i].id
+    try {
+      if (!data.fecha || data.fecha <= today) {
+        patchFields_(path, { correoAviso: 'Omitido', fechaAviso: new Date() })
+        continue
+      }
+      var recipient = userOf(data.destinatarioUid)
+      if (!recipient || recipient.activo !== true || !recipient.correo) {
+        patchFields_(path, { correoAviso: 'Omitido', fechaAviso: new Date() })
+        continue
+      }
+      var creator = userOf(data.creadoPor)
+      var day = Utilities.formatDate(
+        new Date(data.fecha + 'T12:00:00-05:00'),
+        TIME_ZONE,
+        'dd/MM/yyyy',
+      )
+      var documents = data.documentos || []
+      var lines = []
+      for (var d = 0; d < documents.length; d = d + 1)
+        lines.push('- ' + documents[d].nombre + ': ' + documents[d].url)
+      var email = {
+        to: recipient.correo,
+        name: 'SIGECAT',
+        subject: 'SIGECAT: nuevo recordatorio para el ' + day + ' - ' + data.titulo,
+        // Solo texto: el contenido lo escribe una persona y no se escapa como HTML.
+        body:
+          'Hola ' +
+          (recipient.nombreCompleto || '') +
+          ',\n\n' +
+          (creator && creator.nombreCompleto ? creator.nombreCompleto : 'SIGECAT') +
+          ' te asignó un recordatorio para el ' +
+          day +
+          ':\n\n' +
+          data.titulo +
+          (data.descripcion ? '\n\n' + data.descripcion : '') +
+          (lines.length ? '\n\nDocumentos:\n' + lines.join('\n') : '') +
+          '\n\nEse día, a primera hora, te llegará de nuevo este recordatorio.' +
+          '\nVer en el calendario de SIGECAT: ' +
+          appUrl +
+          '#/calendario',
+      }
+      if (creator && creator.correo) email.replyTo = creator.correo
+      MailApp.sendEmail(email)
+      patchFields_(path, { correoAviso: 'Enviado', fechaAviso: new Date() })
+    } catch (error) {
+      patchFields_(path, {
+        correoAviso: 'Error',
+        detalleAviso: String(error),
+        fechaAviso: new Date(),
+      })
+    }
+  }
+}
+
+/* Recordatorios con un correo pendiente: field es 'correo' (el del día) o 'correoAviso'. */
+function queryPendingReminders_(field) {
   var response = firestoreRequest_('/documents:runQuery', 'post', {
     structuredQuery: {
       from: [{ collectionId: 'recordatorios' }],
       where: {
         fieldFilter: {
-          field: { fieldPath: 'correo' },
+          field: { fieldPath: field },
           op: 'EQUAL',
           value: { stringValue: 'Pendiente' },
         },

@@ -187,9 +187,10 @@ export function HelpPage() {
             expediente.
           </p>
           <p>
-            Con <b>Nuevo recordatorio</b> te dejas un aviso para un día. Ese día, desde las 7 a. m.,
-            te llega un correo; cuando lo hagas, márcalo como hecho. Administración y Coordinación
-            también te pueden dejar recordatorios, con enlaces a documentos de OneDrive.
+            Con <b>Nuevo recordatorio</b> te dejas un aviso para un día. Ese día, a las 7 a. m., te
+            llega un correo; cuando lo hagas, márcalo como hecho. Administración y Coordinación
+            también te pueden dejar recordatorios, con enlaces a documentos de OneDrive: te llega un
+            correo cuando te lo asignan y otro el día, a primera hora.
           </p>
         </Section>
 
@@ -201,7 +202,7 @@ export function HelpPage() {
               Cuando la Dirección pregunta por un expediente tuyo: respóndele directamente desde el
               correo.
             </li>
-            <li>El día de cada recordatorio que tienes en el calendario.</li>
+            <li>Cuando te asignan un recordatorio, y el día del recordatorio a las 7 a. m.</li>
           </ul>
         </Section>
 

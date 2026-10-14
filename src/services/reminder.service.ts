@@ -78,6 +78,8 @@ export async function createReminders(
         url: document.url.trim(),
       })),
       correo: 'Pendiente',
+      // A quien se lo crea otra persona le llega además un aviso al asignarlo.
+      ...(recipient.uid !== creator.uid ? { correoAviso: 'Pendiente' } : {}),
       hecho: false,
       fechaCreacion: serverTimestamp(),
     })

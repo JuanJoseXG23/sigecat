@@ -54,6 +54,7 @@ export function ReminderDialog({ day, personUid, onClose }: ReminderDialogProps)
     documentos: documents,
   }
   const missing = getReminderError(input, today)
+  const dayLabel = date ? formatLongDate(date).toLocaleLowerCase('es-CO') : 'día elegido'
   const toggle = (uid: string) =>
     setRecipients((current) =>
       current.includes(uid) ? current.filter((item) => item !== uid) : [...current, uid],
@@ -84,7 +85,11 @@ export function ReminderDialog({ day, personUid, onClose }: ReminderDialogProps)
       size="lg"
       kicker="Calendario"
       title="Nuevo recordatorio"
-      description={`El ${date ? formatLongDate(date).toLocaleLowerCase('es-CO') : 'día elegido'}, desde las 7 a. m., llegará un correo a cada persona con el recordatorio y sus documentos.`}
+      description={
+        supervisor
+          ? `A cada persona le llega un aviso en unos minutos (a ti no, si te incluyes) y el ${dayLabel}, a las 7 a. m., el recordatorio con sus documentos. Si es para hoy, un solo correo.`
+          : `El ${dayLabel}, a las 7 a. m., te llega un correo con el recordatorio.`
+      }
       footer={
         <>
           {missing && (title || documents.length > 0) && (

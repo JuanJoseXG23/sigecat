@@ -271,12 +271,12 @@ recordatorios que crearon, con el estado del correo y si ya se hicieron. Reglas 
 Los envía Google Apps Script desde la cuenta de Google que lo ejecuta. La aplicación nunca envía correos ni
 decide su destinatario o contenido: solo deja una solicitud con identificadores.
 
-| Correo                   | Cuándo                                                                                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Asignación               | Al asignar o reasignar un expediente; se procesa cada 5 minutos                                                                             |
-| Alerta de vencimiento    | Diario a las 8 a. m., a responsables con alertas activas, cuando quedan entre 0 y el umbral de días; una vez por responsable y fecha límite |
-| Pregunta de la dirección | Al preguntar desde el Panel de dirección o el detalle; se procesa cada 5 minutos. Responder el correo le llega a quien preguntó             |
-| Recordatorio             | El día del recordatorio desde las 7 a. m. (proceso de cada 5 minutos). Responder el correo le llega a quien lo creó                         |
-| Prueba                   | Desde Configuración, solo administradores                                                                                                   |
+| Correo                   | Cuándo                                                                                                                                                               |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Asignación               | Al asignar o reasignar un expediente; se procesa cada 5 minutos                                                                                                      |
+| Alerta de vencimiento    | Diario a las 8 a. m., a responsables con alertas activas, cuando quedan entre 0 y el umbral de días; una vez por responsable y fecha límite                          |
+| Pregunta de la dirección | Al preguntar desde el Panel de dirección o el detalle; se procesa cada 5 minutos. Responder el correo le llega a quien preguntó                                      |
+| Recordatorio             | Si lo creó otra persona, un aviso al asignarlo (en máximo 5 minutos); y el día, desde las 7 a. m. Si es para hoy, un solo correo. Responder le llega a quien lo creó |
+| Prueba                   | Desde Configuración, solo administradores                                                                                                                            |
 
 La instalación del script está en el README.

@@ -71,6 +71,20 @@ const TONE_BADGE: Record<DeadlineTone, BadgeVariant> = {
   'respondido-tarde': 'default',
 }
 
+/** Estado de cada correo en la lista de recordatorios creados. */
+const NOTICE_LABEL: Record<Reminder['correo'], string> = {
+  Pendiente: 'por enviar',
+  Enviado: 'enviado',
+  Error: 'no se pudo enviar',
+  Omitido: 'no hizo falta',
+}
+const DAY_LABEL: Record<Reminder['correo'], string> = {
+  Pendiente: 'programado',
+  Enviado: 'enviado',
+  Error: 'no se pudo enviar',
+  Omitido: 'sin correo',
+}
+
 const EMAIL_LABEL: Record<Reminder['correo'], string> = {
   Pendiente: 'Correo programado',
   Enviado: 'Correo enviado',
@@ -607,14 +621,27 @@ function SentReminders({
                       </span>
                     )}
                   </td>
-                  <td
-                    className={cn(
-                      'whitespace-nowrap text-sm',
-                      reminder.correo === 'Error' ? 'text-red-700' : 'text-muted-foreground',
+                  <td className="whitespace-nowrap text-sm" title={reminder.detalleCorreo}>
+                    {reminder.correoAviso && (
+                      <span
+                        className={cn(
+                          'block',
+                          reminder.correoAviso === 'Error'
+                            ? 'text-red-700'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        Aviso: {NOTICE_LABEL[reminder.correoAviso]}
+                      </span>
                     )}
-                    title={reminder.detalleCorreo}
-                  >
-                    {EMAIL_LABEL[reminder.correo]}
+                    <span
+                      className={cn(
+                        'block',
+                        reminder.correo === 'Error' ? 'text-red-700' : 'text-muted-foreground',
+                      )}
+                    >
+                      Del día: {DAY_LABEL[reminder.correo]}
+                    </span>
                   </td>
                   <td>
                     <Badge variant={reminder.hecho ? 'success' : 'default'} dot>

@@ -357,6 +357,20 @@ test('cada quien se crea recordatorios; los supervisores también a otros', asyn
   await assertFails(reminder(as('admin'), 'r6', { destinatarioUid: 'nadie', creadoPor: 'admin' }))
   await assertFails(reminder(as('ana'), 'r7', { creadoPor: 'luis' }))
   await assertFails(reminder(as('ana'), 'r8', { correo: 'Enviado' }))
+  await assertSucceeds(
+    reminder(as('admin'), 'r12', {
+      destinatarioUid: 'luis',
+      creadoPor: 'admin',
+      correoAviso: 'Pendiente',
+    }),
+  )
+  await assertFails(
+    reminder(as('admin'), 'r13', {
+      destinatarioUid: 'luis',
+      creadoPor: 'admin',
+      correoAviso: 'Enviado',
+    }),
+  )
   await assertFails(reminder(as('ana'), 'r9', { extra: true }))
   await assertFails(reminder(as('ana'), 'r10', { titulo: 'ok' }))
   await assertFails(

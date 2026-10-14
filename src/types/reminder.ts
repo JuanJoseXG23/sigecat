@@ -17,8 +17,11 @@ export interface Reminder {
   creadoPor: string
   creadoPorNombre: string
   documentos: ReminderDocument[]
+  /** Correo del día del recordatorio. */
   correo: ReminderEmailStatus
   detalleCorreo?: string
+  /** Aviso al asignarlo, solo si lo creó otra persona (los antiguos no lo tienen). */
+  correoAviso?: ReminderEmailStatus
   hecho: boolean
   fechaHecho?: Timestamp
   fechaCreacion: Timestamp | null
