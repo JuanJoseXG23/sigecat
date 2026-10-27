@@ -167,9 +167,11 @@ export function ExpedientsPage() {
           aria-label="Estado"
         >
           <option value="">Todos los estados</option>
-          {EXPEDIENT_STATUSES.slice(0, -2).map((item) => (
-            <option key={item}>{item}</option>
-          ))}
+          {EXPEDIENT_STATUSES.slice(0, EXPEDIENT_STATUSES.indexOf('Archivo (Finalizado)')).map(
+            (item) => (
+              <option key={item}>{item}</option>
+            ),
+          )}
         </Select>
         <Select
           className="md:w-44"

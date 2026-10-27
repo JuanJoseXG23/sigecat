@@ -11,7 +11,9 @@ import {
   getRecentlyAnswered,
   getTimeliness,
   getWorkload,
+  isAnswered,
 } from './management-panel'
+import { isFinalizedExpedient } from '@/types/expedient'
 import type { Expedient } from '@/types/expedient'
 
 const at = (year: number, month: number, day: number) =>
@@ -132,4 +134,9 @@ test('la pregunta exige responsable y un texto razonable', () => {
   assert.equal(getInquiryError('  ', ana), 'Escribe la pregunta.')
   assert.match(getInquiryError('a'.repeat(1001), ana)!, /1000/)
   assert.equal(getInquiryError('¿En qué va este trámite?', ana), null)
+})
+
+test('un transferido está cerrado pero no cuenta como respondido', () => {
+  assert.equal(isAnswered({ estado: 'Transferido', activo: false }), false)
+  assert.equal(isFinalizedExpedient({ estado: 'Transferido', activo: true }), true)
 })

@@ -18,6 +18,7 @@ const typeVariants: Record<WorkflowDocumentType, BadgeVariant> = {
   RADICADO_SALIDA: 'success',
   TRASLADO: 'violet',
   AMPLIACION_PLAZO: 'warning',
+  TRANSFERENCIA: 'violet',
 }
 
 interface IndexedDocument extends WorkflowDocument {

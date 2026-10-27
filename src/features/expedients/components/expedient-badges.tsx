@@ -24,6 +24,7 @@ const statusVariants: Record<ExpedientStatus, BadgeVariant> = {
   'Radicar respuesta': 'brand',
   'Archivo (Finalizado)': 'success',
   Archivado: 'default',
+  Transferido: 'violet',
 }
 
 export function StatusBadge({ status }: { status: ExpedientStatus }) {

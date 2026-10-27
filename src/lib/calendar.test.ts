@@ -93,3 +93,19 @@ test('un recordatorio exige título, día no pasado, personas y enlaces instituc
     null,
   )
 })
+
+test('un transferido no muestra su vencimiento', () => {
+  const deadline = { toDate: () => new Date(2026, 9, 27) } as never
+  assert.equal(
+    isDeadlineOf(
+      {
+        estado: 'Transferido',
+        activo: false,
+        fechaLimite: deadline,
+        funcionarioAsignado: { uid: 'f1', nombreCompleto: 'Ana' },
+      },
+      'f1',
+    ),
+    false,
+  )
+})

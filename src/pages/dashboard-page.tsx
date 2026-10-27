@@ -250,9 +250,11 @@ export function DashboardPage() {
               aria-label="Estado"
             >
               <option value="">Todos los estados</option>
-              {EXPEDIENT_STATUSES.slice(0, -2).map((value) => (
-                <option key={value}>{value}</option>
-              ))}
+              {EXPEDIENT_STATUSES.slice(0, EXPEDIENT_STATUSES.indexOf('Archivo (Finalizado)')).map(
+                (value) => (
+                  <option key={value}>{value}</option>
+                ),
+              )}
             </Select>
             {supervisor ? (
               <Select

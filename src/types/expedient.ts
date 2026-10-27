@@ -14,6 +14,8 @@ export const EXPEDIENT_STATUSES = [
   'Archivo (Finalizado)',
   // Archivo administrativo fuera del flujo, reservado a supervisores.
   'Archivado',
+  // Cerrado aquí y enviado a otra dependencia, con la traza en `transferencia`.
+  'Transferido',
 ] as const
 
 export const EXPEDIENT_PRIORITIES = ['Alta', 'Media', 'Baja'] as const
@@ -50,13 +52,15 @@ export interface AssignedOfficial {
   nombreCompleto: string
 }
 
-export type WorkflowDocumentType = 'RECIBIDO' | 'RADICADO_SALIDA' | 'TRASLADO' | 'AMPLIACION_PLAZO'
+export type WorkflowDocumentType =
+  'RECIBIDO' | 'RADICADO_SALIDA' | 'TRASLADO' | 'AMPLIACION_PLAZO' | 'TRANSFERENCIA'
 
 export const WORKFLOW_DOCUMENT_LABELS: Record<WorkflowDocumentType, string> = {
   RECIBIDO: 'Documento recibido',
   RADICADO_SALIDA: 'Respuesta radicada',
   TRASLADO: 'Documento de traslado',
   AMPLIACION_PLAZO: 'Ampliación de plazo',
+  TRANSFERENCIA: 'Oficio de transferencia',
 }
 
 export interface WorkflowDocument {
@@ -116,6 +120,7 @@ export interface Expedient extends ActuationFields {
   ampliacionesPlazo?: DeadlineExtension[]
   registrosTardios?: LateRegistrationRecord[]
   apoyosRespuesta?: ResponseSupport[]
+  transferencia?: ExpedientTransfer
   solicitantes: Applicant[]
   /** Opcional: los expedientes no tienen que identificar predios. */
   predios?: Property[]
@@ -152,6 +157,22 @@ export interface ActuationFields {
   fechaRadicadoActuacion?: string
   /** Fecha en que se envió o notificó la actuación radicada (yyyy-mm-dd). */
   fechaEnvioActuacion?: string
+}
+
+/** Transferencia a otra dependencia: el expediente se cierra aquí y queda la traza. */
+export interface ExpedientTransfer {
+  /** Nombre para mostrar: un área de SIGECAT u otra dependencia de la Alcaldía. */
+  destino: string
+  /** Solo si el destino es un área de SIGECAT. */
+  dependenciaDestino?: DependencyId
+  motivo: string
+  /** yyyy-mm-dd */
+  fecha: string
+  numeroRadicado?: string
+  fechaRadicado?: string
+  /** Nombre de quien la registró. */
+  usuario: string
+  fechaRegistro: Timestamp
 }
 
 /** Apoyo de otra área en la respuesta; el expediente no cambia de área ni de responsable. */
@@ -193,7 +214,12 @@ export function getResponseDate(
 }
 
 export function isFinalizedExpedient(item: Pick<Expedient, 'estado' | 'activo'>): boolean {
-  return !item.activo || item.estado === 'Archivo (Finalizado)' || item.estado === 'Archivado'
+  return (
+    !item.activo ||
+    item.estado === 'Archivo (Finalizado)' ||
+    item.estado === 'Archivado' ||
+    item.estado === 'Transferido'
+  )
 }
 
 export interface ExpedientFormData {
