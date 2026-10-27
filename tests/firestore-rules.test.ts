@@ -480,3 +480,68 @@ test('solo los supervisores cambian la clase de correspondencia', async () => {
     }),
   )
 })
+
+/** Transferencia de e1 como la arma transferExpedient. */
+function transferE1(db: Firestore, uid: string, transfer: Record<string, unknown> = {}) {
+  return updateDoc(doc(db, 'expedientes/e1'), {
+    estado: 'Transferido',
+    activo: false,
+    transferencia: {
+      destino: 'Tesorería',
+      dependenciaDestino: 'tesoreria',
+      motivo: 'No es de Catastro',
+      fecha: '2026-10-27',
+      usuario: 'Ana',
+      fechaRegistro: serverTimestamp(),
+      ...transfer,
+    },
+    participantes: arrayUnion(uid),
+  })
+}
+
+test('transfiere quien gestiona el expediente, con destino y motivo', async () => {
+  await assertFails(transferE1(as('luis'), 'luis'))
+  await assertFails(transferE1(as('director'), 'director'))
+  await assertFails(transferE1(as('ana'), 'ana', { motivo: 'abcd' }))
+  await assertFails(transferE1(as('ana'), 'ana', { destino: 'ab' }))
+  await assertFails(
+    updateDoc(doc(as('ana'), 'expedientes/e1'), {
+      estado: 'Transferido',
+      activo: false,
+      participantes: arrayUnion('ana'),
+    }),
+  )
+  await assertSucceeds(transferE1(as('ana'), 'ana'))
+})
+
+test('se transfiere también a mitad del traslado por competencia', async () => {
+  await env.withSecurityRulesDisabled(async (context) => {
+    await updateDoc(doc(context.firestore(), 'expedientes/e1'), {
+      estado: 'Generar radicado de traslado',
+      trasladoPorCompetencia: true,
+    })
+  })
+  await assertSucceeds(transferE1(as('ana'), 'ana'))
+  let kept: unknown
+  await env.withSecurityRulesDisabled(async (context) => {
+    kept = (await getDoc(doc(context.firestore(), 'expedientes/e1'))).get('trasladoPorCompetencia')
+  })
+  if (kept !== true) throw new Error('Se perdió el traslado.')
+})
+
+test('la transferencia no se escribe sin cerrar ni se cambia después', async () => {
+  await assertFails(
+    updateDoc(doc(as('ana'), 'expedientes/e1'), {
+      transferencia: { destino: 'Tesorería', motivo: 'No es de Catastro' },
+      participantes: arrayUnion('ana'),
+    }),
+  )
+  await assertSucceeds(transferE1(as('ana'), 'ana'))
+  const changeReason = (db: Firestore, uid: string) =>
+    updateDoc(doc(db, 'expedientes/e1'), {
+      'transferencia.motivo': 'Otro motivo distinto',
+      participantes: arrayUnion(uid),
+    })
+  await assertFails(changeReason(as('coordinator'), 'coordinator'))
+  await assertSucceeds(changeReason(as('admin'), 'admin'))
+})

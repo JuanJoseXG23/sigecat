@@ -98,13 +98,29 @@ service cloud.firestore {
         canReadExpedient(get(expedientPath(expedientId)).data);
     }
 
-    // Closing an expedient through the workflow is part of the Funcionario's job;
-    // archiving it outside the workflow is reserved for supervisors.
+    // Mirrors the limits in src/lib/expedient-transfer.ts: closed here as Transferido,
+    // with where it went and why.
+    function isValidTransfer(data) {
+      return data.estado == 'Transferido' &&
+        data.activo == false &&
+        data.get('transferencia', null) is map &&
+        data.transferencia.get('destino', null) is string &&
+        data.transferencia.destino.size() >= 3 &&
+        data.transferencia.destino.size() <= 120 &&
+        data.transferencia.get('motivo', null) is string &&
+        data.transferencia.motivo.size() >= 5 &&
+        data.transferencia.motivo.size() <= 1000;
+    }
+
+    // Closing an expedient through the workflow, or transferring it to another
+    // dependency, is part of the Funcionario's job; archiving it outside the workflow
+    // is reserved for supervisors.
     function isAllowedActivoChange() {
       return request.resource.data.activo == resource.data.activo ||
         isAdministrator() ||
         (request.resource.data.activo == false &&
-          (isSupervisor() || request.resource.data.estado == 'Archivo (Finalizado)'));
+          (isSupervisor() || request.resource.data.estado == 'Archivo (Finalizado)' ||
+            isValidTransfer(request.resource.data)));
     }
 
     match /usuarios/{userId} {
@@ -164,6 +180,15 @@ service cloud.firestore {
         hasValidParticipants(request.resource.data) &&
         (request.resource.data.numeroRadicado == resource.data.numeroRadicado ||
           claimsEntryFiling(expedientId, request.resource.data.numeroRadicado)) &&
+        // Closing as Transferido always carries a valid transfer, written once; only an
+        // Administrator corrects it afterwards.
+        (request.resource.data.estado != 'Transferido' ||
+          resource.data.estado == 'Transferido' ||
+          isValidTransfer(request.resource.data)) &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['transferencia']) ||
+          isAdministrator() ||
+          (resource.data.get('transferencia', null) == null &&
+            isValidTransfer(request.resource.data))) &&
         isAllowedActivoChange();
       allow delete: if false;
 
