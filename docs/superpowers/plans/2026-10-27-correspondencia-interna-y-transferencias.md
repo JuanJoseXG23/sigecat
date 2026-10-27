@@ -39,7 +39,7 @@ consecutivo` (4+ cifras). Salida de un externo: solo serie `200`, como hoy.
 - Escribir `2026-000123` con la clase en Externa (el usuario la cambió a mano): el error debe
   sugerir la clase Interna, no un error genérico (Task 1).
 - Transferir un expediente a mitad del traslado por competencia (`Generar radicado de traslado`):
-  debe cerrarse igual y conservar `trasladoPorCompetencia` (Task 6, prueba de `planTransfer`).
+  debe cerrarse igual y conservar `trasladoPorCompetencia` (Task 7, prueba de reglas).
 - Un Funcionario que intenta escribir `transferencia` sin pasar a `Transferido`, o cambiarla
   después: las reglas lo rechazan (Task 7).
 - Transferido en Reportes y Panel: nunca entra en oportunidad ni en respondidos (Task 9).
@@ -346,6 +346,8 @@ test('la salida de un interno acepta los dos formatos', () => {
       `transferencia = { destino: 'Tesorería', motivo: 'No es de Catastro', fecha: '2026-10-27', usuario: 'Ana', fechaRegistro: serverTimestamp() }`
       y `estado: 'Transferido', activo: false, participantes: arrayUnion('ana')`:
   - Ana lo logra; Luis (participó, no gestiona) falla; `director` falla.
+  - Con `e1` en `Generar radicado de traslado` y `trasladoPorCompetencia: true`, Ana transfiere
+    sin tocar ese campo y lo logra; el documento conserva `trasladoPorCompetencia`.
   - Sin `transferencia`, con motivo de 4 caracteres o destino de 2 → falla.
   - `transferencia` sin pasar a `Transferido` (expediente sigue activo) → falla.
   - Ya transferido: el coordinador cambia `transferencia.motivo` → falla; el admin → lo logra.
