@@ -3,6 +3,7 @@ import type { Applicant, Property } from '@/types/expedient'
 /** Datos editables de un expediente, como texto, para comparar antes y después de editarlo. */
 export interface EditableSnapshot {
   area: string
+  correspondencia: string
   numeroRadicado: string
   /** yyyy-mm-dd */
   fechaRadicado: string
@@ -60,6 +61,7 @@ export function describeExpedientChanges(
       changes.push(`${label}: ${value(previous)} → ${value(next)}`)
   }
   compare('Área', before.area, after.area)
+  compare('Correspondencia', before.correspondencia, after.correspondencia)
   compare('Radicado de entrada', before.numeroRadicado, after.numeroRadicado)
   compare('Fecha de radicado', before.fechaRadicado, after.fechaRadicado)
   compare('Fecha de recibido', before.fechaRecibido, after.fechaRecibido)

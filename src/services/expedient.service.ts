@@ -156,6 +156,7 @@ async function toExpedientData(
 
   return removeEmptyFields({
     dependencia: values.dependencia,
+    clase: values.clase,
     numeroRadicado: values.numeroRadicado.trim(),
     fechaRadicado: toTimestamp(values.fechaRadicado),
     fechaRecibido: toTimestamp(values.fechaRecibido),
@@ -404,6 +405,7 @@ export async function updateExpedient(
     const changes = describeExpedientChanges(
       {
         area: getDependencyName(getExpedientDependency(current)),
+        correspondencia: getCorrespondenceClass(current),
         numeroRadicado: current.numeroRadicado,
         fechaRadicado: toDateKey(current.fechaRadicado.toDate()),
         fechaRecibido: current.fechaRecibido && toDateKey(current.fechaRecibido.toDate()),
@@ -418,6 +420,7 @@ export async function updateExpedient(
       },
       {
         area: getDependencyName(values.dependencia),
+        correspondencia: values.clase,
         numeroRadicado: data.numeroRadicado as string,
         fechaRadicado: values.fechaRadicado,
         fechaRecibido: values.fechaRecibido,

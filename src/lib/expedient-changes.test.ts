@@ -4,6 +4,7 @@ import { describeExpedientChanges, type EditableSnapshot } from './expedient-cha
 
 const base: EditableSnapshot = {
   area: 'Catastro',
+  correspondencia: 'Externa',
   numeroRadicado: 'DP6589',
   fechaRadicado: '2026-09-09',
   tipoTramite: 'Derecho de petición',
@@ -59,5 +60,11 @@ test('nombra lo personal o largo sin copiarlo y describe solicitantes y predios'
   )
   assert.deepEqual(describeExpedientChanges(base, { ...base, solicitantes: [{ nombre: 'Ana' }] }), [
     'Solicitantes: Rafael 70322250 → Ana',
+  ])
+})
+
+test('cuenta el cambio de clase de correspondencia', () => {
+  assert.deepEqual(describeExpedientChanges(base, { ...base, correspondencia: 'Interna' }), [
+    'Correspondencia: Externa → Interna',
   ])
 })

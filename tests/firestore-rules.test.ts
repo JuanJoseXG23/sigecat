@@ -453,3 +453,30 @@ test('quien apoya la respuesta puede consultar el expediente, no gestionarlo', a
     }),
   )
 })
+
+test('la clase de correspondencia es Externa o Interna', async () => {
+  await assertSucceeds(createBatch(as('ana'), { clase: 'Interna', numeroRadicado: '2026-000009' }))
+  await env.clearFirestore()
+  await env.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'usuarios/ana'), { activo: true, ...users.ana })
+  })
+  await assertFails(createBatch(as('ana'), { clase: 'Otra' }))
+})
+
+test('solo los supervisores cambian la clase de correspondencia', async () => {
+  const change = (db: Firestore) =>
+    updateDoc(doc(db, 'expedientes/e1'), { clase: 'Interna', participantes: arrayUnion('ana') })
+  await assertFails(change(as('ana')))
+  await assertSucceeds(
+    updateDoc(doc(as('coordinator'), 'expedientes/e1'), {
+      clase: 'Interna',
+      participantes: arrayUnion('coordinator'),
+    }),
+  )
+  await assertFails(
+    updateDoc(doc(as('coordinator'), 'expedientes/e1'), {
+      clase: 'Otra',
+      participantes: arrayUnion('coordinator'),
+    }),
+  )
+})

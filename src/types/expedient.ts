@@ -198,6 +198,7 @@ export function isFinalizedExpedient(item: Pick<Expedient, 'estado' | 'activo'>)
 
 export interface ExpedientFormData {
   dependencia: DependencyId
+  clase: CorrespondenceClass
   numeroRadicado: string
   fechaRadicado: string
   fechaRecibido?: string

@@ -12,6 +12,11 @@ import {
   createExpedientSchema,
   type expedientSchema,
 } from '@/features/expedients/schemas/expedient-schema'
+import {
+  CORRESPONDENCE_CLASSES,
+  detectCorrespondenceClass,
+  getCorrespondenceClass,
+} from '@/lib/correspondence'
 import { calculateExpedientTimeline, toDateKey } from '@/lib/expedient-deadline'
 import { INTAKE_CHANNELS } from '@/lib/intake-channels'
 import { describeRemainingDays, formatLongDate } from '@/lib/format'
@@ -64,6 +69,7 @@ function toDateInput(value?: { toDate: () => Date }): string {
 function getDefaultValues(expedient: Expedient | undefined, dependency: DependencyId): FormInput {
   return {
     dependencia: expedient ? getExpedientDependency(expedient) : dependency,
+    clase: expedient ? getCorrespondenceClass(expedient) : 'Externa',
     numeroRadicado: expedient?.numeroRadicado ?? '',
     fechaRadicado: expedient ? toDateInput(expedient.fechaRadicado) : toDateKey(new Date()),
     fechaRecibido: toDateInput(expedient?.fechaRecibido),
@@ -146,7 +152,14 @@ export function ExpedientForm({
   const ownDependency = toDependencyId(profile?.dependencia) ?? DEFAULT_DEPENDENCY
   const dependencyLocked = !isSupervisor(profile)
   const form = useForm<FormInput, unknown, FormValues>({
-    resolver: zodResolver(createExpedientSchema(expedient?.numeroRadicado)),
+    resolver: zodResolver(
+      createExpedientSchema(
+        expedient && {
+          numeroRadicado: expedient.numeroRadicado,
+          clase: getCorrespondenceClass(expedient),
+        },
+      ),
+    ),
     defaultValues: getDefaultValues(expedient, ownDependency),
     mode: 'onSubmit',
   })
@@ -156,6 +169,7 @@ export function ExpedientForm({
   const filingDate = useWatch({ control: form.control, name: 'fechaRadicado' })
   const procedureTypeId = useWatch({ control: form.control, name: 'tipoTramiteId' })
   const dependency = useWatch({ control: form.control, name: 'dependencia' })
+  const internal = useWatch({ control: form.control, name: 'clase' }) === 'Interna'
   const { data: procedureTypes = [] } = useProcedureTypes()
   const { data: configuration } = useBusinessConfiguration()
   const selectedType = procedureTypes.find((item) => item.id === procedureTypeId)
@@ -218,6 +232,36 @@ export function ExpedientForm({
             )}
           </Field>
           <Field
+            label="Correspondencia"
+            required
+            error={errors.clase?.message}
+            hint={
+              internal
+                ? 'De otra oficina de la Alcaldía, con radicado año-consecutivo.'
+                : 'Radicada por Archivo (serie 100).'
+            }
+          >
+            {entryFilingLocked ? (
+              <>
+                <Input
+                  readOnly
+                  aria-readonly
+                  className="cursor-not-allowed bg-muted text-slate-600"
+                  value={internal ? 'Interna' : 'Externa'}
+                />
+                <input type="hidden" {...form.register('clase')} />
+              </>
+            ) : (
+              <Select {...form.register('clase')}>
+                {CORRESPONDENCE_CLASSES.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </Field>
+          <Field
             label="Radicado de entrada"
             required
             error={errors.numeroRadicado?.message}
@@ -230,13 +274,20 @@ export function ExpedientForm({
             }
           >
             <Input
-              placeholder="Ej. 20261000125"
+              placeholder={internal ? 'Ej. 2026-000125' : 'Ej. 20261000125'}
               readOnly={entryFilingLocked}
               aria-readonly={entryFilingLocked}
               className={
                 entryFilingLocked ? 'cursor-not-allowed bg-muted text-slate-600' : undefined
               }
-              {...form.register('numeroRadicado')}
+              {...form.register('numeroRadicado', {
+                // El formato con guion es exclusivo de la interna: la clase se ajusta sola.
+                onChange: (event) => {
+                  const detected = detectCorrespondenceClass(event.target.value)
+                  if (!entryFilingLocked && detected && detected !== form.getValues('clase'))
+                    form.setValue('clase', detected)
+                },
+              })}
             />
           </Field>
           <Field label="Fecha de radicado" required error={errors.fechaRadicado?.message}>
@@ -325,31 +376,47 @@ export function ExpedientForm({
 
       <FormSection
         step={3}
-        title="Solicitantes"
-        description="Personas que presentan la petición y a quienes se dirige la respuesta."
+        title={internal ? 'Remitente' : 'Solicitantes'}
+        description={
+          internal
+            ? 'Oficina o funcionario de la Alcaldía que envía la correspondencia.'
+            : 'Personas que presentan la petición y a quienes se dirige la respuesta.'
+        }
       >
         {applicants.fields.map((field, index) => (
           <RepeatableCard
             key={field.id}
-            title={`Solicitante ${index + 1}`}
+            title={internal ? `Remitente ${index + 1}` : `Solicitante ${index + 1}`}
             onRemove={applicants.fields.length > 1 ? () => applicants.remove(index) : undefined}
           >
-            <Field label="Nombre completo">
+            <Field
+              label={internal ? 'Dependencia o funcionario remitente' : 'Nombre completo'}
+              required={internal && index === 0}
+              className={internal ? 'sm:col-span-2' : undefined}
+              error={errors.solicitantes?.[index]?.nombre?.message}
+            >
               <Input {...form.register(`solicitantes.${index}.nombre`)} />
             </Field>
-            <Field label="Calidad en que actúa">
-              <Select {...form.register(`solicitantes.${index}.tipoSolicitante`)}>
-                <option value="">Selecciona una opción</option>
-                {APPLICANT_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Documento de identidad">
-              <Input inputMode="numeric" {...form.register(`solicitantes.${index}.documento`)} />
-            </Field>
+            {!internal && (
+              <>
+                <Field label="Calidad en que actúa">
+                  <Select {...form.register(`solicitantes.${index}.tipoSolicitante`)}>
+                    <option value="">Selecciona una opción</option>
+                    {APPLICANT_TYPES.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Documento de identidad">
+                  <Input
+                    inputMode="numeric"
+                    {...form.register(`solicitantes.${index}.documento`)}
+                  />
+                </Field>
+              </>
+            )}
             <Field label="Teléfono">
               <Input type="tel" {...form.register(`solicitantes.${index}.telefono`)} />
             </Field>
@@ -362,9 +429,11 @@ export function ExpedientForm({
             </Field>
           </RepeatableCard>
         ))}
-        <Button variant="outline" size="sm" onClick={() => applicants.append(emptyApplicant)}>
-          <Plus size={16} /> Agregar solicitante
-        </Button>
+        {!internal && (
+          <Button variant="outline" size="sm" onClick={() => applicants.append(emptyApplicant)}>
+            <Plus size={16} /> Agregar solicitante
+          </Button>
+        )}
       </FormSection>
 
       <FormSection

@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "test": "tsx --test src/lib/*.test.ts",
+    "test": "tsx --tsconfig tsconfig.app.json --test src/lib/*.test.ts src/features/expedients/schemas/*.test.ts",
     "test:rules": "firebase emulators:exec --only firestore --project demo-sigecat \"tsx --test tests/firestore-rules.test.ts\"",
     "drill": "firebase emulators:exec --only firestore,auth --project demo-sigecat \"tsx scripts/recovery-drill.ts\"",
     "format": "prettier --write .",

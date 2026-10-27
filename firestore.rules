@@ -45,6 +45,11 @@ service cloud.firestore {
         'contabilidad', 'tesoreria', 'presupuesto'];
     }
 
+    // Mirrors CORRESPONDENCE_CLASSES in src/lib/correspondence.ts; absent means Externa.
+    function isCorrespondenceClass(data) {
+      return data.get('clase', 'Externa') in ['Externa', 'Interna'];
+    }
+
     function expedientPath(expedientId) {
       return /databases/$(database)/documents/expedientes/$(expedientId);
     }
@@ -136,6 +141,7 @@ service cloud.firestore {
         request.resource.data.numeroRadicado is string &&
         request.resource.data.numeroRadicado.size() > 0 &&
         isDependency(request.resource.data.get('dependencia', '')) &&
+        isCorrespondenceClass(request.resource.data) &&
         // Each person registers in their own area; supervisors choose it.
         (isSupervisor() ||
           request.resource.data.dependencia == profile().get('dependencia', 'catastro')) &&
@@ -146,12 +152,13 @@ service cloud.firestore {
       allow update: if canManageExpedient(resource.data) &&
         !request.resource.data.diff(resource.data).affectedKeys()
           .hasAny(['id', 'creadoPor', 'fechaCreacion', 'ultimaAlertaVencimiento']) &&
-        // The entry filing number identifies the expedient and the area decides who
-        // works on it; only supervisors change either.
+        // The entry filing number identifies the expedient, its class decides the number's
+        // format and the area decides who works on it; only supervisors change them.
         (isSupervisor() ||
           !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['numeroRadicado', 'dependencia'])) &&
+            .hasAny(['numeroRadicado', 'dependencia', 'clase'])) &&
         isDependency(request.resource.data.get('dependencia', 'catastro')) &&
+        isCorrespondenceClass(request.resource.data) &&
         // participantes only grows: nobody loses access to what passed through them.
         request.resource.data.participantes.hasAll(resource.data.get('participantes', [])) &&
         hasValidParticipants(request.resource.data) &&
