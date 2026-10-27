@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/toast-context'
+import { CorrespondenceFilter } from '@/features/expedients/components/correspondence-filter'
 import { DependencyFilter } from '@/features/expedients/components/dependency-filter'
 import { ExpedientForm } from '@/features/expedients/components/expedient-form'
 import { ExpedientTable } from '@/features/expedients/components/expedient-table'
@@ -19,6 +20,7 @@ import { byUrgency, matchesExpedientSearch } from '@/features/expedients/expedie
 import { useAuth } from '@/hooks/use-auth'
 import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useExpedients } from '@/hooks/use-expedients'
+import { matchesCorrespondence, type CorrespondenceClass } from '@/lib/correspondence'
 import { matchesDependency } from '@/lib/dependencies'
 import { canManageExpedient, isSupervisor } from '@/lib/permissions'
 import { archiveExpedient, createExpedient, updateExpedient } from '@/services/expedient.service'
@@ -38,6 +40,7 @@ export function ExpedientsPage() {
   const [status, setStatus] = useState('')
   const [priority, setPriority] = useState('')
   const [dependency, setDependency] = useState('')
+  const [correspondence, setCorrespondence] = useState<'' | CorrespondenceClass>('')
   const [editing, setEditing] = useState<Expedient | undefined>()
   const [archiving, setArchiving] = useState<Expedient | undefined>()
   const [archiveReason, setArchiveReason] = useState('')
@@ -114,13 +117,14 @@ export function ExpedientsPage() {
           (item) =>
             matchesExpedientSearch(item, search) &&
             matchesDependency(item, dependency) &&
+            matchesCorrespondence(item, correspondence) &&
             (!status || item.estado === status) &&
             (!priority || item.prioridad === priority),
         )
         .sort(byUrgency),
-    [dependency, expedients, priority, search, status],
+    [correspondence, dependency, expedients, priority, search, status],
   )
-  const hasFilters = Boolean(search || dependency || status || priority)
+  const hasFilters = Boolean(search || dependency || correspondence || status || priority)
 
   return (
     <section className="mx-auto max-w-[1400px] space-y-6">
@@ -151,6 +155,11 @@ export function ExpedientsPage() {
           />
         </div>
         <DependencyFilter className="md:w-48" value={dependency} onChange={setDependency} />
+        <CorrespondenceFilter
+          className="md:w-52"
+          value={correspondence}
+          onChange={setCorrespondence}
+        />
         <Select
           className="md:w-56"
           value={status}
@@ -179,6 +188,7 @@ export function ExpedientsPage() {
             onClick={() => {
               updateParams({ q: null })
               setDependency('')
+              setCorrespondence('')
               setStatus('')
               setPriority('')
             }}
@@ -189,7 +199,7 @@ export function ExpedientsPage() {
       </div>
 
       <ExpedientTable
-        key={`${search}|${dependency}|${status}|${priority}`}
+        key={`${search}|${dependency}|${correspondence}|${status}|${priority}`}
         rows={rows}
         isLoading={isLoading}
         isError={isError}

@@ -1,9 +1,17 @@
 import { AlertTriangle, CalendarClock, CheckCircle2 } from 'lucide-react'
 import { Badge, type BadgeVariant } from '@/components/ui/badge'
+import { getCorrespondenceClass } from '@/lib/correspondence'
 import { describeRemainingDays } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DeadlineStatus } from '@/services/business-rules.service'
 import type { ExpedientPriority, ExpedientStatus } from '@/types/expedient'
+
+/** Marca la correspondencia interna; la externa, que es la mayoría, no lleva etiqueta. */
+export function CorrespondenceBadge({ clase }: { clase?: string }) {
+  return getCorrespondenceClass({ clase }) === 'Interna' ? (
+    <Badge variant="info">Interna</Badge>
+  ) : null
+}
 
 const statusVariants: Record<ExpedientStatus, BadgeVariant> = {
   Recibido: 'info',

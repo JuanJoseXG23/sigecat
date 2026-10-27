@@ -12,6 +12,7 @@ import { YearFilter } from '@/features/expedients/components/year-filter'
 import { EditFilingDialog } from '@/features/expedients/components/correction-dialogs'
 import { useAuth } from '@/hooks/use-auth'
 import { useArchiveYear } from '@/hooks/use-archive-years'
+import { detectCorrespondenceClass } from '@/lib/correspondence'
 import { downloadCsv } from '@/lib/csv'
 import { formatDate, normalizeSearch } from '@/lib/format'
 import { canCorrectRecords } from '@/lib/permissions'
@@ -209,6 +210,12 @@ export function FilingPage() {
                   <Link className="link" to={`/expedientes/${item.expedienteId}`}>
                     {expedientLabel(item)}
                   </Link>
+                  {item.expedienteRadicado &&
+                    detectCorrespondenceClass(item.expedienteRadicado) === 'Interna' && (
+                      <Badge variant="info" className="ml-1.5">
+                        Interna
+                      </Badge>
+                    )}
                   <p className="text-xs text-muted-foreground">{item.estado}</p>
                 </td>
                 <td className="max-w-48 truncate">{item.solicitante || '—'}</td>

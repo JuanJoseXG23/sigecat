@@ -100,6 +100,17 @@ respuestas, traslados y ampliaciones (`2026200xxxx`). El año debe coincidir con
 radicado. Se valida al registrar o corregir un número (`src/lib/filing-number.ts`); los
 radicados históricos con otro formato se conservan mientras no se cambien.
 
+**Correspondencia interna.** La que llega de otra oficina de la Alcaldía se registra con la clase
+**Interna** (campo `clase`; sin el campo, el expediente es externo). Su radicado de entrada tiene
+numeración propia: año, guion y consecutivo de 6 cifras o más (`2026-000123`), con el año de la
+fecha de radicado. Lo que se envía en un expediente interno (respuesta, traslado, ampliación)
+acepta ese formato o la serie `200`. Los plazos, el flujo y los permisos son los mismos. En el
+formulario, escribir un número con guion elige sola la clase Interna; el remitente (dependencia o
+funcionario) es obligatorio y no se piden documento ni calidad del solicitante. Solo
+Administrador y Coordinador cambian la clase de un expediente ya registrado, igual que el
+radicado de entrada. Reglas en `src/lib/correspondence.ts` y `src/lib/filing-number.ts`, con
+pruebas.
+
 Estas reglas están en `src/lib/expedient-workflow.ts`, con una prueba por paso en
 `expedient-workflow.test.ts`; el diálogo de actuación solo las muestra. Para cambiar el flujo se
 modifica ese módulo y su prueba, y se actualiza esta tabla.

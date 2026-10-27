@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Skeleton, TableSkeleton } from '@/components/ui/feedback'
 import {
+  CorrespondenceBadge,
   DeadlineCell,
   PriorityBadge,
   StatusBadge,
@@ -101,6 +102,7 @@ export function ExpedientTable({ rows, isLoading, isError, empty, actions }: Exp
                       >
                         {item.numeroRadicado}
                       </Link>
+                      <CorrespondenceBadge clase={item.clase} />
                       {item.prioridad && <PriorityBadge priority={item.prioridad} />}
                     </span>
                     <p className="max-w-80 truncate text-sm text-slate-700">
@@ -159,7 +161,9 @@ export function ExpedientTable({ rows, isLoading, isError, empty, actions }: Exp
             <li key={item.id} className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <Link to={`/expedientes/${item.id}`} className="min-w-0">
-                  <p className="font-semibold text-slate-900">{item.numeroRadicado}</p>
+                  <p className="font-semibold text-slate-900">
+                    {item.numeroRadicado} <CorrespondenceBadge clase={item.clase} />
+                  </p>
                   <p className="truncate text-sm text-slate-600">
                     {item.solicitantes[0]?.nombre || 'Sin solicitante'}
                   </p>

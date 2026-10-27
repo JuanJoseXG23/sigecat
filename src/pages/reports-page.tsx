@@ -4,10 +4,16 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
+import { CorrespondenceFilter } from '@/features/expedients/components/correspondence-filter'
 import { DependencyFilter } from '@/features/expedients/components/dependency-filter'
 import { YearFilter } from '@/features/expedients/components/year-filter'
 import { useArchiveYear } from '@/hooks/use-archive-years'
 import { downloadCsv } from '@/lib/csv'
+import {
+  getCorrespondenceClass,
+  matchesCorrespondence,
+  type CorrespondenceClass,
+} from '@/lib/correspondence'
 import { getDependencyName, getExpedientDependency, matchesDependency } from '@/lib/dependencies'
 import { formatDate } from '@/lib/format'
 import { listExpedientsFiledInYear } from '@/services/expedient.service'
@@ -91,6 +97,7 @@ export function ReportsPage() {
   const [status, setStatus] = useState('')
   const [type, setType] = useState('')
   const [dependency, setDependency] = useState('')
+  const [correspondence, setCorrespondence] = useState<'' | CorrespondenceClass>('')
   const all = useMemo(() => filed.data ?? [], [filed.data])
   const years = archiveYear.yearsFor([])
   const rows = useMemo(
@@ -99,10 +106,11 @@ export function ReportsPage() {
         (item) =>
           (year === undefined || item.fechaRadicado.toDate().getFullYear() === year) &&
           matchesDependency(item, dependency) &&
+          matchesCorrespondence(item, correspondence) &&
           (!status || item.estado === status) &&
           (!type || item.tipoTramite === type),
       ),
-    [all, dependency, status, type, year],
+    [all, correspondence, dependency, status, type, year],
   )
   const evaluated = rows.map(closedOnTime).filter((value) => value !== null)
   const onTime = evaluated.filter(Boolean).length
@@ -132,6 +140,7 @@ export function ReportsPage() {
       `reporte-sigecat-${archiveYear.value}.csv`,
       [
         'Radicado',
+        'Correspondencia',
         'Área',
         'Fecha radicado',
         'Tipo de trámite',
@@ -148,6 +157,7 @@ export function ReportsPage() {
         const timely = closedOnTime(item)
         return [
           item.numeroRadicado,
+          getCorrespondenceClass(item),
           getDependencyName(getExpedientDependency(item)),
           formatDate(item.fechaRadicado),
           item.tipoTramite,
@@ -182,8 +192,9 @@ export function ReportsPage() {
           </>
         }
       />
-      <div className="no-print grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:grid-cols-4">
+      <div className="no-print grid gap-3 rounded-xl border border-border bg-card p-3 shadow-sm md:grid-cols-5">
         <DependencyFilter value={dependency} onChange={setDependency} />
+        <CorrespondenceFilter value={correspondence} onChange={setCorrespondence} />
         <YearFilter
           label="Año de radicación"
           value={archiveYear.value}

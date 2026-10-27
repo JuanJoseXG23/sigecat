@@ -24,7 +24,11 @@ import {
   EditExpedientDialog,
   EditFilingDialog,
 } from '@/features/expedients/components/correction-dialogs'
-import { DeadlineBadge, StatusBadge } from '@/features/expedients/components/expedient-badges'
+import {
+  CorrespondenceBadge,
+  DeadlineBadge,
+  StatusBadge,
+} from '@/features/expedients/components/expedient-badges'
 import { ExpedientDocuments } from '@/features/expedients/components/expedient-documents'
 import { ExpedientHistory } from '@/features/expedients/components/expedient-history'
 import { ExpedientSummary } from '@/features/expedients/components/expedient-summary'
@@ -170,6 +174,7 @@ export function ExpedientDetailPage() {
             <div className="min-w-0 flex-1 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge status={item.estado} />
+                <CorrespondenceBadge clase={item.clase} />
                 {!finalized && <DeadlineBadge status={item.estadoTermino} />}
                 {Boolean(item.diasAmpliacion) && (
                   <Badge variant="info">Plazo ampliado +{item.diasAmpliacion}</Badge>

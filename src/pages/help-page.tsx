@@ -88,6 +88,13 @@ export function HelpPage() {
               ejemplo <code>20261000125</code>).
             </li>
             <li>
+              <b>Correspondencia interna</b> (la que llega de otra oficina de la Alcaldía): elige la
+              clase <b>Interna</b> y escribe su radicado con año, guion y consecutivo (por ejemplo{' '}
+              <code>2026-000125</code>); al escribirlo, la clase cambia sola. En vez del solicitante
+              se registra la dependencia o funcionario remitente. Los plazos son los mismos, y la
+              respuesta puede llevar un radicado interno o uno de Archivo (serie 200).
+            </li>
+            <li>
               El <b>tipo de trámite</b> define los días hábiles para responder.
             </li>
             <li>Los predios son opcionales: solo si el trámite se refiere a uno.</li>

@@ -6,13 +6,20 @@ import { EmptyState, TableSkeleton } from '@/components/ui/feedback'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/ui/page-header'
 import { Select } from '@/components/ui/select'
+import { CorrespondenceFilter } from '@/features/expedients/components/correspondence-filter'
 import { DependencyFilter } from '@/features/expedients/components/dependency-filter'
+import { CorrespondenceBadge } from '@/features/expedients/components/expedient-badges'
 import { YearFilter } from '@/features/expedients/components/year-filter'
 import { matchesExpedientSearch } from '@/features/expedients/expedient-filters'
 import { useArchiveYear } from '@/hooks/use-archive-years'
 import { useHistoricalExpedients } from '@/hooks/use-historical-expedients'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import { downloadCsv } from '@/lib/csv'
+import {
+  getCorrespondenceClass,
+  matchesCorrespondence,
+  type CorrespondenceClass,
+} from '@/lib/correspondence'
 import { matchesDependency } from '@/lib/dependencies'
 import { formatDate } from '@/lib/format'
 import { getClosingDate, type Expedient } from '@/types/expedient'
@@ -30,6 +37,7 @@ function exportRows(rows: Row[]) {
     `historico-sigecat-${new Date().toISOString().slice(0, 10)}.csv`,
     [
       'Radicado',
+      'Correspondencia',
       'Fecha de radicado',
       'Tipo de trámite',
       'Asunto',
@@ -42,6 +50,7 @@ function exportRows(rows: Row[]) {
     ],
     rows.map(({ item, closing }) => [
       item.numeroRadicado,
+      getCorrespondenceClass(item),
       formatDate(item.fechaRadicado),
       item.tipoTramite,
       item.asunto,
@@ -66,6 +75,7 @@ export function HistoricalPage() {
   const [search, setSearch] = useState('')
   const [type, setType] = useState('')
   const [dependency, setDependency] = useState('')
+  const [correspondence, setCorrespondence] = useState<'' | CorrespondenceClass>('')
 
   const all = useMemo(() => data.map((item) => ({ item, closing: getClosingDate(item) })), [data])
   const years = archiveYear.yearsFor(all.map((row) => row.closing.getFullYear()))
@@ -76,13 +86,14 @@ export function HistoricalPage() {
           ({ item, closing }) =>
             matchesExpedientSearch(item, search) &&
             matchesDependency(item, dependency) &&
+            matchesCorrespondence(item, correspondence) &&
             (!type || item.tipoTramiteId === type) &&
             (year === undefined || closing.getFullYear() === year),
         )
         .sort((first, second) => second.closing.getTime() - first.closing.getTime()),
-    [all, dependency, search, type, year],
+    [all, correspondence, dependency, search, type, year],
   )
-  const hasFilters = Boolean(search || dependency || type)
+  const hasFilters = Boolean(search || dependency || correspondence || type)
 
   return (
     <section className="mx-auto max-w-[1400px] space-y-6">
@@ -109,6 +120,11 @@ export function HistoricalPage() {
           />
         </div>
         <DependencyFilter className="lg:w-48" value={dependency} onChange={setDependency} />
+        <CorrespondenceFilter
+          className="lg:w-52"
+          value={correspondence}
+          onChange={setCorrespondence}
+        />
         <Select
           className="lg:w-56"
           value={type}
@@ -135,6 +151,7 @@ export function HistoricalPage() {
             onClick={() => {
               setSearch('')
               setDependency('')
+              setCorrespondence('')
               setType('')
             }}
           >
@@ -162,7 +179,9 @@ export function HistoricalPage() {
               rows.map(({ item, closing }) => (
                 <tr key={item.id}>
                   <td>
-                    <p className="font-semibold text-slate-900">{item.numeroRadicado}</p>
+                    <p className="font-semibold text-slate-900">
+                      {item.numeroRadicado} <CorrespondenceBadge clase={item.clase} />
+                    </p>
                     <p className="max-w-80 truncate text-xs text-muted-foreground">
                       {item.tipoTramite ?? 'Sin tipo'}
                       {item.asunto ? ` · ${item.asunto}` : ''}
