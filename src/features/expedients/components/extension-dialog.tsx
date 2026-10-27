@@ -20,6 +20,7 @@ import {
   previewExtendedDeadline,
   type ExtensionInput,
 } from '@/lib/deadline-extension'
+import { getCorrespondenceClass } from '@/lib/correspondence'
 import { toDateKey } from '@/lib/expedient-deadline'
 import { formatDate, formatLongDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
@@ -59,6 +60,7 @@ export function ExtensionDialog({ expedient, onClose, onCompleted }: ExtensionDi
         responseDays,
         previousExtensionDays,
         holidays: configuration?.diasFestivos,
+        correspondenceClass: getCorrespondenceClass(expedient),
       })
     : 'No se conoce el término inicial del tipo de trámite.'
   const preview = previewExtendedDeadline(

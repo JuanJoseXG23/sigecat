@@ -340,3 +340,12 @@ test('evalúa la oportunidad en días hábiles', () => {
     businessDaysLate: 4,
   })
 })
+
+test('en un expediente interno el registro tardío acepta el radicado interno', () => {
+  const internal = input({ response: filing({ number: '2026-000200' }) })
+  assert.equal(
+    getLateRegistrationIssue(internal, { ...context, correspondenceClass: 'Interna' }),
+    null,
+  )
+  assert.match(getLateRegistrationIssue(internal, context)!.message, /Interna/)
+})

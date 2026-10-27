@@ -1,4 +1,5 @@
 import type { Timestamp } from 'firebase/firestore'
+import type { CorrespondenceClass } from '@/lib/correspondence'
 import type { DependencyId } from '@/lib/dependencies'
 
 export const EXPEDIENT_STATUSES = [
@@ -94,6 +95,8 @@ export interface Expedient extends ActuationFields {
   id: string
   /** Área que lidera el expediente; los anteriores a las dependencias son de Catastro. */
   dependencia?: DependencyId
+  /** Externa (Archivo) o interna (otra oficina de la Alcaldía); sin el campo, externa. */
+  clase?: CorrespondenceClass
   /**
    * Quienes registraron, tuvieron asignado o actuaron sobre el expediente. Solo crece: con la
    * separación por dependencias, un Funcionario verá los expedientes donde figura.

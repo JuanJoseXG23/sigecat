@@ -4,6 +4,7 @@
  * lógica pura decide qué hay que reescribir para que todo quede igual.
  */
 
+import type { CorrespondenceClass } from './correspondence'
 import { getFilingNumberError } from './filing-number'
 
 export interface FilingCorrection {
@@ -32,13 +33,19 @@ export function getFilingCorrectionError(
   correction: FilingCorrection,
   previousDate: string,
   today: string,
+  correspondenceClass: CorrespondenceClass = 'Externa',
 ): string | null {
   if (!correction.number.trim()) return 'Escribe el número de radicado.'
   if (!correction.date) return 'Selecciona la fecha del radicado.'
   if (correction.date > today) return 'La fecha del radicado no puede ser futura.'
   // Un número histórico con otro formato se conserva al corregir solo la fecha.
   if (correction.number.trim() !== correction.previousNumber) {
-    const error = getFilingNumberError(correction.number, correction.date, 'salida')
+    const error = getFilingNumberError(
+      correction.number,
+      correction.date,
+      'salida',
+      correspondenceClass,
+    )
     if (error) return error
   }
   if (correction.number.trim() === correction.previousNumber && correction.date === previousDate)

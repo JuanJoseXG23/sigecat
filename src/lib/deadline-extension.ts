@@ -1,5 +1,6 @@
 import { isInstitutionalDocumentUrl } from './document-links'
 import { addBusinessDays, toDateKey } from './expedient-deadline'
+import type { CorrespondenceClass } from './correspondence'
 import { getFilingNumberError } from './filing-number'
 
 /**
@@ -42,6 +43,8 @@ export interface ExtensionContext {
   previousExtensionDays: number
   holidays?: string[]
   today?: Date
+  /** Clase del expediente: la interna acepta también su propia numeración. */
+  correspondenceClass?: CorrespondenceClass
 }
 
 /** Días hábiles que todavía se pueden ampliar. */
@@ -59,7 +62,12 @@ export function getExtensionError(input: ExtensionInput, context: ExtensionConte
     return 'Usa un enlace HTTPS válido de OneDrive o SharePoint institucional.'
   if (!input.filingNumber.trim() || !input.filingDate)
     return 'Registra el número y la fecha del radicado de la ampliación.'
-  const numberError = getFilingNumberError(input.filingNumber, input.filingDate, 'salida')
+  const numberError = getFilingNumberError(
+    input.filingNumber,
+    input.filingDate,
+    'salida',
+    context.correspondenceClass,
+  )
   if (numberError) return numberError
   const today = toDateKey(context.today ?? new Date())
   if (input.filingDate < context.entryDate)

@@ -24,6 +24,7 @@ import {
 } from '@/services/business-rules.service'
 import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
 import { isDeadlineOf } from '@/lib/calendar'
+import { getCorrespondenceClass } from '@/lib/correspondence'
 import { getDependencyName, getExpedientDependency, toDependencyId } from '@/lib/dependencies'
 import { getYearBounds } from '@/lib/periods'
 import {
@@ -656,6 +657,7 @@ export async function extendExpedientDeadline(
     responseDays,
     previousExtensionDays: current.diasAmpliacion ?? 0,
     holidays: configuration.diasFestivos,
+    correspondenceClass: getCorrespondenceClass(current),
   })
   const filingNumber = input.filingNumber.trim()
   if ((await getDoc(getFilingReference(current.id, filingNumber))).exists()) {
@@ -768,6 +770,7 @@ export async function registerLateActuations(
     currentAssignee: current.funcionarioAsignado,
     existingDocuments: getLatestDocuments(current),
     holidays: configuration.diasFestivos,
+    correspondenceClass: getCorrespondenceClass(current),
   })
   const existing = await Promise.all(
     plan.filings.map((filing) => getDoc(getFilingReference(current.id, filing.numero))),
@@ -935,14 +938,19 @@ export async function correctFiling(
 ): Promise<void> {
   const number = values.number.trim()
   const correction = { previousNumber: filing.numero, number, date: values.date }
-  const error = getFilingCorrectionError(correction, filing.fecha, toDateKey(new Date()))
-  if (error) throw new Error(error)
-
   const previousReference = doc(firestore, 'radicados', filing.id)
   const [previous, expedient] = await Promise.all([
     getDoc(previousReference),
     getExpedient(filing.expedienteId),
   ])
+  // El formato aceptado depende de la clase del expediente: se lee antes de validar.
+  const error = getFilingCorrectionError(
+    correction,
+    filing.fecha,
+    toDateKey(new Date()),
+    expedient ? getCorrespondenceClass(expedient) : 'Externa',
+  )
+  if (error) throw new Error(error)
   if (!previous.exists()) throw new Error('El radicado ya no existe.')
 
   const batch = writeBatch(firestore)

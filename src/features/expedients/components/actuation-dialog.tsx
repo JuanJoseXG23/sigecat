@@ -13,6 +13,7 @@ import { useAssignableOfficials } from '@/hooks/use-assignable-officials'
 import { useAuth } from '@/hooks/use-auth'
 import { EXPEDIENT_QUERIES } from '@/features/expedients/expedient-queries'
 import { useAddExpedientWorkflowDocument } from '@/hooks/use-expedient-workflow-documents'
+import { getCorrespondenceClass } from '@/lib/correspondence'
 import { toDateKey } from '@/lib/expedient-deadline'
 import {
   EMPTY_ACTUATION_INPUT,
@@ -75,7 +76,7 @@ export function ActuationDialog({ expedient, onClose, onCompleted }: ActuationDi
       nombreCompleto: respondedBy.nombreCompleto,
     },
   }
-  const missing = getMissingRequirement(status, input, documents)
+  const missing = getMissingRequirement(status, input, documents, getCorrespondenceClass(expedient))
   const update = (changes: Partial<ActuationInput>) => setValues({ ...values, ...changes })
 
   const save = useMutation({

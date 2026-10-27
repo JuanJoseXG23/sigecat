@@ -6,6 +6,7 @@ import type {
   WorkflowDocument,
   WorkflowDocumentType,
 } from '@/types/expedient'
+import { getCorrespondenceClass, type CorrespondenceClass } from './correspondence'
 import { getFilingNumberError } from './filing-number'
 
 /**
@@ -129,7 +130,11 @@ export const EMPTY_ACTUATION_INPUT: ActuationInput = {
 }
 
 /** Primer dato pendiente de diligenciar en el paso, o null si está completo. */
-function getMissingInput(status: ExpedientStatus, input: ActuationInput): string | null {
+function getMissingInput(
+  status: ExpedientStatus,
+  input: ActuationInput,
+  correspondenceClass: CorrespondenceClass,
+): string | null {
   const step = getStepDefinition(status)
   if (step.requiresSignature && !input.signed) return 'Confirma que el formato físico fue firmado.'
   if (step.requiresAssignee && !input.assignee) return 'Selecciona el responsable.'
@@ -144,7 +149,12 @@ function getMissingInput(status: ExpedientStatus, input: ActuationInput): string
   if (step.requiresFiling && (!input.filingNumber.trim() || !input.filingDate))
     return 'Registra el número y la fecha de radicado.'
   if (step.requiresFiling) {
-    const error = getFilingNumberError(input.filingNumber, input.filingDate, 'salida')
+    const error = getFilingNumberError(
+      input.filingNumber,
+      input.filingDate,
+      'salida',
+      correspondenceClass,
+    )
     if (error) return error
   }
   if (step.requiresFiling && input.sentDate && input.sentDate < input.filingDate)
@@ -157,11 +167,12 @@ export function getMissingRequirement(
   status: ExpedientStatus,
   input: ActuationInput,
   documents: Pick<WorkflowDocument, 'tipo'>[],
+  correspondenceClass: CorrespondenceClass = 'Externa',
 ): string | null {
   const document = getStepDefinition(status).document
   if (document && !documents.some((item) => item.tipo === document.type))
     return 'Asocia el documento requerido en OneDrive.'
-  return getMissingInput(status, input)
+  return getMissingInput(status, input, correspondenceClass)
 }
 
 export type Actuation =
@@ -179,11 +190,11 @@ export type Actuation =
 
 /** Traduce el paso actual y lo diligenciado en la operación que se debe guardar. */
 export function planActuation(
-  expedient: Pick<Expedient, 'estado' | 'trasladoPorCompetencia' | 'funcionarioAsignado'>,
+  expedient: Pick<Expedient, 'estado' | 'trasladoPorCompetencia' | 'funcionarioAsignado' | 'clase'>,
   input: ActuationInput,
 ): Actuation {
   const status = expedient.estado
-  const missing = getMissingInput(status, input)
+  const missing = getMissingInput(status, input, getCorrespondenceClass(expedient))
   if (missing) throw new Error(missing)
   const notes = input.notes.trim()
 

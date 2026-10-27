@@ -7,6 +7,7 @@ import {
   getRemainingBusinessDays,
   toDateKey,
 } from './expedient-deadline'
+import type { CorrespondenceClass } from './correspondence'
 import { getFilingNumberError } from './filing-number'
 import { formatDate } from './format'
 
@@ -102,6 +103,8 @@ export interface LateRegistrationContext {
   existingDocuments: Partial<Record<WorkflowDocumentType, ExistingDocument>>
   holidays?: string[]
   today?: Date
+  /** Clase del expediente: la interna acepta también su propia numeración. */
+  correspondenceClass?: CorrespondenceClass
 }
 
 /** Qué hay que diligenciar según el paso en que quedó el expediente en la aplicación. */
@@ -177,7 +180,12 @@ function getFilingError(
   const today = toDateKey(context.today ?? new Date())
   if (!filing.number.trim() || !filing.date)
     return `Registra el número y la fecha del radicado de ${noun}.`
-  const numberError = getFilingNumberError(filing.number, filing.date, 'salida')
+  const numberError = getFilingNumberError(
+    filing.number,
+    filing.date,
+    'salida',
+    context.correspondenceClass,
+  )
   if (numberError) return `Radicado de ${noun}: ${numberError}`
   if (filing.date < context.entryDate)
     return `La fecha del radicado de ${noun} no puede ser anterior a la radicación del expediente.`
@@ -233,6 +241,7 @@ export function getLateRegistrationIssue(
       previousExtensionDays: context.previousExtensionDays,
       holidays: context.holidays,
       today: context.today,
+      correspondenceClass: context.correspondenceClass,
     })
     if (error) return issue('extension', error)
   }

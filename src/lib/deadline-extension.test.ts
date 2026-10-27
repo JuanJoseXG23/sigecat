@@ -89,3 +89,9 @@ test('calcula la nueva fecha límite en días hábiles desde la fecha límite ac
   assert.equal(later.totalExtensionDays, 15)
   assert.throws(() => planExtension({ ...valid, reason: '' }, context))
 })
+
+test('en un expediente interno la ampliación acepta el radicado interno', () => {
+  const internal = { ...valid, filingNumber: '2026-000450' }
+  assert.equal(getExtensionError(internal, { ...context, correspondenceClass: 'Interna' }), null)
+  assert.match(getExtensionError(internal, context)!, /Interna/)
+})

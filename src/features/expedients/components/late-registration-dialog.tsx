@@ -28,6 +28,7 @@ import { useAuth } from '@/hooks/use-auth'
 import { useBusinessConfiguration } from '@/hooks/use-business-configuration'
 import { useProcedureTypes } from '@/hooks/use-procedure-types'
 import { getAvailableExtensionDays, previewExtendedDeadline } from '@/lib/deadline-extension'
+import { getCorrespondenceClass } from '@/lib/correspondence'
 import { toDateKey } from '@/lib/expedient-deadline'
 import { describeRemainingDays, formatDate, formatLongDate } from '@/lib/format'
 import {
@@ -263,6 +264,7 @@ export function LateRegistrationDialog({
     currentAssignee: expedient.funcionarioAsignado,
     existingDocuments,
     holidays: configuration?.diasFestivos,
+    correspondenceClass: getCorrespondenceClass(expedient),
   }
   const issue = responseDays
     ? getLateRegistrationIssue(input, context)

@@ -144,3 +144,22 @@ test('un expediente finalizado o archivado no tiene actuación pendiente', () =>
   assert.throws(() => planActuation(standard('Archivo (Finalizado)'), input()))
   assert.throws(() => planActuation(standard('Archivado'), input()))
 })
+
+test('en un expediente interno la respuesta acepta el radicado interno', () => {
+  const internal = { filingNumber: '2026-000456', filingDate: '2026-10-02' }
+  const plan = planActuation(
+    { ...standard('Radicado de salida'), clase: 'Interna' },
+    input(internal),
+  )
+  assert.equal(plan.kind === 'complete' && plan.fields.numeroRadicadoActuacion, '2026-000456')
+  assert.equal(
+    getMissingRequirement(
+      'Radicado de salida',
+      input(internal),
+      [{ tipo: 'RADICADO_SALIDA' }],
+      'Interna',
+    ),
+    null,
+  )
+  assert.throws(() => planActuation(standard('Radicado de salida'), input(internal)), /Interna/)
+})
