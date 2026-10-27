@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft,
   ArrowRight,
+  ArrowRightLeft,
   CalendarPlus,
   FileSearch,
   Handshake,
@@ -37,6 +38,7 @@ import { SupportDialog } from '@/features/expedients/components/support-dialog'
 import { NoteDialog } from '@/features/expedients/components/note-dialog'
 import { InquiryDialog } from '@/features/expedients/components/inquiry-dialog'
 import { LateRegistrationDialog } from '@/features/expedients/components/late-registration-dialog'
+import { TransferDialog } from '@/features/expedients/components/transfer-dialog'
 import { WorkflowStepper } from '@/features/expedients/components/workflow-stepper'
 import { useAuth } from '@/hooks/use-auth'
 import { useExpedientDetail, useExpedientHistory } from '@/hooks/use-expedient-detail'
@@ -105,7 +107,7 @@ export function ExpedientDetailPage() {
     enabled: Boolean(id),
   })
   const [dialog, setDialog] = useState<
-    'actuation' | 'extension' | 'edit' | 'late' | 'inquiry' | 'support' | 'note' | null
+    'actuation' | 'extension' | 'edit' | 'late' | 'inquiry' | 'support' | 'note' | 'transfer' | null
   >(params.get('registro') === 'tardio' ? 'late' : null)
   const [editingFiling, setEditingFiling] = useState<FilingRecord | null>(null)
   const [editingDocument, setEditingDocument] = useState<WorkflowDocument | null>(null)
@@ -255,6 +257,16 @@ export function ExpedientDetailPage() {
                         },
                       ]
                     : []),
+                  ...(canManage
+                    ? [
+                        {
+                          label: 'Transferir a otra dependencia',
+                          description: 'Cerrar aquí y dejar constancia de a dónde se envió.',
+                          icon: ArrowRightLeft,
+                          onSelect: () => setDialog('transfer'),
+                        },
+                      ]
+                    : []),
                   ...(canRegisterLate
                     ? [
                         {
@@ -304,6 +316,36 @@ export function ExpedientDetailPage() {
           <Button variant="outline" size="sm" className="mt-2" onClick={() => setDialog('late')}>
             <History size={15} /> Registrar actuaciones atrasadas
           </Button>
+        </Alert>
+      )}
+
+      {item.transferencia && (
+        <Alert
+          tone="info"
+          title={`Transferido a ${item.transferencia.destino} el ${formatLongDate(item.transferencia.fecha)}`}
+        >
+          <p>
+            Lo registró {item.transferencia.usuario}. Motivo: {item.transferencia.motivo}
+          </p>
+          {item.transferencia.numeroRadicado && (
+            <p>
+              Oficio radicado {item.transferencia.numeroRadicado} del{' '}
+              {formatDate(item.transferencia.fechaRadicado)}.
+            </p>
+          )}
+          {item.documentosWorkflow
+            ?.filter((document) => document.tipo === 'TRANSFERENCIA')
+            .map((document) => (
+              <a
+                key={document.id}
+                href={document.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="link"
+              >
+                {document.nombre}
+              </a>
+            ))}
         </Alert>
       )}
 
@@ -438,6 +480,19 @@ export function ExpedientDetailPage() {
             setDialog(null)
             setParams({ tab: 'historial' }, { replace: true })
             toast({ title: 'Nota agregada', description: 'Quedó en el historial.' })
+          }}
+        />
+      )}
+      {dialog === 'transfer' && (
+        <TransferDialog
+          expedient={item}
+          onClose={() => setDialog(null)}
+          onCompleted={(destination) => {
+            setDialog(null)
+            toast({
+              title: `Transferido a ${destination}`,
+              description: 'El expediente quedó cerrado y en el Histórico.',
+            })
           }}
         />
       )}

@@ -545,3 +545,37 @@ test('la transferencia no se escribe sin cerrar ni se cambia después', async ()
   await assertFails(changeReason(as('coordinator'), 'coordinator'))
   await assertSucceeds(changeReason(as('admin'), 'admin'))
 })
+
+test('el lote completo de la transferencia (expediente, historial y radicado) se acepta', async () => {
+  const db = as('ana')
+  const batch = writeBatch(db)
+  batch.update(doc(db, 'expedientes/e1'), {
+    estado: 'Transferido',
+    activo: false,
+    transferencia: {
+      destino: 'Secretaría de Gobierno',
+      motivo: 'No es de Catastro',
+      fecha: '2026-10-27',
+      numeroRadicado: '20262000077',
+      fechaRadicado: '2026-10-27',
+      usuario: 'Ana',
+      fechaRegistro: serverTimestamp(),
+    },
+    participantes: arrayUnion('ana'),
+  })
+  batch.set(doc(db, 'expedientes/e1/historial/t1'), {
+    usuario: 'ana',
+    accion: 'Transfirió a otra dependencia',
+    detalle: 'A Secretaría de Gobierno',
+    fecha: serverTimestamp(),
+  })
+  batch.set(doc(db, 'radicados/e1_20262000077'), {
+    id: 'e1_20262000077',
+    numero: '20262000077',
+    fecha: '2026-10-27',
+    tipo: 'Transferencia',
+    expedienteId: 'e1',
+    estado: 'Transferido',
+  })
+  await assertSucceeds(batch.commit())
+})

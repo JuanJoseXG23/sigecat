@@ -23,6 +23,7 @@ import {
   registerExpedientHistory,
 } from '@/services/business-rules.service'
 import { planExtension, type ExtensionInput } from '@/lib/deadline-extension'
+import { planTransfer, type TransferInput } from '@/lib/expedient-transfer'
 import { isDeadlineOf } from '@/lib/calendar'
 import { getCorrespondenceClass } from '@/lib/correspondence'
 import { getDependencyName, getExpedientDependency, toDependencyId } from '@/lib/dependencies'
@@ -728,6 +729,70 @@ export async function extendExpedientDeadline(
   })
   await commit(batch)
   return plan.newDeadline
+}
+
+/**
+ * Transfiere el expediente a otra dependencia: en un mismo lote lo cierra como Transferido con la
+ * traza (destino, motivo, fecha), el oficio como documento y en Radicación si los hay, y el
+ * historial. A diferencia del traslado por competencia, aquí termina su trámite en el área.
+ */
+export async function transferExpedient(
+  id: string,
+  input: TransferInput,
+  userId: string,
+  userName: string,
+): Promise<void> {
+  const current = await getExpedient(id)
+  if (!current) throw new Error('Expediente no encontrado.')
+  if (isFinalizedExpedient(current)) throw new Error('El expediente ya está cerrado.')
+  const plan = planTransfer(input, {
+    dependency: getExpedientDependency(current),
+    entryDate: toDateKey(current.fechaRadicado.toDate()),
+    correspondenceClass: getCorrespondenceClass(current),
+  })
+  if (plan.filing && (await getDoc(getFilingReference(current.id, plan.filing.numero))).exists())
+    throw new Error(`El radicado ${plan.filing.numero} ya está registrado para este expediente.`)
+
+  const now = Timestamp.now()
+  const document: WorkflowDocument | undefined = plan.document && {
+    id: newDocumentId(),
+    tipo: 'TRANSFERENCIA',
+    nombre: plan.document.nombre,
+    url: plan.document.url,
+    usuario: userName,
+    fecha: now,
+    ...(plan.document.folios ? { folios: plan.document.folios } : {}),
+    ...(plan.document.radicadoNumero ? { radicadoNumero: plan.document.radicadoNumero } : {}),
+    ...(plan.document.radicadoFecha
+      ? { radicadoFecha: toTimestamp(plan.document.radicadoFecha)! }
+      : {}),
+  }
+
+  const batch = writeBatch(firestore)
+  batch.update(expedientReference(id), {
+    estado: 'Transferido',
+    activo: false,
+    fechaCierre: Timestamp.fromDate(fromDateKey(plan.transfer.fecha)),
+    transferencia: { ...plan.transfer, usuario: userName, fechaRegistro: serverTimestamp() },
+    ...(document ? { documentosWorkflow: arrayUnion(document) } : {}),
+    fechaActualizacion: serverTimestamp(),
+    ...withParticipants(userId),
+  })
+  registerExpedientHistory(batch, id, userId, 'Transfirió a otra dependencia', plan.historyDetail)
+  if (plan.filing)
+    registerFiling(batch, {
+      numero: plan.filing.numero,
+      fecha: plan.filing.fecha,
+      tipo: 'Transferencia',
+      expedienteId: current.id,
+      expedienteRadicado: current.numeroRadicado,
+      solicitante: current.solicitantes[0]?.nombre ?? '',
+      responsable: current.funcionarioAsignado?.nombreCompleto ?? current.responsableExterno ?? '',
+      estado: 'Transferido',
+      observaciones: `Transferido a ${plan.transfer.destino}. ${plan.transfer.motivo}`,
+      ...(document ? { documentoUrl: document.url, documentoNombre: document.nombre } : {}),
+    })
+  await commit(batch)
 }
 
 /** Documento más reciente de cada tipo, para no pedir de nuevo lo que ya está asociado. */
