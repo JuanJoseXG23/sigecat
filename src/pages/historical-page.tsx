@@ -47,6 +47,7 @@ function exportRows(rows: Row[]) {
       'Fecha de cierre',
       'Radicado de salida',
       'Folios',
+      'Transferido a',
     ],
     rows.map(({ item, closing }) => [
       item.numeroRadicado,
@@ -63,6 +64,7 @@ function exportRows(rows: Row[]) {
         (total, document) => total + (document.folios ?? 0),
         0,
       ) || '',
+      item.transferencia?.destino,
     ]),
   )
 }
@@ -192,8 +194,15 @@ export function HistoricalPage() {
                   <td className="whitespace-nowrap">
                     <p>{formatDate(closing)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {item.estado === 'Archivado' ? 'Archivado' : 'Finalizado'}
+                      {item.estado === 'Archivado' || item.estado === 'Transferido'
+                        ? item.estado
+                        : 'Finalizado'}
                     </p>
+                    {item.transferencia && (
+                      <p className="max-w-48 truncate text-xs text-muted-foreground">
+                        a {item.transferencia.destino}
+                      </p>
+                    )}
                   </td>
                   <td className="text-right">
                     <Link className="link" to={`/expedientes/${item.id}`}>

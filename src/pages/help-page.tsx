@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  ArrowRightLeft,
   CalendarDays,
   CalendarPlus,
   Eye,
@@ -146,6 +147,19 @@ export function HelpPage() {
             qué. El expediente sigue en tu área y contigo como responsable.
           </p>
           <p>Si esa persona tiene usuario, podrá consultar el expediente, pero no modificarlo.</p>
+        </Section>
+
+        <Section icon={ArrowRightLeft} title="Transferir a otra dependencia">
+          <p>
+            Si el expediente no es de tu área y se envía a otra (de la Secretaría o de la Alcaldía)
+            para que lo atienda allá, usa <b>Más acciones → Transferir a otra dependencia</b>:
+            destino, motivo y fecha, y si quieres el oficio con su radicado.
+          </p>
+          <p>
+            El expediente se cierra como <b>Transferido</b>, pasa al Histórico y queda la constancia
+            de a dónde fue y cuándo. No cuenta como respondido. Si en cambio debes trasladar y
+            después responder al ciudadano, usa <b>Continuar → Traslado por competencia</b>.
+          </p>
         </Section>
 
         <Section icon={StickyNote} title="Aclarar algo con una nota">

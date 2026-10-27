@@ -45,10 +45,11 @@ también la actualizan. Si se edita un perfil desde la consola de Firebase, se r
 | `funcionarioAsignado?`                                                         | `{ uid, nombreCompleto }`                                                                                                                                                            |
 | `responsableExterno?`, `trasladoPorCompetencia?`                               | Dependencia destino de un traslado                                                                                                                                                   |
 | `fechaLimite`, `diasRestantes`, `diasVencidos`, `estadoTermino`                | Término (se recalcula al leer)                                                                                                                                                       |
-| `documentosWorkflow[]`                                                         | Enlaces de OneDrive: `tipo` (`RECIBIDO`, `RADICADO_SALIDA`, `TRASLADO`, `AMPLIACION_PLAZO`), `nombre`, `url`, `usuario`, `fecha`, `folios?`                                          |
+| `documentosWorkflow[]`                                                         | Enlaces de OneDrive: `tipo` (`RECIBIDO`, `RADICADO_SALIDA`, `TRASLADO`, `AMPLIACION_PLAZO`, `TRANSFERENCIA`), `nombre`, `url`, `usuario`, `fecha`, `folios?`                         |
 | `formatoFisicoFirmado?`, `numeroRadicadoActuacion?`, `fechaRadicadoActuacion?` | Datos de las actuaciones                                                                                                                                                             |
 | `fechaEnvioActuacion?`, `registrosTardios[]?`                                  | Fecha de envío del último radicado; registros tardíos (`motivo`, `usuario`, `fecha`)                                                                                                 |
 | `apoyosRespuesta[]?`                                                           | Apoyo de otras áreas: `dependencia`, `persona`, `personaUid?`, `descripcion`, `usuario`, `fecha`                                                                                     |
+| `transferencia?`                                                               | Al cerrar como `Transferido`: `destino`, `dependenciaDestino?`, `motivo`, `fecha`, `numeroRadicado?`, `fechaRadicado?`, `usuario`, `fechaRegistro`. Solo un Administrador la cambia  |
 | `ultimaAlertaVencimiento?`                                                     | Lo escribe solo Apps Script para no repetir alertas                                                                                                                                  |
 | `activo`                                                                       | `false` cuando está finalizado o archivado                                                                                                                                           |
 | `creadoPor`, `fechaCreacion`, `fechaActualizacion`                             | Auditoría; los dos primeros son inmutables                                                                                                                                           |
@@ -72,7 +73,7 @@ sesión activa puede consultar un número.
 
 ## `radicados/{expedienteId}_{numero}`
 
-Radicados de salida, traslado y ampliación de plazo registrados en el flujo: `numero`, `fecha`,
+Radicados de salida, traslado, ampliación de plazo y transferencia registrados en el flujo: `numero`, `fecha`,
 `tipo`, `expedienteId`, `expedienteRadicado?`, `solicitante`, `responsable`, `estado`, `municipio?` (solo en los antiguos), `observaciones`,
 `documentoUrl?`, `documentoNombre?`, `fechaEnvio?`, `registroTardio?`. El id evita registrar dos veces el mismo número en un
 expediente. Administrador y Coordinador corrigen `fecha` (con `editadoPor` y `fechaEdicion`);

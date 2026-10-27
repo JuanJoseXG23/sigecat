@@ -151,6 +151,31 @@ anterior), `diasAmpliacion`, el detalle en `ampliacionesPlazo[]`, el escaneo com
 `AMPLIACION_PLAZO`, el radicado (tipo `Ampliación de plazo`) y el historial. Las reglas están en
 `src/lib/deadline-extension.ts` con sus pruebas; el tope está en `MAX_EXTENSION_FACTOR`.
 
+## Transferencia a otra dependencia
+
+Cuando un expediente se envía a otra área de la Secretaría o a otra dependencia de la Alcaldía
+para que lo atienda allá, **Más acciones → Transferir a otra dependencia** en el detalle (quien
+puede gestionarlo, mientras esté activo, en cualquier paso) lo cierra con la traza. Es distinto
+del traslado por competencia, que sigue el flujo hasta responder al ciudadano y no se modifica.
+No crea un expediente en el área destino.
+
+| Dato                 | Regla                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| Destino              | Un área de SIGECAT distinta de la del expediente, u otra dependencia (3 a 120 letras) |
+| Motivo               | 5 a 1000 caracteres                                                                   |
+| Fecha                | No futura ni anterior a la radicación                                                 |
+| Oficio (opcional)    | Número y fecha de radicado, con el formato de salida de la clase del expediente       |
+| Documento (opcional) | Nombre, enlace de OneDrive institucional y folios                                     |
+
+En un solo lote: estado `Transferido`, `activo: false`, `fechaCierre` = fecha de la transferencia,
+el campo `transferencia`, el oficio como documento `TRANSFERENCIA` y en Radicación (tipo
+`Transferencia`) si los hay, y el historial "Transfirió a otra dependencia". El detalle muestra
+un aviso con destino, fecha, quién y motivo; el Histórico, el estado y el destino. No cuenta como
+respondido ni en la oportunidad (Reportes y Panel de dirección) y deja de tener alertas y
+vencimiento en el calendario. `firestore.rules` exige destino y motivo válidos al cerrar como
+Transferido y no deja cambiar la transferencia después (solo un Administrador la corrige).
+Reglas en `src/lib/expedient-transfer.ts`, con pruebas.
+
 ## Apoyo en respuesta
 
 Cuando parte de una petición la responde otra área (por ejemplo, un derecho de petición de

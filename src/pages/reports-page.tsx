@@ -17,7 +17,8 @@ import {
 import { getDependencyName, getExpedientDependency, matchesDependency } from '@/lib/dependencies'
 import { formatDate } from '@/lib/format'
 import { listExpedientsFiledInYear } from '@/services/expedient.service'
-import { getClosingDate, getResponseDate, type Expedient } from '@/types/expedient'
+import { answeredOnTime } from '@/lib/management-panel'
+import { getClosingDate, type Expedient } from '@/types/expedient'
 import { normalizeIntakeChannel } from '@/lib/intake-channels'
 
 function group(items: Expedient[], label: (item: Expedient) => string): [string, number][] {
@@ -30,15 +31,10 @@ const responsibleOf = (item: Expedient) =>
   item.funcionarioAsignado?.nombreCompleto ?? item.responsableExterno ?? 'Sin asignar'
 
 /**
- * Respondido a tiempo: la fecha del radicado de respuesta (o, sin ella, la de cierre) no supera
- * la fecha límite, incluida la ampliación. Así cuenta bien lo que se registró tarde.
+ * Respondido a tiempo (answeredOnTime): la fecha del radicado de respuesta no supera la fecha
+ * límite, incluida la ampliación. Archivados y transferidos no se respondieron aquí: no cuentan.
  */
-function closedOnTime(item: Expedient): boolean | null {
-  if (item.activo || !item.fechaLimite || item.estado === 'Archivado') return null
-  const deadline = item.fechaLimite.toDate()
-  deadline.setHours(23, 59, 59, 999)
-  return getResponseDate(item) <= deadline
-}
+const closedOnTime = answeredOnTime
 
 function BarList({
   title,
@@ -129,6 +125,11 @@ export function ReportsPage() {
       value: rows.filter((item) => item.diasAmpliacion).length,
     },
     {
+      label: 'Transferidos',
+      value: rows.filter((item) => item.estado === 'Transferido').length,
+      hint: 'Cerrados aquí y enviados a otra dependencia',
+    },
+    {
       label: 'Respuesta oportuna',
       value: timeliness === null ? '—' : `${timeliness}%`,
       hint: evaluated.length ? `${onTime} de ${evaluated.length} cerrados a tiempo` : undefined,
@@ -152,6 +153,7 @@ export function ReportsPage() {
         'Respondido a tiempo',
         'Registro tardío',
         'Apoyo de otras áreas',
+        'Transferido a',
       ],
       rows.map((item) => {
         const timely = closedOnTime(item)
@@ -171,6 +173,7 @@ export function ReportsPage() {
           (item.apoyosRespuesta ?? [])
             .map((support) => `${support.persona} (${getDependencyName(support.dependencia)})`)
             .join('; '),
+          item.transferencia?.destino,
         ]
       }),
     )
@@ -222,7 +225,7 @@ export function ReportsPage() {
           ))}
         </Select>
       </div>
-      <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-7">
         {kpis.map((kpi) => (
           <div key={kpi.label} className="rounded-xl border border-border bg-card p-4 shadow-sm">
             <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>

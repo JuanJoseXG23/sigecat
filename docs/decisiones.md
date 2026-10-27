@@ -52,6 +52,7 @@ recomendación técnica; se puede revisar.
 | D-37 | Notas en el historial: las dejan supervisores y quien figura en el expediente, también cerrado; no se editan ni borran                                       | Confirmada |
 | D-38 | Calendario por persona: vencimientos desde la fecha límite (sin datos nuevos) y recordatorios con correo; los supervisores los crean a otros                 | Confirmada |
 | D-39 | Correspondencia interna: clase propia del expediente, radicado año-consecutivo (serie aparte), mismos plazos; la respuesta acepta ese formato o la serie 200 | Confirmada |
+| D-40 | Transferencia a otra dependencia: cierra el expediente como Transferido con la traza; no crea expediente en el destino (reabre en parte la D-28)             | Confirmada |
 
 ## Predios
 

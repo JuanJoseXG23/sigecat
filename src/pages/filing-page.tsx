@@ -22,6 +22,7 @@ const typeVariants: Record<string, BadgeVariant> = {
   Salida: 'success',
   Traslado: 'violet',
   'Ampliación de plazo': 'warning',
+  Transferencia: 'info',
 }
 
 const monthFormat = new Intl.DateTimeFormat('es-CO', { month: 'long', year: 'numeric' })

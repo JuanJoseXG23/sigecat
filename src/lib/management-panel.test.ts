@@ -11,6 +11,7 @@ import {
   getRecentlyAnswered,
   getTimeliness,
   getWorkload,
+  answeredOnTime,
   isAnswered,
 } from './management-panel'
 import { isFinalizedExpedient } from '@/types/expedient'
@@ -139,4 +140,18 @@ test('la pregunta exige responsable y un texto razonable', () => {
 test('un transferido está cerrado pero no cuenta como respondido', () => {
   assert.equal(isAnswered({ estado: 'Transferido', activo: false }), false)
   assert.equal(isFinalizedExpedient({ estado: 'Transferido', activo: true }), true)
+})
+
+test('un transferido no entra en la oportunidad de respuesta', () => {
+  const day = (value: string) => ({ toDate: () => new Date(`${value}T00:00:00`) }) as Timestamp
+  assert.equal(
+    answeredOnTime({
+      estado: 'Transferido',
+      activo: false,
+      fechaLimite: day('2026-10-01'),
+      fechaCierre: day('2026-10-27'),
+      fechaActualizacion: day('2026-10-27'),
+    }),
+    null,
+  )
 })
