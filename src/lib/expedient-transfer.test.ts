@@ -47,7 +47,10 @@ test('exige motivo y una fecha entre la radicación y hoy', () => {
 test('el radicado del oficio es opcional, pero completo y con el formato de la clase', () => {
   assert.match(getTransferError(input({ filingNumber: '20262000456' }), context)!, /fecha/)
   const internal = { filingNumber: '2026-000456', filingDate: '2026-10-27' }
-  assert.match(getTransferError(input(internal), context)!, /Interna/)
+  assert.match(
+    getTransferError(input(internal), context)!,
+    /externa: lo que se envía usa la serie 200/,
+  )
   assert.equal(
     getTransferError(input(internal), { ...context, correspondenceClass: 'Interna' }),
     null,

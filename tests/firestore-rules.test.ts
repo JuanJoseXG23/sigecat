@@ -579,3 +579,20 @@ test('el lote completo de la transferencia (expediente, historial y radicado) se
   })
   await assertSucceeds(batch.commit())
 })
+
+test('un Funcionario edita un expediente anterior a la clase sin cambiarla', async () => {
+  const edit = (clase: string) =>
+    updateDoc(doc(as('ana'), 'expedientes/e1'), {
+      clase,
+      asunto: 'Nuevo asunto',
+      participantes: arrayUnion('ana'),
+    })
+  await assertFails(edit('Interna'))
+  await assertSucceeds(edit('Externa'))
+})
+
+test('al registrar no se escribe una transferencia', async () => {
+  await assertFails(
+    createBatch(as('ana'), { transferencia: { destino: 'Tesorería', motivo: 'Inventada' } }),
+  )
+})

@@ -70,5 +70,8 @@ test('no toca el expediente si el radicado no aparece en él', () => {
 test('en un expediente interno la corrección acepta el radicado interno', () => {
   const correction = { previousNumber: '20262000001', number: '2026-000456', date: '2026-10-27' }
   assert.equal(getFilingCorrectionError(correction, '2026-10-20', '2026-10-27', 'Interna'), null)
-  assert.match(getFilingCorrectionError(correction, '2026-10-20', '2026-10-27')!, /Interna/)
+  assert.match(
+    getFilingCorrectionError(correction, '2026-10-20', '2026-10-27')!,
+    /externa: lo que se envía usa la serie 200/,
+  )
 })

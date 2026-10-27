@@ -52,5 +52,8 @@ test('la salida de un interno acepta los dos formatos', () => {
     getFilingNumberError('20261000456', '2026-10-27', 'salida', 'Interna')!,
     /de entrada/,
   )
-  assert.match(getFilingNumberError('2026-000456', '2026-10-27', 'salida')!, /Interna/)
+  assert.match(
+    getFilingNumberError('2026-000456', '2026-10-27', 'salida')!,
+    /externa: lo que se envía usa la serie 200/,
+  )
 })

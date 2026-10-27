@@ -33,7 +33,10 @@ export function getFilingNumberError(
 
   if (/^\d{4}-/.test(value)) {
     if (correspondenceClass !== 'Interna')
-      return 'Ese número es de correspondencia interna (año-consecutivo); elige la clase Interna.'
+      // Al registrar se puede elegir la clase; en lo que se envía, la clase ya está decidida.
+      return direction === 'entrada'
+        ? 'Ese número es de correspondencia interna (año-consecutivo); elige la clase Interna.'
+        : `Este expediente es de correspondencia externa: lo que se envía usa la serie 200 (ej. ${year}2000001).`
     const match = /^(\d{4})-(\d{6,})$/.exec(value)
     if (!match)
       return `El radicado interno debe tener año, guion y consecutivo de 6 cifras (ej. ${year}-000001).`

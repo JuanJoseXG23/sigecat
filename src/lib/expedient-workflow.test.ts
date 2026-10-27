@@ -161,5 +161,8 @@ test('en un expediente interno la respuesta acepta el radicado interno', () => {
     ),
     null,
   )
-  assert.throws(() => planActuation(standard('Radicado de salida'), input(internal)), /Interna/)
+  assert.throws(
+    () => planActuation(standard('Radicado de salida'), input(internal)),
+    /externa: lo que se envía usa la serie 200/,
+  )
 })

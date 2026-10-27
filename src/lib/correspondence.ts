@@ -19,6 +19,15 @@ export function detectCorrespondenceClass(number: string): CorrespondenceClass |
   return undefined
 }
 
+/**
+ * Clase a la que conviene cambiar mientras se escribe el número: solo el guion la decide (el
+ * formato interno es exclusivo). Los dígitos solos no cambian nada, porque el año de un número
+ * interno también empieza así.
+ */
+export function suggestCorrespondenceClass(number: string): 'Interna' | undefined {
+  return detectCorrespondenceClass(number) === 'Interna' ? 'Interna' : undefined
+}
+
 /** Si el expediente es de la clase elegida; sin clase elegida, todos coinciden. */
 export function matchesCorrespondence(
   item: { clase?: string },

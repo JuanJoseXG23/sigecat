@@ -14,7 +14,7 @@ import {
 } from '@/features/expedients/schemas/expedient-schema'
 import {
   CORRESPONDENCE_CLASSES,
-  detectCorrespondenceClass,
+  suggestCorrespondenceClass,
   getCorrespondenceClass,
 } from '@/lib/correspondence'
 import { calculateExpedientTimeline, toDateKey } from '@/lib/expedient-deadline'
@@ -283,9 +283,9 @@ export function ExpedientForm({
               {...form.register('numeroRadicado', {
                 // El formato con guion es exclusivo de la interna: la clase se ajusta sola.
                 onChange: (event) => {
-                  const detected = detectCorrespondenceClass(event.target.value)
-                  if (!entryFilingLocked && detected && detected !== form.getValues('clase'))
-                    form.setValue('clase', detected)
+                  const suggested = suggestCorrespondenceClass(event.target.value)
+                  if (!entryFilingLocked && suggested && suggested !== form.getValues('clase'))
+                    form.setValue('clase', suggested)
                 },
               })}
             />

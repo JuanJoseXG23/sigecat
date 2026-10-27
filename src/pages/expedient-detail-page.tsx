@@ -319,7 +319,7 @@ export function ExpedientDetailPage() {
         </Alert>
       )}
 
-      {item.transferencia && (
+      {item.estado === 'Transferido' && item.transferencia && (
         <Alert
           tone="info"
           title={`Transferido a ${item.transferencia.destino} el ${formatLongDate(item.transferencia.fecha)}`}

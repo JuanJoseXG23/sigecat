@@ -158,6 +158,8 @@ service cloud.firestore {
         request.resource.data.numeroRadicado.size() > 0 &&
         isDependency(request.resource.data.get('dependencia', '')) &&
         isCorrespondenceClass(request.resource.data) &&
+        // The transfer trail is written only when closing as Transferido.
+        !request.resource.data.keys().hasAny(['transferencia']) &&
         // Each person registers in their own area; supervisors choose it.
         (isSupervisor() ||
           request.resource.data.dependencia == profile().get('dependencia', 'catastro')) &&
@@ -172,7 +174,10 @@ service cloud.firestore {
         // format and the area decides who works on it; only supervisors change them.
         (isSupervisor() ||
           !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['numeroRadicado', 'dependencia', 'clase'])) &&
+            .hasAny(['numeroRadicado', 'dependencia'])) &&
+        // Expedients from before the class have no field: writing 'Externa' keeps it.
+        (isSupervisor() ||
+          request.resource.data.get('clase', 'Externa') == resource.data.get('clase', 'Externa')) &&
         isDependency(request.resource.data.get('dependencia', 'catastro')) &&
         isCorrespondenceClass(request.resource.data) &&
         // participantes only grows: nobody loses access to what passed through them.

@@ -347,5 +347,8 @@ test('en un expediente interno el registro tardío acepta el radicado interno', 
     getLateRegistrationIssue(internal, { ...context, correspondenceClass: 'Interna' }),
     null,
   )
-  assert.match(getLateRegistrationIssue(internal, context)!.message, /Interna/)
+  assert.match(
+    getLateRegistrationIssue(internal, context)!.message,
+    /externa: lo que se envía usa la serie 200/,
+  )
 })

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   detectCorrespondenceClass,
+  suggestCorrespondenceClass,
   getCorrespondenceClass,
   matchesCorrespondence,
 } from './correspondence'
@@ -23,4 +24,10 @@ test('filtra por clase', () => {
   assert.equal(matchesCorrespondence({}, 'Externa'), true)
   assert.equal(matchesCorrespondence({ clase: 'Interna' }, 'Externa'), false)
   assert.equal(matchesCorrespondence({ clase: 'Interna' }, ''), true)
+})
+
+test('al escribir, solo el guion sugiere cambiar la clase (a Interna)', () => {
+  assert.equal(suggestCorrespondenceClass('2026-0001'), 'Interna')
+  assert.equal(suggestCorrespondenceClass('2026'), undefined)
+  assert.equal(suggestCorrespondenceClass('20261000123'), undefined)
 })
